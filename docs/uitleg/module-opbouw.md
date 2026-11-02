@@ -33,7 +33,7 @@ De mappen in `src/` bevatten voorlopig alleen een `README.md` van één regel me
 
 **`Import-Module ./NexusFleet.psd1`** gebeurt in deze volgorde:
 
-1. PowerShell leest de manifest. Is de PowerShell-versie lager dan `7.2`, of is het Windows PowerShell 5.1
+1. PowerShell leest de manifest. Is de PowerShell-versie lager dan `7.6` (de LTS-versie, keuze K4 in `docs/ontwerpkeuzes.md`), of is het Windows PowerShell 5.1
    (`CompatiblePSEditions = @('Core')`), dan stopt het hier met een foutmelding.
 2. PowerShell voert het bestand uit dat in `RootModule` staat: de loader.
 3. De loader overloopt de mappen in vaste volgorde:

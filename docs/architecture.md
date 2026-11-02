@@ -11,7 +11,7 @@ SSH, and turns an inventory of hosts into healthy nodes.
 
 ## Module loading
 
-The manifest (`NexusFleet.psd1`) requires PowerShell 7.2+ (Core) and exports an explicit list of public
+The manifest (`NexusFleet.psd1`) requires PowerShell 7.6+ (Core, LTS) and exports an explicit list of public
 cmdlets. The loader (`NexusFleet.psm1`) dot-sources `src/` folder by folder in a fixed order:
 `core` → `utils` → `transports` → `api` → `steps` → `public`.
 

@@ -32,7 +32,7 @@ Every changing cmdlet will support `-WhatIf` (dry run), and every run writes a r
 
 **Control machine** (where you run NexusFleet)
 
-- PowerShell 7.2 or later (`pwsh`) on Windows, Linux or macOS
+- PowerShell 7.6 or later (`pwsh`, the current LTS) on Windows, Linux or macOS
 - An OpenSSH client (`ssh`) — the transport is confirmed by experiment E1 in phase 1
 - A NexusInfra control plane you can reach, and an API token for it
 
