@@ -25,7 +25,28 @@ _Nog uit te voeren._
 
 ### E3 — Pester-mocks en `-Parallel`-runspaces
 
-_Nog uit te voeren._
+- **Vraag:** werkt een Pester-`Mock` ook voor code die in `ForEach-Object -Parallel` draait? En lost het
+  patroon "het werk voor één host in een eigen functie" dat op?
+- **Opzet:** `lab/E3-mocks-parallel/`. Een mini-module `FleetDemo.psm1` met dezelfde opbouw als NexusFleet:
+  `Get-DemoAnswer` (staat voor SSH of de API, wordt gemockt), `Invoke-DemoHostWork` (het werk voor één host),
+  en twee dunne wrappers: een gewone lus en een `ForEach-Object -Parallel` die de module per runspace
+  importeert. Uitvoeren: `Invoke-Pester -Path ./lab/E3-mocks-parallel -Output Detailed`.
+- **Resultaat** (3 van 3 tests slagen, Pester 5.7.1, PowerShell 7.6):
+
+  | Hoe aangeroepen | Uitkomst | Mock-oproepen geteld |
+  |---|---|---|
+  | `Invoke-DemoHostWork` rechtstreeks | `mock:host1` | 1 |
+  | Gewone lus (`ForEach-Object`) | `mock:host1`, `mock:host2` | 2 |
+  | `ForEach-Object -Parallel` | `real:host1`, `real:host2`, `real:host3` | **0** |
+
+  In `-Parallel` draait de **echte** functie. Elke runspace is een nieuwe, lege omgeving die de module opnieuw
+  importeert; de mock bestaat alleen in de runspace van de test.
+- **Voorstel (Claude Code, door Tom te bevestigen):** het patroon uit CLAUDE.md houden. Het werk voor één host
+  staat altijd in een eigen functie die rechtstreeks getest wordt met mocks; de parallelle lus is een dunne
+  wrapper zonder logica. Die wrapper test je met een echte, onschuldige uitvoering (zoals hier) of in een
+  integratietest.
+- **Gevolg:** in `Test-NexusHost`, `Install-NexusNode` en `Get-NexusFleetStatus` komt de logica per host in
+  een aparte functie (bijv. `Test-NexusHostSingle`); unit tests mocken nooit iets "door" een `-Parallel` heen.
 
 ### E4 — Scopes van het API-token
 
