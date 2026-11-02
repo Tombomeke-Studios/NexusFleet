@@ -26,7 +26,9 @@ jobs:
 
       - name: Run PSScriptAnalyzer
         run: |
-          $findings = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          # -ErrorAction Stop: if the analyzer itself fails, the job fails too, instead of
+          # reporting "no findings" for an analysis that did not complete.
+          $findings = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1 -ErrorAction Stop
           foreach ($finding in $findings) {
               # GitHub shows this line as an annotation on the file in the run and the PR.
               $file = [System.IO.Path]::GetRelativePath($PWD.Path, $finding.ScriptPath)

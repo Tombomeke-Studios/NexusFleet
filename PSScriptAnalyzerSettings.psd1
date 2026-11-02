@@ -43,10 +43,10 @@
             CheckHashtable = $true
         }
 
-        # Write commands with the casing they are defined with (Get-ChildItem, not get-childitem).
-        PSUseCorrectCasing         = @{
-            Enable = $true
-        }
+        # PSUseCorrectCasing stays off on purpose: with PSScriptAnalyzer 1.24/1.25 it makes about one
+        # run in ten fail with "Get-Command is not recognized" or a NullReferenceException (race in the
+        # analyzer's command lookup, see PowerShell/PSScriptAnalyzer#2205). Without it: 0 failures in
+        # 105 runs. Casing is cosmetic; re-enable when the bug is fixed (docs/ontwerpkeuzes.md).
 
         # The module targets PowerShell 7.2+ only: flag syntax that 7.2 does not understand.
         PSUseCompatibleSyntax      = @{

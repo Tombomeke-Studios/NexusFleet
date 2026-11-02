@@ -21,6 +21,7 @@ done with Claude Code, one unit at a time.
 - [x] `docs/uitleg/README.md` index + a first topic file `docs/uitleg/module-opbouw.md` explaining the manifest and the loader (format in CLAUDE.md 2c) (#8)
 - [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
 - [x] **[Tom]** GitHub: default branch `dev`, labels `type:bug|feature|refactor|test|docs|ci|lab` (#10)
+- [x] Fix intermittent PSScriptAnalyzer failures in lint (#11)
 
 ## Phase 1 — Lab and experiments · `feature/lab`
 
@@ -74,6 +75,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 - [ ] Comment-based help with examples on every public function (`Get-Help -Full` reads well)
 - [ ] PSScriptAnalyzer: zero warnings
+- [ ] Re-enable `PSUseCorrectCasing` once PSScriptAnalyzer#2205 is fixed (#12)
 - [ ] Scale test: generated inventories of 50 and 100 mocked hosts, a few offline/failing — correct result per host, no crash
 - [ ] README: requirements, quick start, the demo, example output
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline

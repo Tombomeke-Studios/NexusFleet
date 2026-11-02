@@ -161,6 +161,10 @@ Allowed — the two tools are built for each other — but they never happen fro
   PSScriptAnalyzer load the newest Pester *assembly* (6.x); after that Pester 5 can no longer load
   ("Assembly with same name is already loaded"). Import Pester 5 first, or run lint and tests in separate
   `pwsh` processes (CI does the latter).
+- **PSScriptAnalyzer 1.24/1.25 fails intermittently** ("Object reference not set", "Get-Command is not
+  recognized") when `PSUseCorrectCasing` is on: a race in its command lookup (PowerShell/PSScriptAnalyzer#2205).
+  Measured: ~1 in 10 runs with the rule, 0 in 105 without; 1.24, per-file analysis and retries did not fix it.
+  Keep the rule off until fixed. CI runs the analyzer with `-ErrorAction Stop` so a tool failure is never green.
 
 ## 5. Documentation rules — which doc owns what
 
@@ -203,7 +207,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.2+, `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
 | `.gitignore` | Ignores `logs/`, local config (`config/*.local.*`, `config/inventory.json`), Pester output, OS files |
 | `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |
-| `PSScriptAnalyzerSettings.psd1` | Lint rules: all severities, default rules + formatting (4-space indent, same-line braces, consistent whitespace, aligned hashtables, correct casing) + syntax compatibility with 7.2 |
+| `PSScriptAnalyzerSettings.psd1` | Lint rules: all severities, default rules + formatting (4-space indent, same-line braces, consistent whitespace, aligned hashtables) + syntax compatibility with 7.2. `PSUseCorrectCasing` is off on purpose (see section 4) |
 | `NexusFleet.psm1` | Loader: dot-sources `src/*/*.ps1` in a fixed folder order (`core` → `utils` → `transports` → `api` → `steps` → `public`), files sorted by name; throws if a folder is missing and names the file when a script fails to load |
 | `src/core/` | Contracts: the **step** (`Test` / `Apply` / `Rollback`) and the **transport** (run a command on a host) |
 | `src/steps/` | One file per installation step: Docker, agent container, register node, verify healthy. Each declares its order; `Install-NexusNode` reads them from this folder, so adding, replacing or removing a step is adding, replacing or removing a file |

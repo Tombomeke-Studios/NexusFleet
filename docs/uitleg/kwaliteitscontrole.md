@@ -41,8 +41,10 @@ het niets terug, dan is de code schoon. Het settings-bestand doet drie dingen:
    - `{` op dezelfde regel, `}` op een eigen regel (`PSPlaceOpenBrace`, `PSPlaceCloseBrace`),
    - één spatie rond operatoren, na komma's en rond `|` (`PSUseConsistentWhitespace`),
    - de `=`-tekens in een hashtable onder elkaar (`PSAlignAssignmentStatement`),
-   - commando's met hun echte hoofdletters (`PSUseCorrectCasing`),
    - geen syntax die PowerShell 7.2 niet kent (`PSUseCompatibleSyntax`).
+
+   `PSUseCorrectCasing` (commando's met hun echte hoofdletters) staat bewust **uit**. Zie de tweede valkuil
+   onder "Waarom zo".
 
 **De exporttest.** Die importeert de echte module en vergelijkt twee lijsten:
 
@@ -127,6 +129,36 @@ same name is already loaded"*.
 
 Oplossing: importeer Pester 5 **vóór** je de analyzer draait, of draai lint en tests in aparte
 `pwsh`-processen. De CI doet het tweede: lint en test zijn aparte jobs op aparte machines.
+
+### Valkuil: PSScriptAnalyzer faalt soms zelf
+
+Bij het nakijken kwam deze fout boven, zonder dat de code iets mankeerde:
+
+```text
+Invoke-ScriptAnalyzer: Object reference not set to an instance of an object.
+```
+
+Soms ook *"The term 'Get-Command' is not recognized"*. Dat is een bekende, nog open bug in PSScriptAnalyzer
+([PowerShell/PSScriptAnalyzer#2205](https://github.com/PowerShell/PSScriptAnalyzer/issues/2205)). Sommige
+regels vragen voor elk commando in je code `Get-Command` op. De analyzer doet dat in een pool van aparte
+runspaces die tegelijk draaien, en af en toe loopt dat mis (een *race condition*).
+
+Wat er is uitgeprobeerd, telkens met tientallen runs in een nieuw `pwsh`-proces:
+
+| Poging | Resultaat |
+|---|---|
+| Versie 1.25.0, alle regels | ongeveer 1 op 10 runs faalt |
+| Versie 1.24.0 (de oplossing uit het issue) | slechter: 10 op 40 runs falen |
+| Bestand per bestand analyseren | slechter: 8 op 30 runs falen |
+| Tot drie keer opnieuw proberen | beter, maar 1 op 40 runs faalt ook na drie pogingen |
+| 1.25.0 zonder `PSUseCorrectCasing` | **0 op 105 runs falen**, met en zonder Pester geladen |
+
+Daarom staat `PSUseCorrectCasing` uit. Het is een cosmetische regel, en de VS Code-extensie voor PowerShell
+corrigeert hoofdletters ook bij "Format Document". Als de bug opgelost is, kan de regel terug aan.
+
+Daarnaast draait de CI de analyzer met `-ErrorAction Stop`. Faalt de analyzer zelf, dan wordt de job rood
+in plaats van "geen meldingen" te tonen voor een analyse die niet afgemaakt is. Een stil falende controle is
+erger dan een rode.
 
 ### Keuzes in de CI
 
@@ -221,3 +253,5 @@ Of op GitHub: tabblad **Actions** van de repository.
 5. Leg uit waarom Pester 5 niet meer kan laden nadat PSScriptAnalyzer de testbestanden heeft geanalyseerd.
 6. Hoe weet GitHub dat de Pester-job rood moet worden als er een test faalt?
 7. Waarom installeert de CI een vaste versie van Pester en PSScriptAnalyzer, en niet gewoon de nieuwste?
+8. Waarom staat `PSUseCorrectCasing` uit, en hoe is bewezen dat dat de oorzaak was?
+9. Wat zou er misgaan als de CI-stap zonder `-ErrorAction Stop` draaide en de analyzer zelf faalde?
