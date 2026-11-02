@@ -17,7 +17,51 @@ Format per keuze:
 
 ### E1 — Transport: `ssh`, PowerShell-remoting over SSH of Posh-SSH
 
-_Nog uit te voeren._
+- **Vraag:** hoe voert NexusFleet commando's uit op een Linux-host?
+- **Opzet:** `lab/E1-transport/`. Twee Docker-containers als stand-in voor een verse Ubuntu 24.04-VM: OpenSSH,
+  een gebruiker `fleet` die alleen met een sleutel inlogt en zonder wachtwoord `sudo` mag
+  (`Start-LabTarget.ps1`). De tweede container heeft ook PowerShell en het `powershell`-subsystem in sshd,
+  nodig voor remoting. `Measure-Transport.ps1` meet per transport. Controlemachine: Windows 10, PowerShell 7.6.9,
+  OpenSSH-client van Windows, Posh-SSH 4.0.0. Een echte VM volgt in E0 (#14).
+- **Wat er nodig is:**
+
+  | | Op de controlemachine | Op elke host |
+  |---|---|---|
+  | `ssh` | OpenSSH-client (standaard in Windows 10+, Linux, macOS) | niets extra |
+  | PowerShell-remoting | niets extra | **PowerShell installeren** (Microsoft-repository, image +87 MB) en sshd aanpassen |
+  | Posh-SSH | externe module (Posh-SSH, op SSH.NET) | niets extra |
+
+- **Resultaat** (verbinding via `127.0.0.1`):
+
+  | Test | `ssh` | PowerShell-remoting | Posh-SSH |
+  |---|---|---|---|
+  | Verbinden | 0,21 s (één volledige oproep) | 0,46 s | 0,23 s |
+  | Per commando (10×) | 0,20 s (telkens nieuwe verbinding) | 0,09 s (sessie hergebruikt) | 0,07 s (sessie hergebruikt) |
+  | Exitcode `exit 7` | `$LASTEXITCODE` = 7 | 7, als object terug | `ExitStatus` = 7 |
+  | Geheim via stdin | ja, als `byte[]` (zie hieronder) | als argument, versleuteld naar de host | **geen stdin** bij `Invoke-SSHCommand` |
+  | Verkeerde sleutel | exit 255 na 0,21 s, geen prompt | fout na 0,17 s | fout na 0,19 s |
+  | Onbereikbaar (time-out 5 s) | exit 255 na 5,1 s | fout na 5,1 s | fout na 5,1 s |
+
+- **Twee valkuilen gevonden:**
+  1. **`localhost` kost 2 s per verbinding** op deze Windows-machine: eerst wordt IPv6 (`::1`) geprobeerd,
+     terwijl de lab-poorten alleen op IPv4 luisteren. Met `127.0.0.1` 0,2 s. Geldt voor het lab, niet voor
+     echte hosts, maar het verklaart trage verbindingen bij een hostnaam die naar IPv6 én IPv4 wijst.
+  2. **Een string die je in PowerShell naar `ssh` pijpt, krijgt `\r\n` erachter op Windows.** Een geheim komt
+     aan als `...E1\r`: één onzichtbaar teken te veel, dus een token zou niet werken. Opgelost door **bytes** te
+     pijpen (`[Text.Encoding]::UTF8.GetBytes($secret) | ssh ...`): dan komen exact die bytes aan. Dat kan sinds
+     PowerShell 7.4 (`PSNativeCommandPreserveBytePipe`). Alternatief dat ook op 7.2 werkt: de `\r` op de host
+     wegknippen (`s=${s%$'\r'}`).
+- **Voorstel (Claude Code, door Tom te bevestigen):** native `ssh`.
+  - Niets te installeren op de hosts (PowerShell-remoting vraagt PowerShell op élke host: een extra
+    installatiestap bij de onboarding en meer aanvalsoppervlak) en geen externe module (Posh-SSH).
+  - Geheimen gaan via stdin, en dat lukt alleen met `ssh` en remoting; Posh-SSH zou ze op de commandoregel of
+    in een bestand moeten zetten.
+  - Exitcodes en fouten zijn duidelijk, en met `BatchMode=yes` hangt er nooit een prompt.
+  - Nadeel: een nieuwe verbinding per commando (0,2 s). Met een paar commando's per stap en parallelle
+    hosts (E2) is dat klein. Kan later met minder, grotere scripts per oproep.
+- **Gevolg:** `Invoke-NexusHostCommand` roept `ssh` aan met `BatchMode=yes`, `ConnectTimeout`, een eigen
+  `UserKnownHostsFile`-keuze en `StrictHostKeyChecking=accept-new`; geheimen gaan als `byte[]` naar stdin.
+  **Open vraag voor Tom:** de minimumversie in de manifest van 7.2 naar 7.4 of 7.6 brengen (zie K4).
 
 ### E2 — Parallel werken: `ForEach-Object -Parallel`, `Start-ThreadJob` of `Start-Job`
 
@@ -76,7 +120,37 @@ _Nog uit te voeren._
 
 ### E4 — Scopes van het API-token
 
-_Nog uit te voeren._
+- **Vraag:** welke rechten heeft het API-token van NexusFleet nodig voor `POST /nodes`,
+  `PATCH /nodes/:id/maintenance` en `DELETE /nodes/:id`?
+- **Opzet:** broncode van de orchestrator gelezen in de lokale NexusInfra-clone (branch `dev`, tag
+  `nexusfleet-baseline` aanwezig): `services/orchestrator/src/api.ts`, `auth.ts`, `apiTokens.ts`, en de eigen
+  tests van NexusInfra (`api.test.ts`, `auth.test.ts`). Notities in `lab/E4-token-scopes/README.md`.
+- **Resultaat:** twee controles, die allebei moeten slagen:
+  1. *Methode-controle* (`requireAuth` → `scopeAllowsMethod`): `GET`/`HEAD`/`OPTIONS` mag elk token; elke
+     andere methode vraagt scope **`write`**.
+  2. *Beheerroutes* (`requirePlatformAdmin`): het **account** moet `platformRole` `admin` of `owner` hebben,
+     en een token moet daarbovenop scope **`admin`** hebben ("this API token does not have the admin scope").
+
+  | Route | Account | Token-scopes |
+  |---|---|---|
+  | `GET /nodes` | elk aangemeld account | geen extra |
+  | `POST /nodes` | admin of owner | `write` + `admin` |
+  | `PATCH /nodes/:id/maintenance` | admin of owner | `write` + `admin` |
+  | `DELETE /nodes/:id` | admin of owner | `write` + `admin` (`409` zolang er een deployment draait) |
+
+  Verder: een token kan geen nieuw token aanmaken (`POST /me/tokens` → `403`), en een token valt niet onder de
+  verplichte 2FA-inschrijving (`requireTotpEnrolment` laat `principal.tokenId` door).
+- **Wat `Connect-NexusInfra` vooraf kan controleren:** `GET /me` geeft het account terug met `platformRole`,
+  maar **niet** de scopes van het token. De `admin`-scope kan wel zonder bijwerkingen getest worden met
+  `GET /users` (een leesroute achter `requirePlatformAdmin`: `200` met de scope, `403` zonder). De
+  `write`-scope kan niet zonder iets te wijzigen getest worden.
+- **Voorstel (Claude Code, door Tom te bevestigen):** NexusFleet vraagt een token met scopes `write` en `admin`
+  van een platformbeheerder. `Connect-NexusInfra` controleert `platformRole` via `GET /me` en de `admin`-scope
+  via `GET /users`, en geeft meteen een duidelijke fout in plaats van pas bij `POST /nodes` een `403`. Een
+  ontbrekende `write`-scope vangt `Invoke-NexusApi` op bij de eerste wijzigende oproep (`403` → duidelijke
+  fout). Mogelijke kleine NexusInfra-wijziging voor later: de scopes van het huidige token in `GET /me`
+  teruggeven (`fleet-support:`, alleen na overleg met Tom).
+- **Nog te doen:** live bevestigen tegen een draaiende controlekant (lab E0, #14).
 
 ---
 
@@ -130,3 +204,25 @@ _Nog uit te voeren._
 - **Keuze:** twee aparte jobs. Ze draaien tegelijk, tonen apart welke controle faalt, en de botsing kan niet
   optreden.
 - **Gevolg:** lokaal eerst Pester 5 importeren, of lint en tests in aparte processen draaien (CLAUDE.md, sectie 4).
+
+### K4 — Minimale PowerShell-versie (open, beslissing van Tom)
+
+- **Vraag:** blijft de manifest op PowerShell 7.2, of gaat de ondergrens omhoog?
+- **Feiten** ([PowerShell support lifecycle](https://learn.microsoft.com/powershell/scripting/install/powershell-support-lifecycle),
+  geraadpleegd 2 november 2026):
+
+  | Versie | Einde ondersteuning |
+  |---|---|
+  | 7.2 (LTS) | 8 november 2024 — al voorbij |
+  | 7.4 (LTS) | 10 november 2026 |
+  | 7.5 | 10 november 2026 |
+  | 7.6 (LTS) | 14 november 2028 |
+
+  Uit E1: geheimen als `byte[]` naar stdin pijpen kan pas vanaf 7.4. Op 7.2 moet elke host de `\r` zelf
+  wegknippen.
+- **Opties:** 7.2 houden (breedst, maar niet meer ondersteund) · 7.4 (byte-pijpen, nog een week ondersteund) ·
+  7.6 (de enige ondersteunde LTS na 10 november 2026).
+- **Voorstel (Claude Code):** 7.6. Dat is na volgende week de enige ondersteunde versie, de CI draait er al op, en
+  het maakt de byte-pijp uit E1 vanzelfsprekend. Het voorstel noemt "PowerShell 7" zonder subversie, dus dit
+  verandert het goedgekeurde voorstel niet.
+- **Keuze:** _door Tom te maken._

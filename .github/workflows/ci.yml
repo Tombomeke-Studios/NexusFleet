@@ -28,6 +28,7 @@ jobs:
       # annotation, and retries only PSScriptAnalyzer's own internal errors (see the script's help).
       - name: Run PSScriptAnalyzer
         run: |
+          Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
           ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations
           Write-Output 'PSScriptAnalyzer: no findings.'
 
@@ -48,6 +49,7 @@ jobs:
 
       - name: Run Pester (without Integration tests)
         run: |
+          Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
           Import-Module Pester -RequiredVersion 5.7.1
           $config = New-PesterConfiguration
           $config.Run.Path = './tests'
