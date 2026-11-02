@@ -26,7 +26,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 ## Phase 3 — MVP cmdlets
 
 ### `feature/connect`
-- [ ] `Connect-NexusInfra` — base URL + API token, validate with `GET /me`, store the token with SecretManagement, keep the session in module scope (#30)
+- [x] `Connect-NexusInfra` — base URL + API token, validate with `GET /me`, store the token with SecretManagement, keep the session in module scope (#30)
 
 ### `feature/inventory`
 - [ ] `Import-NexusInventory` — read and validate a JSON inventory (host/IP, SSH port, user, role, location) into typed objects; `config/inventory.example.json`

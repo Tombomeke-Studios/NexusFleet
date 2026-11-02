@@ -1,3 +1,12 @@
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '',
+    Justification = 'Pester: $exportedFunctions is set in BeforeDiscovery and used by -ForEach; the analyzer does not look across script blocks.')]
+param()
+
+BeforeDiscovery {
+    # The exported cmdlets, known while Pester discovers the tests (for the help test below).
+    $exportedFunctions = @((Import-PowerShellDataFile -Path (Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'NexusFleet.psd1')).FunctionsToExport)
+}
+
 BeforeAll {
     $script:repoRoot = Split-Path -Path $PSScriptRoot -Parent
     $script:manifestPath = Join-Path -Path $script:repoRoot -ChildPath 'NexusFleet.psd1'
@@ -99,5 +108,31 @@ Describe 'NexusFleet loader' {
 
         { Import-Module -Name (Join-Path -Path $script:fakeRoot -ChildPath 'NexusFleet.psd1') -Force -ErrorAction Stop } |
             Should -Throw -ExpectedMessage "*Broken.ps1*boom*"
+    }
+}
+
+Describe 'Help of every exported cmdlet' {
+    BeforeAll {
+        Import-Module -Name $script:manifestPath -Force
+    }
+
+    AfterAll {
+        Remove-Module -Name NexusFleet -Force -ErrorAction SilentlyContinue
+    }
+
+    It '<_> has a synopsis, a description, an example and help for every parameter' -ForEach $exportedFunctions {
+        $help = Get-Help -Name $_ -Full
+
+        # Without comment-based help, PowerShell generates a synopsis that is only the syntax.
+        $help.Synopsis | Should -Not -BeNullOrEmpty
+        $help.Synopsis | Should -Not -Match "^\s*$_ "
+        ($help.description.Text -join '') | Should -Not -BeNullOrEmpty
+        @($help.examples.example).Count | Should -BeGreaterThan 0
+
+        $common = [System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
+        foreach ($parameter in (Get-Command -Name $_).Parameters.Keys | Where-Object { $_ -notin $common }) {
+            $parameterHelp = $help.parameters.parameter | Where-Object { $_.name -eq $parameter }
+            ($parameterHelp.description.Text -join '') | Should -Not -BeNullOrEmpty -Because "parameter -$parameter needs a .PARAMETER description"
+        }
     }
 }

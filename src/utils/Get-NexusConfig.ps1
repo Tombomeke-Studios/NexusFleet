@@ -59,6 +59,7 @@ function Get-NexusConfig {
         @{ Key = 'Api.TimeoutSeconds'; Expect = 'a whole number 1-300'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 300 } }
         @{ Key = 'Api.RetryCount'; Expect = 'a whole number 0-10'; Test = { param($v) $v -is [int] -and $v -ge 0 -and $v -le 10 } }
         @{ Key = 'Api.AllowUnencryptedHttp'; Expect = '$true or $false'; Test = { param($v) $v -is [bool] } }
+        @{ Key = 'Api.SecretName'; Expect = 'a secret name (letters, digits, . _ -)'; Test = { param($v) $v -is [string] -and $v -match '^[A-Za-z0-9._-]+$' } }
         @{ Key = 'Agent.Image'; Expect = 'an image name'; Test = { param($v) $v -is [string] -and $v -match '^\S+$' } }
         @{ Key = 'Agent.ContainerName'; Expect = 'a Docker container name'; Test = { param($v) $v -is [string] -and $v -match '^[a-zA-Z0-9][a-zA-Z0-9_.-]+$' } }
         @{ Key = 'Agent.Port'; Expect = 'a port number 1-65535'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 65535 } }

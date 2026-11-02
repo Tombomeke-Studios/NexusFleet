@@ -12,6 +12,8 @@
         # The API token is only sent over plain http:// to this machine (localhost). Set to $true in your
         # local file only when the panel runs without TLS on a trusted network.
         AllowUnencryptedHttp = $false
+        # Name under which Connect-NexusInfra -Save stores the API token with SecretManagement.
+        SecretName           = 'NexusFleet-ApiToken'
     }
 
     Agent  = @{

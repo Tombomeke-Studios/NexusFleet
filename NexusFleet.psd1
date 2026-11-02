@@ -15,7 +15,9 @@
 
     # Explicit lists, never '*': only the public cmdlets are visible to the user.
     # Each public cmdlet is added here when it lands in src/public/.
-    FunctionsToExport    = @()
+    FunctionsToExport    = @(
+        'Connect-NexusInfra'
+    )
     CmdletsToExport      = @()
     VariablesToExport    = @()
     AliasesToExport      = @()
