@@ -5,10 +5,13 @@
 @{
     Api    = @{
         # The gateway (port 9400) fronts the orchestrator and passes nxi_ tokens through.
-        BaseUrl        = 'http://localhost:9400'
-        TimeoutSeconds = 30
+        BaseUrl              = 'http://localhost:9400'
+        TimeoutSeconds       = 30
         # Extra attempts for GET requests and network errors only; changing requests are never retried.
-        RetryCount     = 2
+        RetryCount           = 2
+        # The API token is only sent over plain http:// to this machine (localhost). Set to $true in your
+        # local file only when the panel runs without TLS on a trusted network.
+        AllowUnencryptedHttp = $false
     }
 
     Agent  = @{

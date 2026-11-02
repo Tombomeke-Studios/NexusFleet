@@ -77,7 +77,7 @@ Describe 'Get-NexusConfig' {
 
     It 'lists every problem at once, not only the first' {
         $path = Write-TestConfig -Find 'Port            = 9100' -Replace "Port            = 'abc'"
-        $text = (Get-Content -Path $path -Raw).Replace("BaseUrl        = 'http://localhost:9400'", "BaseUrl        = 'localhost'")
+        $text = (Get-Content -Path $path -Raw).Replace("BaseUrl              = 'http://localhost:9400'", "BaseUrl        = 'localhost'")
         Set-Content -Path $path -Value $text
 
         $message = try { Get-NexusConfig -Path $path; '' } catch { $_.Exception.Message }

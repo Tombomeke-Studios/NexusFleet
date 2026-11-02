@@ -228,3 +228,17 @@ Format per keuze:
   verandert het goedgekeurde voorstel niet.
 - **Keuze (Tom, 2 november 2026):** 7.6, voor de langdurige ondersteuning (LTS). Doorgevoerd in de manifest,
   de PSScriptAnalyzer-instellingen en de documentatie (#28).
+
+### K5 — Het API-token over `http://`
+
+- **Vraag:** mag NexusFleet het API-token over gewone `http://` sturen? NexusInfra draait in de MVP zonder TLS
+  (`http://localhost:9400`), en `Invoke-RestMethod` weigert standaard een token over `http://` te sturen
+  (gevonden met de lokale HTTP-test).
+- **Opties:** altijd toestaan (eenvoudig, maar een token met beheerrechten kan onderweg meegelezen worden) ·
+  nooit (dan werkt de MVP niet met een lokaal panel) · alleen naar de eigen machine, en voor andere hosts alleen
+  als het uitdrukkelijk aangezet is.
+- **Keuze (Claude Code, door Tom te bevestigen):** de laatste. `localhost`, `127.0.0.1` en `::1` mogen altijd
+  (het verkeer verlaat de machine niet). Voor een andere `http://`-host is `Api.AllowUnencryptedHttp = $true` in
+  `config/nexusinfra.local.psd1` nodig, met een waarschuwing bij elke oproep. Anders stopt `Invoke-NexusApi` met
+  `NexusApi.UnencryptedNotAllowed`, vóór er iets verstuurd is.
+- **Gevolg:** veilig als standaard; de beveiligde verbinding (TLS, extra) maakt de uitzondering overbodig.

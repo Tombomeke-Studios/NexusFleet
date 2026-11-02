@@ -73,6 +73,9 @@ thresholds) is in [config/nexusinfra.psd1](config/nexusinfra.psd1). To change va
 
 The configuration is validated when it is read; an invalid file stops the run with a list of every problem.
 
+The API token is only sent over plain `http://` to this machine (`localhost`). For a panel on another host
+without TLS, set `Api = @{ AllowUnencryptedHttp = $true }` in your local file, and only on a trusted network.
+
 ## Development
 
 Run from the repository root in `pwsh`. Import Pester 5 first: PSScriptAnalyzer otherwise loads the newest

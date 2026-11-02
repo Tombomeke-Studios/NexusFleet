@@ -152,6 +152,8 @@ Allowed — the two tools are built for each other — but they never happen fro
   always lives in its own function, which is tested directly; the parallel loop is a thin wrapper.
 - **Scale is tested with generated inventories** of 50–100 mocked hosts, a few of them offline or
   failing: every host gets its own correct result and nothing crashes.
+- **Local HTTP tests** (tag `LocalHttp`) use a real `HttpListener` on a free loopback port, no external hosts;
+  they run with the unit tests and in CI, because they catch what mocks of `Invoke-RestMethod` cannot.
 - **Integration tests** carry the `Integration` tag, are excluded by default, and run by hand against
   the lab VMs. Put a test there only when the real thing is the only proof.
 - **Every bug fix starts with the test that catches it.**
@@ -217,7 +219,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `src/core/` | Contracts: the **step** (`Test` / `Apply` / `Rollback`) and the **transport** (run a command on a host) |
 | `src/steps/` | One file per installation step: Docker, agent container, register node, verify healthy. Each declares its order; `Install-NexusNode` reads them from this folder, so adding, replacing or removing a step is adding, replacing or removing a file |
 | `src/transports/` | `Invoke-NexusHostCommand` over SSH (method chosen by experiment E1) |
-| `src/api/` | `Invoke-NexusApi` — the **only** place that calls the NexusInfra REST API |
+| `src/api/` | `Invoke-NexusApi` — the **only** place that calls the NexusInfra REST API. Bearer token as SecureString, time-out, retries only GET after network errors/502-504 (doubling delay), error ids `NexusApi.Unauthorized/Forbidden/NotFound/Conflict/Unavailable/Unreachable/RequestFailed/UnencryptedNotAllowed`, token over `http://` only to loopback unless `-AllowUnencryptedHttp` (K5) |
 | `src/public/` | The cmdlets: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus` |
 | `src/utils/` | `Initialize-NexusRunContext` (RunId, log folder `./logs/<RunId>/`, secrets; a plain object so it can go into runspaces via `$using:`), `Write-NexusLog` (one line per event, one file per host + `run.log`, redaction of context secrets and `nxi_` tokens, writes under `-WhatIf` too). `Get-NexusConfig` (reads `config/nexusinfra.psd1` + optional `nexusinfra.local.psd1`, validates every value with a rules list, reports all problems at once), `Merge-NexusHashtable` (deep merge, warns on unknown keys). All internal (not exported) |
 | `config/` | `nexusinfra.psd1` (every NexusInfra-specific value: `Api`, `Agent`, `Health`; checked against NexusInfra `docs/images.md`), local overrides in git-ignored `nexusinfra.local.psd1`; `inventory.example.json` planned |
@@ -248,6 +250,12 @@ description as files land. `logs/` is created at runtime, never committed.
   Always pass `-ThrottleLimit` from a parameter.
 - **`-WhatIf` is inherited** (`$WhatIfPreference`) by every command below a cmdlet. Anything that must happen
   in a dry run too (logging) uses `-WhatIf:$false` explicitly.
+- **In a `catch`, save the error first** (`$caught = $_`): inside a `switch` (and `ForEach-Object`, `Where-Object`)
+  `$_` is that block's current value, not the error.
+- **`Invoke-RestMethod` refuses a bearer token over `http://`** unless `-AllowUnencryptedAuthentication`;
+  `Invoke-NexusApi` only allows it for loopback or with `-AllowUnencryptedHttp` (K5).
+- **`HttpResponseException` derives from `HttpRequestException`**: check for an HTTP status first, then treat
+  `HttpRequestException`/`TaskCanceledException`/`TimeoutException` without a status as a network error.
 - **One host failing never stops the others.** Catch per host and return a result object with
   `Host`, `Success`, `Step`, `Error`.
 - **Validate parameters** with `ValidateNotNullOrEmpty`, `ValidatePattern`, `ValidateRange`,

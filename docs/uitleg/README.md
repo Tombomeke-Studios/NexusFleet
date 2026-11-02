@@ -13,3 +13,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | SSH-transport | [ssh-transport.md](ssh-transport.md) | E1: `ssh`, remoting en Posh-SSH; geheimen via stdin; de lab-doelhost |
 | Logging | [logging.md](logging.md) | Run-context, `Write-NexusLog`, redactie, logs vanuit `-Parallel` |
 | Configuratie | [configuratie.md](configuratie.md) | `config/nexusinfra.psd1`, lokale overschrijving, validatie |
+| API-client | [api-client.md](api-client.md) | `Invoke-NexusApi`: token, herhalen, foutcodes, de http-regel, echte HTTP-tests |
