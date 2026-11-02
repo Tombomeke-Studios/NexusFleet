@@ -155,6 +155,16 @@ Allowed — the two tools are built for each other — but they never happen fro
 - **Integration tests** carry the `Integration` tag, are excluded by default, and run by hand against
   the lab VMs. Put a test there only when the real thing is the only proof.
 - **Every bug fix starts with the test that catches it.**
+- **Pin Pester to 5.x.** `-MinimumVersion 5.0` alone installs Pester 6, and Windows ships Pester 3.4.
+  Tests and CI load it with `Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99`.
+- **Import Pester 5 before running PSScriptAnalyzer in the same session.** Analysing the test files makes
+  PSScriptAnalyzer load the newest Pester *assembly* (6.x); after that Pester 5 can no longer load
+  ("Assembly with same name is already loaded"). Import Pester 5 first, or run lint and tests in separate
+  `pwsh` processes (CI does the latter).
+- **PSScriptAnalyzer 1.24/1.25 fails intermittently** ("Object reference not set", "Get-Command is not
+  recognized") when `PSUseCorrectCasing` is on: a race in its command lookup (PowerShell/PSScriptAnalyzer#2205).
+  Measured: ~1 in 10 runs with the rule, 0 in 105 without; 1.24, per-file analysis and retries did not fix it.
+  Keep the rule off until fixed. CI runs the analyzer with `-ErrorAction Stop` so a tool failure is never green.
 
 ## 5. Documentation rules — which doc owns what
 
@@ -182,16 +192,23 @@ Allowed — the two tools are built for each other — but they never happen fro
 | Lint | `Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1` |
 | Help for a cmdlet | `Get-Help Install-NexusNode -Full` |
 | Dry run | any changing cmdlet with `-WhatIf` |
-| Install tooling | `Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser; Install-Module PSScriptAnalyzer -Scope CurrentUser` |
+| Install tooling | `Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -SkipPublisherCheck; Install-Module PSScriptAnalyzer -Scope CurrentUser` |
+| Load Pester 5 (not 6, not the built-in 3.4) | `Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99` |
 
 ## 7. Codebase map — where is what
 
-Status: **planned** (from the proposal). Replace "planned" by a real description as files land.
+Status: the folders exist, each with a one-line `README.md` stating its purpose (placeholder until code
+lands; the loader only reads `*.ps1`). File contents below are still **planned** — replace by a real
+description as files land. `logs/` is created at runtime, never committed.
 
 | Path | Contents |
 |---|---|
-| `NexusFleet.psd1` | Manifest. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*` |
-| `NexusFleet.psm1` | Loader: dot-sources `src/` in a fixed order (`core` → `utils` → `transports` → `api` → `steps` → `public`) |
+| `README.md` | English user docs: what/why, planned MVP cmdlets, requirements, quick start (placeholder until the MVP), dev commands, layout. Update with every public cmdlet change |
+| `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.2+, `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
+| `.gitignore` | Ignores `logs/`, local config (`config/*.local.*`, `config/inventory.json`), Pester output, OS files |
+| `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |
+| `PSScriptAnalyzerSettings.psd1` | Lint rules: all severities, default rules + formatting (4-space indent, same-line braces, consistent whitespace, aligned hashtables) + syntax compatibility with 7.2. `PSUseCorrectCasing` is off on purpose (see section 4) |
+| `NexusFleet.psm1` | Loader: dot-sources `src/*/*.ps1` in a fixed folder order (`core` → `utils` → `transports` → `api` → `steps` → `public`), files sorted by name; throws if a folder is missing and names the file when a script fails to load |
 | `src/core/` | Contracts: the **step** (`Test` / `Apply` / `Rollback`) and the **transport** (run a command on a host) |
 | `src/steps/` | One file per installation step: Docker, agent container, register node, verify healthy. Each declares its order; `Install-NexusNode` reads them from this folder, so adding, replacing or removing a step is adding, replacing or removing a file |
 | `src/transports/` | `Invoke-NexusHostCommand` over SSH (method chosen by experiment E1) |
@@ -199,12 +216,12 @@ Status: **planned** (from the proposal). Replace "planned" by a real description
 | `src/public/` | The cmdlets: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus` |
 | `src/utils/` | `Write-NexusLog` (with secret redaction), config loading |
 | `config/` | `nexusinfra.psd1` (every NexusInfra-specific value), `inventory.example.json` |
-| `tests/` | Pester, mirrors `src/` |
+| `tests/` | Pester, mirrors `src/`. `tests/NexusFleet.Tests.ps1` covers the manifest and the loader (fake module copy in `TestDrive` with probe scripts) and that the module exports exactly the manifest list |
 | `lab/` | Scripts and notes for the experiments (TODO phase 1) — not part of the module |
-| `docs/` | `projectvoorstel.md`, `architecture.md`, `ontwerpkeuzes.md`, `nexusinfra-wijzigingen.md`, `leerlogboek.md` (Tom's) |
+| `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's; holds one draft note written by Claude Code at Tom's explicit request, 2026-11-02, for Tom to rewrite — never add to it otherwise) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
 | `logs/` | Run logs, created at runtime, git-ignored |
-| `.github/workflows/ci.yml` | Pester + PSScriptAnalyzer on every push and PR |
+| `.github/workflows/ci.yml` | On every push and PR: two jobs on `ubuntu-latest` — `lint` (PSScriptAnalyzer 1.25.0, findings as `::error` annotations) and `test` (Pester 5.7.1, `Run.Exit`, `Integration` excluded). Versions pinned; read-only token |
 
 ## 8. Conventions & gotchas
 
@@ -232,6 +249,8 @@ Status: **planned** (from the proposal). Replace "planned" by a real description
 - Secrets (API token, `INTERNAL_API_TOKEN`, broker password) **never** go on a command line, in a
   log, or in the repo. Store with SecretManagement; send to a host over **stdin** of the SSH call or
   as a file with mode `600`.
+- **Local config** (real addresses, your own inventory) lives in `config/*.local.*` and `config/inventory.json`,
+  both git-ignored. The repo only holds the examples. Ignoring is not secret storage: secrets still go to SecretManagement.
 - Every public cmdlet run gets a `RunId`. `Write-NexusLog` writes one human-readable line per event:
   time (UTC ISO-8601), RunId, host, step, level, message. It redacts known secrets before writing.
 - A dry run is logged too.

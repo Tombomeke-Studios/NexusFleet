@@ -1,0 +1,16 @@
+# Run logs, written by Write-NexusLog at runtime.
+logs/
+
+# Local configuration: real hosts, addresses and anything secret stay on your machine.
+# The repo only holds the examples (config/nexusinfra.psd1, config/inventory.example.json).
+config/*.local.*
+config/inventory.json
+
+# Pester output when a run is configured to write results or coverage.
+TestResults/
+testResults.xml
+coverage.xml
+
+# Operating system files.
+Thumbs.db
+.DS_Store

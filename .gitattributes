@@ -1,0 +1,9 @@
+# Let git detect text files and store them with LF in the repository.
+* text=auto
+
+# Always LF in the working copy too, also on Windows: scripts sent to a Linux host
+# break on CRLF, and PowerShell reads LF fine on every platform.
+*.ps1  text eol=lf
+*.psm1 text eol=lf
+*.psd1 text eol=lf
+*.sh   text eol=lf
