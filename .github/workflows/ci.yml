@@ -1,0 +1,60 @@
+# Runs PSScriptAnalyzer and the Pester unit tests on every push and pull request.
+# Lint and tests are separate jobs: each runs in its own process, so PSScriptAnalyzer
+# can never load a Pester assembly that blocks Pester 5 (see CLAUDE.md, section 4).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: PSScriptAnalyzer
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install PSScriptAnalyzer
+        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+
+      - name: Run PSScriptAnalyzer
+        run: |
+          $findings = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          foreach ($finding in $findings) {
+              # GitHub shows this line as an annotation on the file in the run and the PR.
+              $file = [System.IO.Path]::GetRelativePath($PWD.Path, $finding.ScriptPath)
+              Write-Output "::error file=$file,line=$($finding.Line)::$($finding.RuleName): $($finding.Message)"
+          }
+          if ($findings) {
+              throw "PSScriptAnalyzer found $(@($findings).Count) issue(s)."
+          }
+          Write-Output 'PSScriptAnalyzer: no findings.'
+
+  test:
+    name: Pester
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Pester 5
+        run: Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Run Pester (without Integration tests)
+        run: |
+          Import-Module Pester -RequiredVersion 5.7.1
+          $config = New-PesterConfiguration
+          $config.Run.Path = './tests'
+          $config.Run.Exit = $true
+          $config.Filter.ExcludeTag = 'Integration'
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
