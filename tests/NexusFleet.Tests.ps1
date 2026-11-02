@@ -28,6 +28,36 @@ Describe 'NexusFleet manifest' {
     }
 }
 
+Describe 'NexusFleet module' {
+    BeforeAll {
+        $script:manifestData = Import-PowerShellDataFile -Path $script:manifestPath
+    }
+
+    AfterAll {
+        Remove-Module -Name NexusFleet -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'imports without errors' {
+        { Import-Module -Name $script:manifestPath -Force -ErrorAction Stop } | Should -Not -Throw
+    }
+
+    It 'exports exactly the functions listed in the manifest' {
+        $module = Import-Module -Name $script:manifestPath -Force -PassThru
+        $exported = @($module.ExportedFunctions.Keys | Sort-Object) -join ', '
+        $listed = @($script:manifestData.FunctionsToExport | Sort-Object) -join ', '
+
+        $exported | Should -Be $listed
+    }
+
+    It 'exports no cmdlets, variables or aliases' {
+        $module = Import-Module -Name $script:manifestPath -Force -PassThru
+
+        $module.ExportedCmdlets.Count | Should -Be 0
+        $module.ExportedVariables.Count | Should -Be 0
+        $module.ExportedAliases.Count | Should -Be 0
+    }
+}
+
 Describe 'NexusFleet loader' {
     BeforeEach {
         # A throw-away copy of the module in Pester's TestDrive, with one probe script per

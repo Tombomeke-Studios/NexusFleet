@@ -7,3 +7,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | Onderwerp | Bestand | Over |
 |---|---|---|
 | Module-opbouw | [module-opbouw.md](module-opbouw.md) | De mappenstructuur, de manifest en de loader |
+| Kwaliteitscontrole | [kwaliteitscontrole.md](kwaliteitscontrole.md) | PSScriptAnalyzer-regels, de exporttest en de Pester-valkuil (later ook de CI) |
