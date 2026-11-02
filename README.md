@@ -6,7 +6,7 @@ A PowerShell 7 module that turns Linux hosts into [NexusInfra](https://github.co
 nodes and manages them as a fleet: read an inventory, check every host, install Docker and the node agent,
 register the node, wait until it is healthy, and roll back when something fails.
 
-> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`, `Import-NexusInventory`. Progress is tracked in
+> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`. Progress is tracked in
 > [TODO.md](TODO.md). This README grows as the cmdlets land.
 
 ## Why
@@ -22,7 +22,7 @@ NexusFleet turns it into one repeatable, idempotent PowerShell pipeline with a r
 |---|---|
 | `Connect-NexusInfra` | Connect to the NexusInfra panel with an API token, check its rights, optionally store it (available) |
 | `Import-NexusInventory` | Read and validate a JSON list of target hosts (available) |
-| `Test-NexusHost` | Check every host in parallel: reachable, SSH, OS, disk space, Docker |
+| `Test-NexusHost` | Check every host in parallel: reachable, SSH login, OS, sudo, disk space, Docker, broker (available) |
 | `Install-NexusNode` | Turn a host into a healthy node, idempotent, with rollback on failure |
 | `Get-NexusFleetStatus` | Get and export the status of all nodes; offline hosts never break the run |
 
@@ -109,6 +109,24 @@ Import-NexusInventory ./config/inventory.json | Format-Table Name, Address, Port
 ```
 
 Every problem in the file (missing fields, invalid names or addresses, duplicates) is reported in one error.
+
+**Check the hosts (changes nothing).** Set the broker address as the hosts reach it in your local config
+(`@{ Broker = @{ Host = 'broker.example.com' } }`), then:
+
+```powershell
+Import-NexusInventory ./config/inventory.json | Test-NexusHost | Format-Table Host, Success, Step, Error
+```
+
+```text
+Host          Success Step      Error
+----          ------- ----      -----
+node-home01      True
+node-home02     False Sudo      fleet cannot use sudo without a password (needed to install Docker and the agent)
+node-vps01      False Reachable cannot reach 203.0.113.10:2222 over ssh: ... Connection timed out
+```
+
+Hosts are checked in parallel (`-ThrottleLimit`, default 10); one failing host never stops the others.
+`$result.Checks` shows every check of a host.
 
 _The other cmdlets follow with the MVP._
 

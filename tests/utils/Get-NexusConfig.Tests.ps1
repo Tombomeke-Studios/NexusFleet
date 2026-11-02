@@ -75,6 +75,12 @@ Describe 'Get-NexusConfig' {
         { Get-NexusConfig -Path $path } | Should -Throw -ExpectedMessage '*Health.OfflineAfterSeconds*greater than*DegradedAfterSeconds*'
     }
 
+    It 'needs at least one supported OS' {
+        $path = Write-TestConfig -Find "SupportedOs   = @('ubuntu')" -Replace 'SupportedOs   = @()'
+
+        { Get-NexusConfig -Path $path } | Should -Throw -ExpectedMessage '*Preflight.SupportedOs*'
+    }
+
     It 'lists every problem at once, not only the first' {
         $path = Write-TestConfig -Find 'Port            = 9100' -Replace "Port            = 'abc'"
         $text = (Get-Content -Path $path -Raw).Replace("BaseUrl              = 'http://localhost:9400'", "BaseUrl        = 'localhost'")

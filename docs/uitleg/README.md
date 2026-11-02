@@ -18,3 +18,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | Stappen en rollback | [stappen-en-rollback.md](stappen-en-rollback.md) | Stappencontract, de step runner, idempotentie, terugdraaien, dry run |
 | Verbinden | [verbinden.md](verbinden.md) | `Connect-NexusInfra`, SecretManagement, de sessie, de help-test |
 | Inventaris | [inventaris.md](inventaris.md) | `Import-NexusInventory`: JSON-formaat, defaults, controles, dubbels |
+| Preflight | [preflight.md](preflight.md) | `Test-NexusHost`: de checks, het parallelle patroon in de praktijk, drie soorten tests |

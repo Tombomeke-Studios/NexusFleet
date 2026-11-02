@@ -2,8 +2,7 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: experimenten E2 (#17) en E3 (#18). De echte parallelle cmdlets (`Test-NexusHost`, `Install-NexusNode`)
-komen hier later bij._
+_Stand: experimenten E2 (#17) en E3 (#18). Het patroon in de praktijk: zie `preflight.md` (`Test-NexusHost`)._
 
 ## 1. Wat het doet
 

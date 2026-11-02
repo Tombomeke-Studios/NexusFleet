@@ -33,8 +33,8 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Tests: valid file, missing file, broken JSON, invalid host name, duplicate host (#33)
 
 ### `feature/preflight`
-- [ ] `Test-NexusHost` — per host: reachable (time-out), SSH auth, OS, sudo, disk space, Docker present, broker reachable; one result object per host
-- [ ] Parallel across hosts with `-ThrottleLimit`; one failing host never stops the rest
+- [x] `Test-NexusHost` — per host: reachable (time-out), SSH auth, OS, sudo, disk space, Docker present, broker reachable; one result object per host (#35)
+- [x] Parallel across hosts with `-ThrottleLimit`; one failing host never stops the rest (#36)
 
 ### `feature/install` — build as a vertical slice first
 - [ ] Slice: `Install-NexusNode` with only the preflight + agent step, end to end on **one** VM

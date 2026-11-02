@@ -3,7 +3,7 @@
 # needs the keys you change, with the same structure, e.g. @{ Api = @{ BaseUrl = 'https://panel.example.com' } }
 # Values verified against NexusInfra docs/images.md ("Adding a machine") at nexusfleet-baseline (v0.4.0).
 @{
-    Api    = @{
+    Api       = @{
         # The gateway (port 9400) fronts the orchestrator and passes nxi_ tokens through.
         BaseUrl              = 'http://localhost:9400'
         TimeoutSeconds       = 30
@@ -16,7 +16,7 @@
         SecretName           = 'NexusFleet-ApiToken'
     }
 
-    Agent  = @{
+    Agent     = @{
         Image           = 'ghcr.io/tombomeke-studios/nexusinfra/node-agent:community'
         ContainerName   = 'nexusinfra-node-agent'
         Port            = 9100
@@ -36,7 +36,30 @@
         }
     }
 
-    Health = @{
+    # The RabbitMQ broker as the nodes reach it (the agent connects to it). Only host and port: the full
+    # RABBITMQ_URL contains credentials and is passed as a secret at install time.
+    Broker    = @{
+        Host = 'localhost'
+        Port = 5672
+    }
+
+    Ssh       = @{
+        # How long ssh waits for a connection.
+        ConnectTimeoutSeconds = 10
+        # Own known_hosts file, or '' for ssh's default (~/.ssh/known_hosts).
+        KnownHostsFile        = ''
+    }
+
+    Preflight = @{
+        # Test-NexusHost fails a host below this free space on / (Docker images and the agent need room).
+        MinDiskFreeMB = 2048
+        # Values of ID in /etc/os-release that NexusFleet supports.
+        SupportedOs   = @('ubuntu')
+        # How many hosts are checked at the same time.
+        ThrottleLimit = 10
+    }
+
+    Health    = @{
         # NexusInfra marks a node degraded after 3 s and offline after 10 s without a heartbeat.
         DegradedAfterSeconds = 3
         OfflineAfterSeconds  = 10
