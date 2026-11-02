@@ -157,6 +157,9 @@ Allowed — the two tools are built for each other — but they never happen fro
 - **Integration tests** carry the `Integration` tag, are excluded by default, and run by hand against
   the lab VMs. Put a test there only when the real thing is the only proof.
 - **Every bug fix starts with the test that catches it.**
+- **A mock of an external program (`ssh`) does not see piped input** (`$input` is empty). Wrap the native call in a
+  minimal function with an explicit parameter (`Invoke-NexusSshClient -InputBytes`), mock that, and cover the
+  wrapper with an Integration test.
 - **Pin Pester to 5.x.** `-MinimumVersion 5.0` alone installs Pester 6, and Windows ships Pester 3.4.
   Tests and CI load it with `Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99`.
 - **Import Pester 5 before running PSScriptAnalyzer in the same session.** Analysing the test files makes
@@ -216,9 +219,9 @@ description as files land. `logs/` is created at runtime, never committed.
 | `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |
 | `PSScriptAnalyzerSettings.psd1` | Lint rules: all severities, default rules + formatting (4-space indent, same-line braces, consistent whitespace, aligned hashtables) + syntax compatibility with 7.6. `PSUseCorrectCasing` is off on purpose (see section 4) |
 | `NexusFleet.psm1` | Loader: dot-sources `src/*/*.ps1` in a fixed folder order (`core` → `utils` → `transports` → `api` → `steps` → `public`), files sorted by name; throws if a folder is missing and names the file when a script fails to load |
-| `src/core/` | Contracts: the **step** (`Test` / `Apply` / `Rollback`) and the **transport** (run a command on a host) |
+| `src/core/` | Contracts. Transport: `ConvertTo-NexusCommandResult` builds the `NexusFleet.CommandResult` every transport returns (`HostName`, `ExitCode`, `StdOut`, `StdErr`, `Succeeded`, `TransportFailed` = exit 255). Step (`Test` / `Apply` / `Rollback`): planned |
 | `src/steps/` | One file per installation step: Docker, agent container, register node, verify healthy. Each declares its order; `Install-NexusNode` reads them from this folder, so adding, replacing or removing a step is adding, replacing or removing a file |
-| `src/transports/` | `Invoke-NexusHostCommand` over SSH (method chosen by experiment E1) |
+| `src/transports/` | `Invoke-NexusHostCommand`: one command on one host over native ssh (E1): BatchMode, ConnectTimeout, accept-new, LogLevel=ERROR, `-n` without input, secret as stdin bytes, strict host/user validation. `Invoke-NexusSshClient`: the minimal wrapper around `ssh` (seam for tests; covered by the Integration test against the E1 lab container) |
 | `src/api/` | `Invoke-NexusApi` — the **only** place that calls the NexusInfra REST API. Bearer token as SecureString, time-out, retries only GET after network errors/502-504 (doubling delay), error ids `NexusApi.Unauthorized/Forbidden/NotFound/Conflict/Unavailable/Unreachable/RequestFailed/UnencryptedNotAllowed`, token over `http://` only to loopback unless `-AllowUnencryptedHttp` (K5) |
 | `src/public/` | The cmdlets: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus` |
 | `src/utils/` | `Initialize-NexusRunContext` (RunId, log folder `./logs/<RunId>/`, secrets; a plain object so it can go into runspaces via `$using:`), `Write-NexusLog` (one line per event, one file per host + `run.log`, redaction of context secrets and `nxi_` tokens, writes under `-WhatIf` too). `Get-NexusConfig` (reads `config/nexusinfra.psd1` + optional `nexusinfra.local.psd1`, validates every value with a rules list, reports all problems at once), `Merge-NexusHashtable` (deep merge, warns on unknown keys). All internal (not exported) |
