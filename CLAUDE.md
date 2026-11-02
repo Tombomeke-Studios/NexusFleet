@@ -155,6 +155,8 @@ Allowed — the two tools are built for each other — but they never happen fro
 - **Integration tests** carry the `Integration` tag, are excluded by default, and run by hand against
   the lab VMs. Put a test there only when the real thing is the only proof.
 - **Every bug fix starts with the test that catches it.**
+- **Pin Pester to 5.x.** `-MinimumVersion 5.0` alone installs Pester 6, and Windows ships Pester 3.4.
+  Tests and CI load it with `Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99`.
 
 ## 5. Documentation rules — which doc owns what
 
@@ -182,7 +184,8 @@ Allowed — the two tools are built for each other — but they never happen fro
 | Lint | `Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1` |
 | Help for a cmdlet | `Get-Help Install-NexusNode -Full` |
 | Dry run | any changing cmdlet with `-WhatIf` |
-| Install tooling | `Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser; Install-Module PSScriptAnalyzer -Scope CurrentUser` |
+| Install tooling | `Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -SkipPublisherCheck; Install-Module PSScriptAnalyzer -Scope CurrentUser` |
+| Load Pester 5 (not 6, not the built-in 3.4) | `Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99` |
 
 ## 7. Codebase map — where is what
 
