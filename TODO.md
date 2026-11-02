@@ -25,7 +25,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 ## Phase 2 — Foundations · `feature/foundations`
 
-- [ ] `Write-NexusLog` — one readable line per event (UTC time, RunId, host, step, level, message) + secret redaction; tests for redaction (#23)
+- [x] `Write-NexusLog` — one readable line per event (UTC time, RunId, host, step, level, message) + secret redaction; tests for redaction (#23)
 - [ ] Config loading — `config/nexusinfra.psd1` with every NexusInfra-specific value (agent image, env names, port 9100, volume name, health thresholds, API base URL); validation with clear errors (#24)
 - [ ] `Invoke-NexusApi` — Bearer token, time-out, retry only for `GET` and network errors, `401/403/404/409` mapped to clear error types; fully mocked tests (#25)
 - [ ] Transport contract + `Invoke-NexusHostCommand` (method from E1) — returns `ExitCode`, `StdOut`, `StdErr`; secrets via stdin; `BatchMode` and connect time-out (#26)

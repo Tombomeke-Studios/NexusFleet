@@ -219,7 +219,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `src/transports/` | `Invoke-NexusHostCommand` over SSH (method chosen by experiment E1) |
 | `src/api/` | `Invoke-NexusApi` — the **only** place that calls the NexusInfra REST API |
 | `src/public/` | The cmdlets: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus` |
-| `src/utils/` | `Write-NexusLog` (with secret redaction), config loading |
+| `src/utils/` | `Initialize-NexusRunContext` (RunId, log folder `./logs/<RunId>/`, secrets; a plain object so it can go into runspaces via `$using:`), `Write-NexusLog` (one line per event, one file per host + `run.log`, redaction of context secrets and `nxi_` tokens, writes under `-WhatIf` too). Config loading: planned. All internal (not exported) |
 | `config/` | `nexusinfra.psd1` (every NexusInfra-specific value), `inventory.example.json` |
 | `tests/` | Pester, mirrors `src/`. `tests/NexusFleet.Tests.ps1` covers the manifest and the loader (fake module copy in `TestDrive` with probe scripts) and that the module exports exactly the manifest list |
 | `lab/` | Experiments (phase 1), not part of the module, but linted; index in `lab/README.md`. `E1-transport/` (Docker lab targets + transport comparison; keys in git-ignored `.keys/`), `E2-concurrency/` (benchmark), `E3-mocks-parallel/` (Pester proof), `E4-token-scopes/` (source notes) |
@@ -241,8 +241,13 @@ description as files land. `logs/` is created at runtime, never committed.
   is not available inside a `-Parallel` block: decide what will run **before** the parallel loop,
   and with `-WhatIf` only run each step's `Test` and return the plan.
 - **`ForEach-Object -Parallel`:** variables come in through `$using:`; the module's functions are
-  **not** visible in the runspaces — import the module inside the block by path. Always pass
-  `-ThrottleLimit` from a parameter.
+  **not** visible in the runspaces — import the module inside the block by path. Internal (non-exported)
+  functions are still invisible after that import: run the work in the module's scope with
+  `$m = Import-Module $using:manifest -PassThru; & $m { param(...) ... } $args` (tested in
+  `tests/utils/Write-NexusLog.Tests.ps1`). Module variables do not carry over either: pass a context object.
+  Always pass `-ThrottleLimit` from a parameter.
+- **`-WhatIf` is inherited** (`$WhatIfPreference`) by every command below a cmdlet. Anything that must happen
+  in a dry run too (logging) uses `-WhatIf:$false` explicitly.
 - **One host failing never stops the others.** Catch per host and return a result object with
   `Host`, `Success`, `Step`, `Error`.
 - **Validate parameters** with `ValidateNotNullOrEmpty`, `ValidatePattern`, `ValidateRange`,
@@ -266,7 +271,8 @@ description as files land. `logs/` is created at runtime, never committed.
   `$LASTEXITCODE` after every call.
 - Scripts sent to a Linux host need **LF** line endings (`.gitattributes`); CRLF breaks bash.
 - **A string piped to `ssh` gets CRLF appended on Windows** (`[Environment]::NewLine`), so a secret arrives
-  with a trailing ``. Pipe bytes instead: `[Text.Encoding]::UTF8.GetBytes($secret) | ssh ...` (PowerShell 7.4+,
+  with a trailing `
+`. Pipe bytes instead: `[Text.Encoding]::UTF8.GetBytes($secret) | ssh ...` (PowerShell 7.4+,
   see `docs/ontwerpkeuzes.md` E1 and K4).
 - Use `StrictHostKeyChecking=accept-new` (never `no`): new hosts are trusted, a changed host key is refused.
 - In the lab, address containers as `127.0.0.1`: `localhost` tries IPv6 first and costs ~2 s per connection.
