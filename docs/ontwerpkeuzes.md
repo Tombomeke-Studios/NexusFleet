@@ -21,7 +21,33 @@ _Nog uit te voeren._
 
 ### E2 — Parallel werken: `ForEach-Object -Parallel`, `Start-ThreadJob` of `Start-Job`
 
-_Nog uit te voeren._
+- **Vraag:** welke manier van parallel werken gebruikt NexusFleet om veel hosts tegelijk te behandelen?
+- **Opzet:** `lab/E2-concurrency/Measure-Concurrency.ps1`. Per host gesimuleerd werk: 0,5 s wachten (staat voor
+  SSH) en een kleine rekenlus. Elke meting draait in een nieuw `pwsh`-proces; mediaan van 3 rondes;
+  `ThrottleLimit` 10. Machine: 16 logische CPU's, PowerShell 7.6.9, Windows 10.
+- **Resultaat:**
+
+  | Methode | 10 hosts | 50 hosts | Geheugen bij 50 hosts |
+  |---|---|---|---|
+  | Na elkaar (referentie) | 5,25 s | 26,02 s | 99 MB |
+  | `ForEach-Object -Parallel` | **0,71 s** | **2,89 s** | **124 MB** |
+  | `Start-ThreadJob` | 0,89 s | 3,36 s | 173 MB |
+  | `Start-Job` | 2,69 s | 9,57 s | 464 MB* |
+
+  Het theoretische minimum voor 50 hosts is 50 / 10 × 0,5 s = 2,5 s. `-Parallel` zit daar dicht bij.
+  `Start-Job` start voor elke job een volledig nieuw `pwsh`-proces: dat opstarten domineert de tijd, en er
+  is geen `-ThrottleLimit`.
+
+  \* Gemeten door elke 100 ms de werkgeheugens van de kindprocessen op te tellen. Omdat de jobs na elkaar
+  opstarten en snel klaar zijn, leven er maar een paar tegelijk; bij langer werk per host loopt dit verder op
+  (ongeveer 60–70 MB per proces).
+- **Voorstel (Claude Code, door Tom te bevestigen):** `ForEach-Object -Parallel` met `-ThrottleLimit` uit een
+  parameter. Het snelst, het minst geheugen, ingebouwd, en de uitvoer komt gewoon door de pijplijn.
+  `Start-ThreadJob` is een redelijk alternatief (job-objecten, dus later opvragen), maar trager en zwaarder
+  zonder dat NexusFleet de jobfuncties nodig heeft. `Start-Job` valt af.
+- **Gevolg:** de patronen uit CLAUDE.md sectie 8 gelden: variabelen via `$using:`, de module per runspace
+  importeren, en `ShouldProcess` beslissen vóór de parallelle lus. Het werk per host zit in een eigen functie
+  (E3).
 
 ### E3 — Pester-mocks en `-Parallel`-runspaces
 
