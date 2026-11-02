@@ -20,7 +20,7 @@ done with Claude Code, one unit at a time.
 - [ ] `docs/architecture.md`, `docs/ontwerpkeuzes.md`, `docs/nexusinfra-wijzigingen.md` (headers only) (#7)
 - [ ] `docs/uitleg/README.md` index + a first topic file `docs/uitleg/module-opbouw.md` explaining the manifest and the loader (format in CLAUDE.md 2c) (#8)
 - [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
-- [ ] **[Tom]** GitHub: default branch `dev`, labels `type:bug|feature|refactor|test|docs|ci|lab` (#10)
+- [x] **[Tom]** GitHub: default branch `dev`, labels `type:bug|feature|refactor|test|docs|ci|lab` (#10)
 
 ## Phase 1 — Lab and experiments · `feature/lab`
 
