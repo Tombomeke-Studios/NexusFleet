@@ -72,6 +72,13 @@ function Get-NexusConfig {
         @{ Key = 'Agent.EnvNames.RabbitMqUrl'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
         @{ Key = 'Agent.EnvNames.InternalApiToken'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
         @{ Key = 'Agent.EnvNames.AgentUrl'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
+        @{ Key = 'Broker.Host'; Expect = 'a host name or IP address'; Test = { param($v) $v -is [string] -and $v -match '^([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?|[0-9A-Fa-f]*:[0-9A-Fa-f:]*)$' } }
+        @{ Key = 'Broker.Port'; Expect = 'a port number 1-65535'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 65535 } }
+        @{ Key = 'Ssh.ConnectTimeoutSeconds'; Expect = 'a whole number 1-300'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 300 } }
+        @{ Key = 'Ssh.KnownHostsFile'; Expect = "a file path or ''"; Test = { param($v) $v -is [string] } }
+        @{ Key = 'Preflight.MinDiskFreeMB'; Expect = 'a whole number 0-1000000'; Test = { param($v) $v -is [int] -and $v -ge 0 -and $v -le 1000000 } }
+        @{ Key = 'Preflight.SupportedOs'; Expect = "a list of OS ids, e.g. @('ubuntu')"; Test = { param($v) @($v).Count -ge 1 -and @($v | Where-Object { $_ -isnot [string] -or $_ -notmatch '^[a-z0-9._-]+$' }).Count -eq 0 } }
+        @{ Key = 'Preflight.ThrottleLimit'; Expect = 'a whole number 1-256'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 256 } }
         @{ Key = 'Health.DegradedAfterSeconds'; Expect = 'a whole number 1-300'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 300 } }
         @{ Key = 'Health.OfflineAfterSeconds'; Expect = 'a whole number 1-300'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 300 } }
         @{ Key = 'Health.VerifyTimeoutSeconds'; Expect = 'a whole number 1-3600'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 3600 } }

@@ -18,6 +18,7 @@
     FunctionsToExport    = @(
         'Connect-NexusInfra'
         'Import-NexusInventory'
+        'Test-NexusHost'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

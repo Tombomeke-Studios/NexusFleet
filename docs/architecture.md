@@ -89,7 +89,7 @@ stops the others.
 
 ## Parallelism
 
-_Planned for phase 3, design fixed by E2 and E3._ `ForEach-Object -Parallel` with `-ThrottleLimit` from a parameter;
+Used by `Test-NexusHost` (phase 3). `ForEach-Object -Parallel` with `-ThrottleLimit` from a parameter;
 the work for one host lives in its own function, tested directly. Inside a runspace the module is imported by path
 and internal functions are called in the module's scope (`& $module { ... }`); module variables do not carry over,
 so a run context object is passed with `$using:`.
