@@ -218,7 +218,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `config/` | `nexusinfra.psd1` (every NexusInfra-specific value), `inventory.example.json` |
 | `tests/` | Pester, mirrors `src/`. `tests/NexusFleet.Tests.ps1` covers the manifest and the loader (fake module copy in `TestDrive` with probe scripts) and that the module exports exactly the manifest list |
 | `lab/` | Scripts and notes for the experiments (TODO phase 1) — not part of the module |
-| `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's, not created yet) |
+| `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's; holds one draft note written by Claude Code at Tom's explicit request, 2026-11-02, for Tom to rewrite — never add to it otherwise) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
 | `logs/` | Run logs, created at runtime, git-ignored |
 | `.github/workflows/ci.yml` | On every push and PR: two jobs on `ubuntu-latest` — `lint` (PSScriptAnalyzer 1.25.0, findings as `::error` annotations) and `test` (Pester 5.7.1, `Run.Exit`, `Integration` excluded). Versions pinned; read-only token |
