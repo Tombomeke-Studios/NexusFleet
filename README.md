@@ -6,7 +6,7 @@ A PowerShell 7 module that turns Linux hosts into [NexusInfra](https://github.co
 nodes and manages them as a fleet: read an inventory, check every host, install Docker and the node agent,
 register the node, wait until it is healthy, and roll back when something fails.
 
-> **Status: phase 0, scaffold.** The module loads but has no cmdlets yet. Progress is tracked in
+> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`. Progress is tracked in
 > [TODO.md](TODO.md). This README grows as the cmdlets land.
 
 ## Why
@@ -18,9 +18,9 @@ NexusFleet turns it into one repeatable, idempotent PowerShell pipeline with a r
 
 ## Planned cmdlets (MVP)
 
-| Cmdlet | What it will do |
+| Cmdlet | What it does |
 |---|---|
-| `Connect-NexusInfra` | Connect to the NexusInfra panel with an API token |
+| `Connect-NexusInfra` | Connect to the NexusInfra panel with an API token, check its rights, optionally store it (available) |
 | `Import-NexusInventory` | Read and validate a JSON list of target hosts |
 | `Test-NexusHost` | Check every host in parallel: reachable, SSH, OS, disk space, Docker |
 | `Install-NexusNode` | Turn a host into a healthy node, idempotent, with rollback on failure |
@@ -34,7 +34,10 @@ Every changing cmdlet will support `-WhatIf` (dry run), and every run writes a r
 
 - PowerShell 7.6 or later (`pwsh`, the current LTS) on Windows, Linux or macOS
 - An OpenSSH client (`ssh`) — the transport is confirmed by experiment E1 in phase 1
-- A NexusInfra control plane you can reach, and an API token for it
+- A NexusInfra control plane you can reach, and an API token for it, created by a platform administrator
+  with the scopes `write` and `admin`
+- To store the token: [SecretManagement](https://learn.microsoft.com/powershell/utility-modules/secretmanagement/overview)
+  and a vault (see Quick start)
 
 **Target hosts**
 
@@ -53,13 +56,42 @@ Install-Module PSScriptAnalyzer -Scope CurrentUser
 
 ## Quick start
 
-_Coming with the MVP cmdlets._ For now you can load the module and run the checks:
-
 ```powershell
 git clone https://github.com/Tombomeke-Studios/NexusFleet.git
 cd NexusFleet
 Import-Module ./NexusFleet.psd1
 ```
+
+**Connect to your panel.** Set your panel's address in `config/nexusinfra.local.psd1`
+(`@{ Api = @{ BaseUrl = 'https://panel.example.com' } }`), then:
+
+```powershell
+Connect-NexusInfra -Token (Read-Host -AsSecureString 'API token')
+```
+
+```text
+BaseUrl      : https://panel.example.com
+User         : admin@example.com
+PlatformRole : owner
+TokenSaved   : False
+RunId        : 20261102T153012Z-a1b2c3
+```
+
+`Connect-NexusInfra` checks that the account is a platform administrator and that the token has the `admin`
+scope, and stops with a clear error otherwise.
+
+**Store the token (optional).** Once per machine, set up a vault (you choose its password):
+
+```powershell
+Install-Module Microsoft.PowerShell.SecretManagement, Microsoft.PowerShell.SecretStore -Scope CurrentUser
+Register-SecretVault -Name NexusFleet -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
+Connect-NexusInfra -Token (Read-Host -AsSecureString 'API token') -Save
+```
+
+After that, `Connect-NexusInfra` without `-Token` uses the stored token. The token never goes into a NexusFleet
+file or log.
+
+_The other cmdlets follow with the MVP._
 
 ## Configuration
 

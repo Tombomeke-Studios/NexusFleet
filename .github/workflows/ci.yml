@@ -41,11 +41,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # PSScriptAnalyzer is only mocked here (tests/tools), but Pester can only mock a command that exists.
-      - name: Install Pester 5 and PSScriptAnalyzer
+      # PSScriptAnalyzer and SecretManagement are only mocked here (tests/tools, tests/utils), but Pester can
+      # only mock a command that exists.
+      - name: Install Pester 5, PSScriptAnalyzer and SecretManagement
         run: |
           Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
           Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+          Install-Module Microsoft.PowerShell.SecretManagement -RequiredVersion 1.1.2 -Scope CurrentUser -Force
 
       - name: Run Pester (without Integration tests)
         run: |

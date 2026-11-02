@@ -23,18 +23,10 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [ ] **[Tom]** Confirm the decisions of E1–E4 in `docs/ontwerpkeuzes.md` (Claude Code records measurements and a proposed choice) and write your own learnings in the leerlogboek (#20)
 - [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
 
-## Phase 2 — Foundations · `feature/foundations`
-
-- [x] `Write-NexusLog` — one readable line per event (UTC time, RunId, host, step, level, message) + secret redaction; tests for redaction (#23)
-- [x] Config loading — `config/nexusinfra.psd1` with every NexusInfra-specific value (agent image, env names, port 9100, volume name, health thresholds, API base URL); validation with clear errors (#24)
-- [x] `Invoke-NexusApi` — Bearer token, time-out, retry only for `GET` and network errors, `401/403/404/409` mapped to clear error types; fully mocked tests (#25)
-- [x] Transport contract + `Invoke-NexusHostCommand` (method from E1) — returns `ExitCode`, `StdOut`, `StdErr`; secrets via stdin; `BatchMode` and connect time-out (#26)
-- [x] Step contract + step runner — each step has `Test` / `Apply` / `Rollback` and declares its order; the runner reads the steps from `src/steps/` (adding a step = adding a file), applies what `Test` says is missing, rolls back applied steps in reverse on failure, and with `-WhatIf` returns the plan only (#27)
-
 ## Phase 3 — MVP cmdlets
 
 ### `feature/connect`
-- [ ] `Connect-NexusInfra` — base URL + API token, validate with `GET /me`, store the token with SecretManagement, keep the session in module scope
+- [x] `Connect-NexusInfra` — base URL + API token, validate with `GET /me`, store the token with SecretManagement, keep the session in module scope (#30)
 
 ### `feature/inventory`
 - [ ] `Import-NexusInventory` — read and validate a JSON inventory (host/IP, SSH port, user, role, location) into typed objects; `config/inventory.example.json`
@@ -106,6 +98,14 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 ---
 
 ## Done
+
+### Phase 2 — Foundations · `feature/foundations`
+
+- [x] `Write-NexusLog` — one readable line per event (UTC time, RunId, host, step, level, message) + secret redaction; tests for redaction (#23)
+- [x] Config loading — `config/nexusinfra.psd1` with every NexusInfra-specific value (agent image, env names, port 9100, volume name, health thresholds, API base URL); validation with clear errors (#24)
+- [x] `Invoke-NexusApi` — Bearer token, time-out, retry only for `GET` and network errors, `401/403/404/409` mapped to clear error types; fully mocked tests (#25)
+- [x] Transport contract + `Invoke-NexusHostCommand` (method from E1) — returns `ExitCode`, `StdOut`, `StdErr`; secrets via stdin; `BatchMode` and connect time-out (#26)
+- [x] Step contract + step runner — each step has `Test` / `Apply` / `Rollback` and declares its order; the runner reads the steps from `src/steps/` (adding a step = adding a file), applies what `Test` says is missing, rolls back applied steps in reverse on failure, and with `-WhatIf` returns the plan only (#27)
 
 ### Phase 0 — Scaffold · `feature/scaffold`
 
