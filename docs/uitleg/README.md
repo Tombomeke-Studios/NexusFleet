@@ -6,4 +6,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 
 | Onderwerp | Bestand | Over |
 |---|---|---|
-| Module-opbouw | [module-opbouw.md](module-opbouw.md) | De mappenstructuur (later ook de manifest en de loader) |
+| Module-opbouw | [module-opbouw.md](module-opbouw.md) | De mappenstructuur, de manifest en de loader |

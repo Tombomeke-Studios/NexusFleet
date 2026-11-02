@@ -195,8 +195,8 @@ description as files land. `logs/` is created at runtime, never committed.
 
 | Path | Contents |
 |---|---|
-| `NexusFleet.psd1` | Manifest. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*` |
-| `NexusFleet.psm1` | Loader: dot-sources `src/` in a fixed order (`core` → `utils` → `transports` → `api` → `steps` → `public`) |
+| `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.2+, `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
+| `NexusFleet.psm1` | Loader: dot-sources `src/*/*.ps1` in a fixed folder order (`core` → `utils` → `transports` → `api` → `steps` → `public`), files sorted by name; throws if a folder is missing and names the file when a script fails to load |
 | `src/core/` | Contracts: the **step** (`Test` / `Apply` / `Rollback`) and the **transport** (run a command on a host) |
 | `src/steps/` | One file per installation step: Docker, agent container, register node, verify healthy. Each declares its order; `Install-NexusNode` reads them from this folder, so adding, replacing or removing a step is adding, replacing or removing a file |
 | `src/transports/` | `Invoke-NexusHostCommand` over SSH (method chosen by experiment E1) |
@@ -204,7 +204,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `src/public/` | The cmdlets: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus` |
 | `src/utils/` | `Write-NexusLog` (with secret redaction), config loading |
 | `config/` | `nexusinfra.psd1` (every NexusInfra-specific value), `inventory.example.json` |
-| `tests/` | Pester, mirrors `src/` |
+| `tests/` | Pester, mirrors `src/`. `tests/NexusFleet.Tests.ps1` covers the manifest and the loader (fake module copy in `TestDrive` with probe scripts) |
 | `lab/` | Scripts and notes for the experiments (TODO phase 1) — not part of the module |
 | `docs/` | `projectvoorstel.md`, `architecture.md`, `ontwerpkeuzes.md`, `nexusinfra-wijzigingen.md`, `leerlogboek.md` (Tom's) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
