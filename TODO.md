@@ -16,7 +16,7 @@ done with Claude Code, one unit at a time.
 - [x] `PSScriptAnalyzerSettings.psd1` + a first test: the module imports and exports exactly the listed functions (#3)
 - [x] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`) (#4)
 - [x] CI: `.github/workflows/ci.yml` — `pwsh` on ubuntu-latest, Pester (no `Integration` tag) + PSScriptAnalyzer (#5)
-- [ ] README skeleton (what it is, requirements, quick start placeholder) (#6)
+- [x] README skeleton (what it is, requirements, quick start placeholder) (#6)
 - [ ] `docs/architecture.md`, `docs/ontwerpkeuzes.md`, `docs/nexusinfra-wijzigingen.md` (headers only) (#7)
 - [x] `docs/uitleg/README.md` index + a first topic file `docs/uitleg/module-opbouw.md` explaining the manifest and the loader (format in CLAUDE.md 2c) (#8)
 - [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)

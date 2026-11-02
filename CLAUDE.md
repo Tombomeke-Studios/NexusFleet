@@ -199,6 +199,7 @@ description as files land. `logs/` is created at runtime, never committed.
 
 | Path | Contents |
 |---|---|
+| `README.md` | English user docs: what/why, planned MVP cmdlets, requirements, quick start (placeholder until the MVP), dev commands, layout. Update with every public cmdlet change |
 | `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.2+, `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
 | `.gitignore` | Ignores `logs/`, local config (`config/*.local.*`, `config/inventory.json`), Pester output, OS files |
 | `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |
