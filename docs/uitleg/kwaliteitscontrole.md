@@ -18,7 +18,9 @@ pull request op een verse Linux-machine, zodat een fout zichtbaar wordt voordat 
 |---|---|
 | `PSScriptAnalyzerSettings.psd1` | De regels voor PSScriptAnalyzer |
 | `tests/NexusFleet.Tests.ps1`, blok `Describe 'NexusFleet module'` | De import- en exporttests |
-| `.github/workflows/ci.yml` | De CI: job `lint` (PSScriptAnalyzer) en job `test` (Pester), elk op `ubuntu-latest` |
+| `tools/Invoke-NexusLint.ps1` | Het lintscript: lokaal en in de CI hetzelfde |
+| `tests/tools/Invoke-NexusLint.Tests.ps1` | Tests voor het lintscript (met een gemockte analyzer) |
+| `.github/workflows/ci.yml` | De CI: job `lint` (het lintscript) en job `test` (Pester), elk op `ubuntu-latest` |
 
 ## 3. Hoe het werkt
 
@@ -71,17 +73,16 @@ Een tweede test controleert dat er geen cmdlets, variabelen of aliassen geëxpor
 1. `actions/checkout` haalt de code op.
 2. De job installeert precies één vaste versie van wat hij nodig heeft: PSScriptAnalyzer `1.25.0` voor `lint`,
    Pester `5.7.1` voor `test`.
-3. *Lint* draait de analyzer met hetzelfde settings-bestand als lokaal. Voor elke melding schrijft hij een
-   speciale regel naar de uitvoer:
+3. *Lint* draait hetzelfde lintscript als jij lokaal: `./tools/Invoke-NexusLint.ps1 -GitHubAnnotations`.
+   Voor elke melding schrijft het script een speciale regel naar de uitvoer:
 
    ```powershell
-   $file = [System.IO.Path]::GetRelativePath($PWD.Path, $finding.ScriptPath)
    Write-Output "::error file=$file,line=$($finding.Line)::$($finding.RuleName): $($finding.Message)"
    ```
 
    GitHub herkent `::error file=...,line=...::` en toont de melding als **annotatie** bij dat bestand en die
    regel, in de run en in een pull request. Is er minstens één melding, dan stopt `throw` de stap en wordt de
-   job rood.
+   job rood. Hoe het script met fouten van de analyzer zelf omgaat, staat bij de tweede valkuil.
 4. *Test* bouwt een Pester-configuratie op en draait de tests zonder de `Integration`-tag:
 
    ```powershell
@@ -156,9 +157,38 @@ Wat er is uitgeprobeerd, telkens met tientallen runs in een nieuw `pwsh`-proces:
 Daarom staat `PSUseCorrectCasing` uit. Het is een cosmetische regel, en de VS Code-extensie voor PowerShell
 corrigeert hoofdletters ook bij "Format Document". Als de bug opgelost is, kan de regel terug aan.
 
-Daarnaast draait de CI de analyzer met `-ErrorAction Stop`. Faalt de analyzer zelf, dan wordt de job rood
-in plaats van "geen meldingen" te tonen voor een analyse die niet afgemaakt is. Een stil falende controle is
-erger dan een rode.
+**Maar dat was niet de hele oplossing.** Bij experiment E3 kwam de fout terug, nu 3 keer op 30 runs. De stack
+trace toonde een andere regel: `PSReservedCmdletChar` zocht `Export-ModuleMember` op in de demomodule van E3,
+via dezelfde gedeelde opzoeking. De bug zit dus niet in één regel, maar in die gedeelde opzoeking, en
+verschillende regels kunnen hem uitlokken. Twee maatregelen:
+
+1. **De trigger weghalen:** de demomodule gebruikt geen `Export-ModuleMember` meer (NexusFleet zelf exporteert
+   via de manifest). Daarna 0 fouten in 60 runs.
+2. **Het lintscript** `tools/Invoke-NexusLint.ps1` probeert de analyse opnieuw, maar **alleen** bij een interne
+   fout van de analyzer. Zo'n fout herken je aan de `FullyQualifiedErrorId`, die begint met `RULE_ERROR`:
+
+   ```powershell
+   $ruleErrors = @($analyzerErrors | Where-Object { $_.FullyQualifiedErrorId -like 'RULE_ERROR*' })
+   ```
+
+   Meldingen over je code worden nooit opnieuw geprobeerd (die zijn elke keer hetzelfde), en elke andere fout
+   (bijvoorbeeld een ontbrekend settings-bestand) stopt meteen. Na `MaxAttempts` (standaard 3) mislukte
+   pogingen faalt het script toch. Een falende analyzer wordt dus nooit groen.
+
+Het script heeft zes Pester-tests met een **gemockte** `Invoke-ScriptAnalyzer`: geen meldingen, wel meldingen,
+één interne fout en dan een schone run, altijd interne fouten, een andere fout, en de annotaties.
+
+### Valkuil: een mock ziet geen `$script:`-variabelen van de test
+
+Bij het schrijven van die tests faalden er drie. Een mock-body draait op het moment dat het **lintscript**
+`Invoke-ScriptAnalyzer` aanroept. Een scriptbestand heeft een eigen *script scope*, dus `$script:x` in de mock
+verwijst naar het lintscript, niet naar het testbestand. Een klein experiment toonde wat de mock wel ziet:
+gewone variabelen uit `BeforeAll`, `BeforeEach` en `It`. Daarom staan die in de test zonder `$script:`, en is de
+teller een hashtable (`$state.Attempt++` wijzigt het gedeelde object; `$teller++` zou een lokale kopie maken).
+
+PSScriptAnalyzer meldt zulke variabelen dan als "assigned but never used", omdat hij niet over scriptblokken
+heen kijkt. Dat is de gebruikelijke botsing tussen Pester en de analyzer. Het testbestand onderdrukt die ene
+regel met een `SuppressMessageAttribute`, mét verantwoording, en alleen in dat bestand.
 
 ### Keuzes in de CI
 
@@ -206,13 +236,23 @@ erger dan een rode.
   https://pester.dev/docs/usage/configuration
 - **`[System.IO.Path]::GetRelativePath()`:** maakt van een volledig pad een pad relatief aan een map.
   https://learn.microsoft.com/dotnet/api/system.io.path.getrelativepath
+- **`-ErrorVariable`** (een common parameter): verzamelt de fouten van één commando in een variabele, zodat je
+  ze kunt bekijken in plaats van ze te laten stoppen.
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_commonparameters
+- **`FullyQualifiedErrorId`:** de vaste code van een fout, handig om op te filteren (in tegenstelling tot de
+  boodschap, die kan veranderen). https://learn.microsoft.com/dotnet/api/system.management.automation.errorrecord.fullyqualifiederrorid
+- **Scopes** (`$script:`, lokale variabelen, child scopes): waarom een mock geen `$script:`-variabelen van de
+  test ziet. https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_scopes
+- **`SuppressMessageAttribute`:** één PSScriptAnalyzer-regel onderdrukken voor een bestand of functie, met een
+  verantwoording. https://learn.microsoft.com/powershell/utility-modules/psscriptanalyzer/using-scriptanalyzer
+- **Pester `Mock` en `Should -Invoke`:** https://pester.dev/docs/usage/mocking
 
 ## 6. Zelf proberen
 
 ```powershell
 # Vanuit de root van de repo, in een nieuwe pwsh-sessie
 Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99    # eerst Pester 5 (zie de valkuil)
-Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1   # niets = schoon
+./tools/Invoke-NexusLint.ps1                                     # niets = schoon
 Invoke-Pester -Path ./tests -Output Detailed
 ```
 
@@ -254,4 +294,5 @@ Of op GitHub: tabblad **Actions** van de repository.
 6. Hoe weet GitHub dat de Pester-job rood moet worden als er een test faalt?
 7. Waarom installeert de CI een vaste versie van Pester en PSScriptAnalyzer, en niet gewoon de nieuwste?
 8. Waarom staat `PSUseCorrectCasing` uit, en hoe is bewezen dat dat de oorzaak was?
-9. Wat zou er misgaan als de CI-stap zonder `-ErrorAction Stop` draaide en de analyzer zelf faalde?
+9. Waarom probeert het lintscript alleen `RULE_ERROR`-fouten opnieuw, en niet de meldingen over je code?
+10. Waarom ziet een mock-body geen `$script:`-variabelen van het testbestand, en waarom is de teller een hashtable?

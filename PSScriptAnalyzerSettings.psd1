@@ -46,7 +46,8 @@
         # PSUseCorrectCasing stays off on purpose: with PSScriptAnalyzer 1.24/1.25 it makes about one
         # run in ten fail with "Get-Command is not recognized" or a NullReferenceException (race in the
         # analyzer's command lookup, see PowerShell/PSScriptAnalyzer#2205). Without it: 0 failures in
-        # 105 runs. Casing is cosmetic; re-enable when the bug is fixed (docs/ontwerpkeuzes.md).
+        # 105 runs. Casing is cosmetic; re-enable when the bug is fixed (#12, docs/ontwerpkeuzes.md K2).
+        # Lint with ./tools/Invoke-NexusLint.ps1, which retries the analyzer's own internal errors.
 
         # The module targets PowerShell 7.2+ only: flag syntax that 7.2 does not understand.
         PSUseCompatibleSyntax      = @{

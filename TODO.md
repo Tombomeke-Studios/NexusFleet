@@ -9,31 +9,19 @@ done with Claude Code, one unit at a time.
 
 ---
 
-## Phase 0 — Scaffold · `feature/scaffold`
-
-- [x] Create the folder structure from CLAUDE.md section 7 (empty files with a one-line purpose comment) (#1)
-- [x] `NexusFleet.psd1` manifest (PowerShell 7.2+, explicit empty `FunctionsToExport`) + `NexusFleet.psm1` loader in the fixed order (#2)
-- [x] `PSScriptAnalyzerSettings.psd1` + a first test: the module imports and exports exactly the listed functions (#3)
-- [x] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`) (#4)
-- [x] CI: `.github/workflows/ci.yml` — `pwsh` on ubuntu-latest, Pester (no `Integration` tag) + PSScriptAnalyzer (#5)
-- [x] README skeleton (what it is, requirements, quick start placeholder) (#6)
-- [x] `docs/architecture.md`, `docs/ontwerpkeuzes.md`, `docs/nexusinfra-wijzigingen.md` (headers only) (#7)
-- [x] `docs/uitleg/README.md` index + a first topic file `docs/uitleg/module-opbouw.md` explaining the manifest and the loader (format in CLAUDE.md 2c) (#8)
-- [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
-- [x] **[Tom]** GitHub: default branch `dev`, labels `type:bug|feature|refactor|test|docs|ci|lab` (#10)
-- [x] Fix intermittent PSScriptAnalyzer failures in lint (#11)
-
 ## Phase 1 — Lab and experiments · `feature/lab`
 
 Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices the code depends on.
 
-- [ ] **[Tom]** E0 — Lab ready: NexusInfra control plane reachable from the VMs; one fresh Ubuntu VM with SSH key access
-- [ ] **[Tom]** E0 — Add one node **by hand** following `docs/images.md` ("Adding a machine") and note the time and the mistakes (baseline for the Analyse measurement)
-- [ ] E1 — Remoting: compare `ssh`, PowerShell remoting over SSH and Posh-SSH on a fresh VM (setup needed, speed, error behaviour, stdin for secrets) → choose the transport
-- [ ] E2 — Concurrency: `ForEach-Object -Parallel` vs `Start-ThreadJob` vs `Start-Job` for 10 and 50 targets (simulated work) → time and memory
-- [ ] E3 — Prove that Pester mocks do not reach into `-Parallel` runspaces, and that the per-host-function pattern solves it
-- [ ] E4 — API token: which scopes (`write`, `admin`) are needed for `POST /nodes`, `PATCH /nodes/:id/maintenance` and `DELETE /nodes/:id`
-- [ ] **[Tom]** Write the decisions of E1–E4 in `docs/ontwerpkeuzes.md` and your own learnings in the leerlogboek
+- [ ] **[Tom]** E0 — Lab ready: NexusInfra control plane reachable from the VMs; one fresh Ubuntu VM with SSH key access (#14)
+- [ ] **[Tom]** E0 — Add one node **by hand** following `docs/images.md` ("Adding a machine") and note the time and the mistakes (baseline for the Analyse measurement) (#15)
+- [x] E1 — Remoting: compare `ssh`, PowerShell remoting over SSH and Posh-SSH on a fresh VM (setup needed, speed, error behaviour, stdin for secrets) → choose the transport (#16)
+- [x] E2 — Concurrency: `ForEach-Object -Parallel` vs `Start-ThreadJob` vs `Start-Job` for 10 and 50 targets (simulated work) → time and memory (#17)
+- [x] E3 — Prove that Pester mocks do not reach into `-Parallel` runspaces, and that the per-host-function pattern solves it (#18)
+- [x] E4 — API token: which scopes (`write`, `admin`) are needed for `POST /nodes`, `PATCH /nodes/:id/maintenance` and `DELETE /nodes/:id` (#19)
+- [ ] Confirm E4 live against the lab control plane (#21)
+- [ ] **[Tom]** Confirm the decisions of E1–E4 in `docs/ontwerpkeuzes.md` (Claude Code records measurements and a proposed choice) and write your own learnings in the leerlogboek (#20)
+- [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
 
 ## Phase 2 — Foundations · `feature/foundations`
 
@@ -119,4 +107,16 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 ## Done
 
-_(move finished groups here)_
+### Phase 0 — Scaffold · `feature/scaffold`
+
+- [x] Create the folder structure from CLAUDE.md section 7 (empty files with a one-line purpose comment) (#1)
+- [x] `NexusFleet.psd1` manifest (PowerShell 7.2+, explicit empty `FunctionsToExport`) + `NexusFleet.psm1` loader in the fixed order (#2)
+- [x] `PSScriptAnalyzerSettings.psd1` + a first test: the module imports and exports exactly the listed functions (#3)
+- [x] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`) (#4)
+- [x] CI: `.github/workflows/ci.yml` — `pwsh` on ubuntu-latest, Pester (no `Integration` tag) + PSScriptAnalyzer (#5)
+- [x] README skeleton (what it is, requirements, quick start placeholder) (#6)
+- [x] `docs/architecture.md`, `docs/ontwerpkeuzes.md`, `docs/nexusinfra-wijzigingen.md` (headers only) (#7)
+- [x] `docs/uitleg/README.md` index + a first topic file `docs/uitleg/module-opbouw.md` explaining the manifest and the loader (format in CLAUDE.md 2c) (#8)
+- [x] **[Tom]** GitHub: default branch `dev`, labels `type:bug|feature|refactor|test|docs|ci|lab` (#10)
+- [x] Fix intermittent PSScriptAnalyzer failures in lint (#11)
+
