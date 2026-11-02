@@ -48,6 +48,7 @@ function Invoke-NexusHostCommand {
     [OutputType([pscustomobject])]
     param(
         # Letters, digits, dots and dashes, not starting with a dash (that would be an ssh option); or IPv6.
+        # Import-NexusInventory checks addresses with the same pattern.
         [Parameter(Mandatory)]
         [ValidatePattern('^([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?|[0-9A-Fa-f]*:[0-9A-Fa-f:]*)$')]
         [string]$HostName,

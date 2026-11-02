@@ -29,8 +29,8 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] `Connect-NexusInfra` — base URL + API token, validate with `GET /me`, store the token with SecretManagement, keep the session in module scope (#30)
 
 ### `feature/inventory`
-- [ ] `Import-NexusInventory` — read and validate a JSON inventory (host/IP, SSH port, user, role, location) into typed objects; `config/inventory.example.json` (#32)
-- [ ] Tests: valid file, missing file, broken JSON, invalid host name, duplicate host (#33)
+- [x] `Import-NexusInventory` — read and validate a JSON inventory (host/IP, SSH port, user, role, location) into typed objects; `config/inventory.example.json` (#32)
+- [x] Tests: valid file, missing file, broken JSON, invalid host name, duplicate host (#33)
 
 ### `feature/preflight`
 - [ ] `Test-NexusHost` — per host: reachable (time-out), SSH auth, OS, sudo, disk space, Docker present, broker reachable; one result object per host

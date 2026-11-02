@@ -6,7 +6,7 @@ A PowerShell 7 module that turns Linux hosts into [NexusInfra](https://github.co
 nodes and manages them as a fleet: read an inventory, check every host, install Docker and the node agent,
 register the node, wait until it is healthy, and roll back when something fails.
 
-> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`. Progress is tracked in
+> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`, `Import-NexusInventory`. Progress is tracked in
 > [TODO.md](TODO.md). This README grows as the cmdlets land.
 
 ## Why
@@ -21,7 +21,7 @@ NexusFleet turns it into one repeatable, idempotent PowerShell pipeline with a r
 | Cmdlet | What it does |
 |---|---|
 | `Connect-NexusInfra` | Connect to the NexusInfra panel with an API token, check its rights, optionally store it (available) |
-| `Import-NexusInventory` | Read and validate a JSON list of target hosts |
+| `Import-NexusInventory` | Read and validate a JSON list of target hosts (available) |
 | `Test-NexusHost` | Check every host in parallel: reachable, SSH, OS, disk space, Docker |
 | `Install-NexusNode` | Turn a host into a healthy node, idempotent, with rollback on failure |
 | `Get-NexusFleetStatus` | Get and export the status of all nodes; offline hosts never break the run |
@@ -90,6 +90,25 @@ Connect-NexusInfra -Token (Read-Host -AsSecureString 'API token') -Save
 
 After that, `Connect-NexusInfra` without `-Token` uses the stored token. The token never goes into a NexusFleet
 file or log.
+
+**Describe your hosts.** Copy `config/inventory.example.json` to `config/inventory.json` (git-ignored) and
+list your hosts; `defaults` fills in what every host shares:
+
+```json
+{
+  "defaults": { "user": "fleet", "port": 22, "location": "home" },
+  "hosts": [
+    { "name": "node-home01", "address": "192.168.1.20" },
+    { "name": "node-vps01", "address": "203.0.113.10", "port": 2222, "location": "vps" }
+  ]
+}
+```
+
+```powershell
+Import-NexusInventory ./config/inventory.json | Format-Table Name, Address, Port, User, Location
+```
+
+Every problem in the file (missing fields, invalid names or addresses, duplicates) is reported in one error.
 
 _The other cmdlets follow with the MVP._
 
