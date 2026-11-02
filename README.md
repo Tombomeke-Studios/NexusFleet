@@ -94,6 +94,9 @@ Branches: `feature/<topic>` → `dev` (default, always green) → `main` (milest
 ## Documentation
 
 - [docs/projectvoorstel.md](docs/projectvoorstel.md) — the approved project proposal (Dutch)
+- [docs/architecture.md](docs/architecture.md) — parts, contracts and data flow
+- [docs/ontwerpkeuzes.md](docs/ontwerpkeuzes.md) — design decisions and experiment results (Dutch)
+- [docs/nexusinfra-wijzigingen.md](docs/nexusinfra-wijzigingen.md) — changes made in NexusInfra for this module (Dutch)
 - [docs/uitleg/](docs/uitleg/README.md) — explanations per topic, written as study material (Dutch)
 
 ## About
