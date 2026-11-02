@@ -11,7 +11,7 @@ done with Claude Code, one unit at a time.
 
 ## Phase 0 — Scaffold · `feature/scaffold`
 
-- [ ] Create the folder structure from CLAUDE.md section 7 (empty files with a one-line purpose comment) (#1)
+- [x] Create the folder structure from CLAUDE.md section 7 (empty files with a one-line purpose comment) (#1)
 - [ ] `NexusFleet.psd1` manifest (PowerShell 7.2+, explicit empty `FunctionsToExport`) + `NexusFleet.psm1` loader in the fixed order (#2)
 - [ ] `PSScriptAnalyzerSettings.psd1` + a first test: the module imports and exports exactly the listed functions (#3)
 - [ ] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`) (#4)

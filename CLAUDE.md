@@ -189,7 +189,9 @@ Allowed — the two tools are built for each other — but they never happen fro
 
 ## 7. Codebase map — where is what
 
-Status: **planned** (from the proposal). Replace "planned" by a real description as files land.
+Status: the folders exist, each with a one-line `README.md` stating its purpose (placeholder until code
+lands; the loader only reads `*.ps1`). File contents below are still **planned** — replace by a real
+description as files land. `logs/` is created at runtime, never committed.
 
 | Path | Contents |
 |---|---|

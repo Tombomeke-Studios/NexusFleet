@@ -1,0 +1,9 @@
+# Uitleg — index
+
+> Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
+
+Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onderwerp verandert.
+
+| Onderwerp | Bestand | Over |
+|---|---|---|
+| Module-opbouw | [module-opbouw.md](module-opbouw.md) | De mappenstructuur (later ook de manifest en de loader) |
