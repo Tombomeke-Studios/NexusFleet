@@ -17,6 +17,7 @@
     # Each public cmdlet is added here when it lands in src/public/.
     FunctionsToExport    = @(
         'Connect-NexusInfra'
+        'Import-NexusInventory'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

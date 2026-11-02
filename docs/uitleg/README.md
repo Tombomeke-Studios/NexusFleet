@@ -17,3 +17,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | Experimenten in gewone taal | [experimenten-in-gewone-taal.md](experimenten-in-gewone-taal.md) | Wat E1–E4 moesten beslissen en waarom de voorstellen zo zijn, zonder vakjargon |
 | Stappen en rollback | [stappen-en-rollback.md](stappen-en-rollback.md) | Stappencontract, de step runner, idempotentie, terugdraaien, dry run |
 | Verbinden | [verbinden.md](verbinden.md) | `Connect-NexusInfra`, SecretManagement, de sessie, de help-test |
+| Inventaris | [inventaris.md](inventaris.md) | `Import-NexusInventory`: JSON-formaat, defaults, controles, dubbels |

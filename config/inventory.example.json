@@ -1,0 +1,14 @@
+{
+  "defaults": {
+    "user": "fleet",
+    "port": 22,
+    "location": "home",
+    "role": "worker"
+  },
+  "hosts": [
+    { "name": "node-home01", "address": "192.168.1.20" },
+    { "name": "node-home02", "address": "192.168.1.21" },
+    { "name": "node-laptop01", "address": "laptop-vm.local", "location": "laptop" },
+    { "name": "node-vps01", "address": "203.0.113.10", "port": 2222, "location": "vps" }
+  ]
+}
