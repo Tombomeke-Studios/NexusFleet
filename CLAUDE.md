@@ -162,9 +162,14 @@ Allowed — the two tools are built for each other — but they never happen fro
   ("Assembly with same name is already loaded"). Import Pester 5 first, or run lint and tests in separate
   `pwsh` processes (CI does the latter).
 - **PSScriptAnalyzer 1.24/1.25 fails intermittently** ("Object reference not set", "Get-Command is not
-  recognized") when `PSUseCorrectCasing` is on: a race in its command lookup (PowerShell/PSScriptAnalyzer#2205).
-  Measured: ~1 in 10 runs with the rule, 0 in 105 without; 1.24, per-file analysis and retries did not fix it.
-  Keep the rule off until fixed. CI runs the analyzer with `-ErrorAction Stop` so a tool failure is never green.
+  recognized"): a race in its shared command lookup (PowerShell/PSScriptAnalyzer#2205). Known triggers:
+  `PSUseCorrectCasing` (kept off, #12) and `Export-ModuleMember` in a `.psm1` (never use it; the manifest
+  exports). Always lint with `./tools/Invoke-NexusLint.ps1`: it retries only `RULE_ERROR*` errors (max 3),
+  never findings. If a new RULE_ERROR shows up, read its stack trace (`$e[0].Exception.StackTrace`) to find
+  the rule, and record it in `docs/ontwerpkeuzes.md` (K2).
+- **A mock body cannot see `$script:` variables of the test file** when the mocked command is called from
+  another script file (that file has its own script scope). Use plain variables from `BeforeAll`/`It`, and a
+  hashtable for counters. Suppress `PSUseDeclaredVarsMoreThanAssignments` per test file with a justification.
 
 ## 5. Documentation rules — which doc owns what
 
@@ -189,7 +194,7 @@ Allowed — the two tools are built for each other — but they never happen fro
 | Check the manifest | `Test-ModuleManifest ./NexusFleet.psd1` |
 | Unit tests | `Invoke-Pester -Path ./tests -ExcludeTagFilter Integration -Output Detailed` |
 | Integration tests (lab VMs) | `Invoke-Pester -Path ./tests -TagFilter Integration` |
-| Lint | `Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1` |
+| Lint | `./tools/Invoke-NexusLint.ps1` (same as CI; retries only PSScriptAnalyzer's own `RULE_ERROR`s) |
 | Help for a cmdlet | `Get-Help Install-NexusNode -Full` |
 | Dry run | any changing cmdlet with `-WhatIf` |
 | Install tooling | `Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -SkipPublisherCheck; Install-Module PSScriptAnalyzer -Scope CurrentUser` |
@@ -217,11 +222,12 @@ description as files land. `logs/` is created at runtime, never committed.
 | `src/utils/` | `Write-NexusLog` (with secret redaction), config loading |
 | `config/` | `nexusinfra.psd1` (every NexusInfra-specific value), `inventory.example.json` |
 | `tests/` | Pester, mirrors `src/`. `tests/NexusFleet.Tests.ps1` covers the manifest and the loader (fake module copy in `TestDrive` with probe scripts) and that the module exports exactly the manifest list |
-| `lab/` | Scripts and notes for the experiments (TODO phase 1) — not part of the module |
+| `lab/` | Experiments (phase 1), not part of the module, but linted. `E2-concurrency/Measure-Concurrency.ps1` (benchmark), `E3-mocks-parallel/` (Pester proof, run with `Invoke-Pester -Path ./lab/E3-mocks-parallel`) |
 | `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's; holds one draft note written by Claude Code at Tom's explicit request, 2026-11-02, for Tom to rewrite — never add to it otherwise) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
 | `logs/` | Run logs, created at runtime, git-ignored |
-| `.github/workflows/ci.yml` | On every push and PR: two jobs on `ubuntu-latest` — `lint` (PSScriptAnalyzer 1.25.0, findings as `::error` annotations) and `test` (Pester 5.7.1, `Run.Exit`, `Integration` excluded). Versions pinned; read-only token |
+| `tools/` | Dev tooling, not part of the module. `Invoke-NexusLint.ps1`: lint with the repo settings, findings as warnings or GitHub annotations, retries only `RULE_ERROR*`. Tested in `tests/tools/` |
+| `.github/workflows/ci.yml` | On every push and PR: two jobs on `ubuntu-latest` — `lint` (`tools/Invoke-NexusLint.ps1 -GitHubAnnotations`, PSScriptAnalyzer 1.25.0) and `test` (Pester 5.7.1, `Run.Exit`, `Integration` excluded). Versions pinned; read-only token |
 
 ## 8. Conventions & gotchas
 

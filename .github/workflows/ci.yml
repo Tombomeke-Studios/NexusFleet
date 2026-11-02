@@ -24,19 +24,11 @@ jobs:
       - name: Install PSScriptAnalyzer
         run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
 
+      # The same script you run locally. It fails on any finding, writes each finding as an
+      # annotation, and retries only PSScriptAnalyzer's own internal errors (see the script's help).
       - name: Run PSScriptAnalyzer
         run: |
-          # -ErrorAction Stop: if the analyzer itself fails, the job fails too, instead of
-          # reporting "no findings" for an analysis that did not complete.
-          $findings = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1 -ErrorAction Stop
-          foreach ($finding in $findings) {
-              # GitHub shows this line as an annotation on the file in the run and the PR.
-              $file = [System.IO.Path]::GetRelativePath($PWD.Path, $finding.ScriptPath)
-              Write-Output "::error file=$file,line=$($finding.Line)::$($finding.RuleName): $($finding.Message)"
-          }
-          if ($findings) {
-              throw "PSScriptAnalyzer found $(@($findings).Count) issue(s)."
-          }
+          ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations
           Write-Output 'PSScriptAnalyzer: no findings.'
 
   test:
@@ -48,8 +40,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Pester 5
-        run: Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+      # PSScriptAnalyzer is only mocked here (tests/tools), but Pester can only mock a command that exists.
+      - name: Install Pester 5 and PSScriptAnalyzer
+        run: |
+          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
 
       - name: Run Pester (without Integration tests)
         run: |

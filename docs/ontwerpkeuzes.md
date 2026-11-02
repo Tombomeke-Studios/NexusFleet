@@ -67,11 +67,11 @@ _Nog uit te voeren._
   Pester 5, en een vaste versie geeft vandaag en later hetzelfde resultaat.
 - **Gevolg:** CLAUDE.md (secties 4 en 6), README en CI gebruiken deze versie.
 
-### K2 — `PSUseCorrectCasing` uit
+### K2 — PSScriptAnalyzer stabiel krijgen (`PSUseCorrectCasing` uit, lintscript met herkansing)
 
 - **Vraag:** hoe voorkomen dat PSScriptAnalyzer af en toe zelf faalt (`Object reference not set to an
   instance of an object`, of `The term 'Get-Command' is not recognized`)?
-- **Opties en resultaat** (telkens een nieuw `pwsh`-proces per run, PSScriptAnalyzer op de hele repo):
+- **Opties en resultaat, ronde 1** (telkens een nieuw `pwsh`-proces per run, analyzer op de hele repo):
 
   | Optie | Mislukte runs |
   |---|---|
@@ -81,11 +81,19 @@ _Nog uit te voeren._
   | Tot drie keer opnieuw proberen | 1 op 40 (ook na drie pogingen) |
   | 1.25.0 zonder `PSUseCorrectCasing` | 0 op 105 |
 
-- **Keuze:** `PSUseCorrectCasing` uit. De oorzaak is een race condition in de interne commando-opzoeking
-  van PSScriptAnalyzer ([PowerShell/PSScriptAnalyzer#2205](https://github.com/PowerShell/PSScriptAnalyzer/issues/2205)),
-  en die regel lokt ze uit. Hoofdletters zijn cosmetisch; een stabiele controle is belangrijker.
-- **Gevolg:** de CI draait de analyzer met `-ErrorAction Stop`, zodat een falende analyzer nooit groen is.
-  De regel gaat terug aan zodra de bug opgelost is (issue #12). Bug: #11.
+- **Ronde 2:** na het toevoegen van E3 kwam de fout terug (3 op 30). De stack trace toonde
+  `PSReservedCmdletChar` → `Helper.GetExportedFunction` → `CommandInfo.ResolveParameter`, uitgelokt door
+  `Export-ModuleMember` in `lab/E3-mocks-parallel/FleetDemo.psm1`. De oorzaak is dus de gedeelde
+  commando-opzoeking van PSScriptAnalyzer (race condition,
+  [PowerShell/PSScriptAnalyzer#2205](https://github.com/PowerShell/PSScriptAnalyzer/issues/2205)), niet één regel.
+  Zonder `Export-ModuleMember`: 0 op 60.
+- **Keuze:**
+  1. `PSUseCorrectCasing` uit (cosmetisch; terug aan zodra de bug opgelost is, issue #12).
+  2. Geen `Export-ModuleMember` in de repo; exporteren gebeurt via de manifest.
+  3. `tools/Invoke-NexusLint.ps1`, lokaal en in de CI: probeert alleen fouten met `FullyQualifiedErrorId`
+     `RULE_ERROR*` opnieuw (max. 3 keer). Meldingen over code en andere fouten worden nooit opnieuw
+     geprobeerd; na 3 mislukte pogingen faalt het script.
+- **Gevolg:** één lintcommando voor iedereen, getest met een gemockte analyzer (6 tests). Bug: #11.
 
 ### K3 — Lint en tests als aparte CI-jobs
 

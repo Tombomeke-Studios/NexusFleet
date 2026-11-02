@@ -68,7 +68,7 @@ Pester assembly and blocks Pester 5 in that session.
 
 ```powershell
 Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99
-Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+./tools/Invoke-NexusLint.ps1
 Invoke-Pester -Path ./tests -ExcludeTagFilter Integration -Output Detailed
 ```
 

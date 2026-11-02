@@ -1,0 +1,79 @@
+# Mock bodies run when the lint *script* calls Invoke-ScriptAnalyzer. A script file has its own
+# script scope, so a mock body cannot see $script: variables of this test file. It does see plain
+# variables from BeforeAll/BeforeEach/It, which is why these are plain, and why the call counter is
+# a hashtable (changing $state.Attempt changes the shared object, not a local copy).
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '',
+    Justification = 'Pester: variables set in BeforeAll/BeforeEach are used in It blocks and mocks; the analyzer does not look across script blocks.')]
+param()
+
+BeforeAll {
+    $lintScript = Join-Path -Path $PSScriptRoot -ChildPath '../../tools/Invoke-NexusLint.ps1'
+
+    # One fake finding, shaped like a PSScriptAnalyzer DiagnosticRecord.
+    $fakeFinding = [pscustomobject]@{
+        RuleName   = 'PSAvoidUsingCmdletAliases'
+        Severity   = 'Warning'
+        ScriptPath = Join-Path -Path $TestDrive -ChildPath 'Bad.ps1'
+        Line       = 2
+        Message    = "'gci' is an alias of 'Get-ChildItem'."
+    }
+}
+
+Describe 'Invoke-NexusLint' {
+    BeforeEach {
+        $state = @{ Attempt = 0 }
+    }
+
+    It 'succeeds after one run when there are no findings' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith { }
+
+        { & $lintScript -Path $TestDrive } | Should -Not -Throw
+        Should -Invoke -CommandName Invoke-ScriptAnalyzer -Times 1 -Exactly
+    }
+
+    It 'fails on findings and never retries them away' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith { $fakeFinding }
+
+        { & $lintScript -Path $TestDrive -WarningAction SilentlyContinue } | Should -Throw -ExpectedMessage '*found 1 issue*'
+        Should -Invoke -CommandName Invoke-ScriptAnalyzer -Times 1 -Exactly
+    }
+
+    It 'retries when the analyzer fails internally, and succeeds when the next run is clean' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith {
+            $state.Attempt++
+            if ($state.Attempt -eq 1) {
+                Write-Error -Message 'Object reference not set to an instance of an object.' -ErrorId 'RULE_ERROR'
+            }
+        }
+
+        { & $lintScript -Path $TestDrive -WarningAction SilentlyContinue } | Should -Not -Throw
+        Should -Invoke -CommandName Invoke-ScriptAnalyzer -Times 2 -Exactly
+    }
+
+    It 'gives up after MaxAttempts when the analyzer keeps failing internally' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith {
+            Write-Error -Message 'Object reference not set to an instance of an object.' -ErrorId 'RULE_ERROR'
+        }
+
+        { & $lintScript -Path $TestDrive -MaxAttempts 3 -WarningAction SilentlyContinue } |
+            Should -Throw -ExpectedMessage '*kept failing internally after 3 attempts*'
+        Should -Invoke -CommandName Invoke-ScriptAnalyzer -Times 3 -Exactly
+    }
+
+    It 'does not retry other analyzer errors' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith {
+            Write-Error -Message 'Cannot find the settings file.' -ErrorId 'SettingsFileNotFound'
+        }
+
+        { & $lintScript -Path $TestDrive } | Should -Throw -ExpectedMessage '*Cannot find the settings file*'
+        Should -Invoke -CommandName Invoke-ScriptAnalyzer -Times 1 -Exactly
+    }
+
+    It 'writes a GitHub annotation per finding when asked' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith { $fakeFinding }
+
+        $output = try { & $lintScript -Path $TestDrive -GitHubAnnotations } catch { $null }
+
+        $output | Should -Contain "::error file=Bad.ps1,line=2::PSAvoidUsingCmdletAliases: 'gci' is an alias of 'Get-ChildItem'."
+    }
+}
