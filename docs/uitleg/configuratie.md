@@ -48,14 +48,15 @@ Agent  = @{
    @{ Key = 'Agent.Port'; Expect = 'a port number 1-65535'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 65535 } }
    ```
 
-   De melding noemt ook welke bestanden gelezen werden, zodat je weet waar je moet zoeken. Voor elke regel zoekt de functie de waarde op door de sleutel op te splitsen (`'Agent.Port'` →
+   Voor elke regel zoekt de functie de waarde op door de sleutel op te splitsen (`'Agent.Port'` →
    `$config['Agent']['Port']`). Ontbreekt de waarde, dan komt "is missing" in de lijst; faalt de test
    (`& $rule.Test $value`), dan "must be ... but is ...". Daarna volgt één regel die twee waarden vergelijkt:
    *offline* moet later komen dan *degraded*. Staat er iets in de lijst, dan gooit de functie één fout met alle
-   problemen onder elkaar:
+   problemen onder elkaar. De melding noemt ook welke bestanden gelezen werden, zodat je weet waar je moet
+   zoeken:
 
    ```text
-   NexusFleet config is not valid (...\nexusinfra.psd1):
+   NexusFleet config is not valid (read from: ...\config\nexusinfra.psd1, ...\config\nexusinfra.local.psd1):
    - Api.BaseUrl must be an http(s) URL, but is 'localhost'
    - Agent.Port must be a port number 1-65535, but is 'abc'
    ```
