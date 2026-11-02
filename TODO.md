@@ -11,16 +11,16 @@ done with Claude Code, one unit at a time.
 
 ## Phase 0 — Scaffold · `feature/scaffold`
 
-- [ ] Create the folder structure from CLAUDE.md section 7 (empty files with a one-line purpose comment)
-- [ ] `NexusFleet.psd1` manifest (PowerShell 7.2+, explicit empty `FunctionsToExport`) + `NexusFleet.psm1` loader in the fixed order
-- [ ] `PSScriptAnalyzerSettings.psd1` + a first test: the module imports and exports exactly the listed functions
-- [ ] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`)
-- [ ] CI: `.github/workflows/ci.yml` — `pwsh` on ubuntu-latest, Pester (no `Integration` tag) + PSScriptAnalyzer
-- [ ] README skeleton (what it is, requirements, quick start placeholder)
-- [ ] `docs/architecture.md`, `docs/ontwerpkeuzes.md`, `docs/nexusinfra-wijzigingen.md` (headers only)
-- [ ] `docs/uitleg/README.md` index + a first topic file `docs/uitleg/module-opbouw.md` explaining the manifest and the loader (format in CLAUDE.md 2c)
-- [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde)
-- [ ] **[Tom]** GitHub: default branch `dev`, labels `type:bug|feature|refactor|test|docs|ci|lab`
+- [ ] Create the folder structure from CLAUDE.md section 7 (empty files with a one-line purpose comment) (#1)
+- [ ] `NexusFleet.psd1` manifest (PowerShell 7.2+, explicit empty `FunctionsToExport`) + `NexusFleet.psm1` loader in the fixed order (#2)
+- [ ] `PSScriptAnalyzerSettings.psd1` + a first test: the module imports and exports exactly the listed functions (#3)
+- [ ] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`) (#4)
+- [ ] CI: `.github/workflows/ci.yml` — `pwsh` on ubuntu-latest, Pester (no `Integration` tag) + PSScriptAnalyzer (#5)
+- [ ] README skeleton (what it is, requirements, quick start placeholder) (#6)
+- [ ] `docs/architecture.md`, `docs/ontwerpkeuzes.md`, `docs/nexusinfra-wijzigingen.md` (headers only) (#7)
+- [ ] `docs/uitleg/README.md` index + a first topic file `docs/uitleg/module-opbouw.md` explaining the manifest and the loader (format in CLAUDE.md 2c) (#8)
+- [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
+- [ ] **[Tom]** GitHub: default branch `dev`, labels `type:bug|feature|refactor|test|docs|ci|lab` (#10)
 
 ## Phase 1 — Lab and experiments · `feature/lab`
 
