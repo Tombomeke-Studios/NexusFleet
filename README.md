@@ -61,6 +61,18 @@ cd NexusFleet
 Import-Module ./NexusFleet.psd1
 ```
 
+## Configuration
+
+Every NexusInfra-specific value (panel address, agent image, port, environment variable names, health
+thresholds) is in [config/nexusinfra.psd1](config/nexusinfra.psd1). To change values for your own setup, create
+`config/nexusinfra.local.psd1` with only the keys you change; it is git-ignored:
+
+```powershell
+@{ Api = @{ BaseUrl = 'https://panel.example.com' } }
+```
+
+The configuration is validated when it is read; an invalid file stops the run with a list of every problem.
+
 ## Development
 
 Run from the repository root in `pwsh`. Import Pester 5 first: PSScriptAnalyzer otherwise loads the newest
