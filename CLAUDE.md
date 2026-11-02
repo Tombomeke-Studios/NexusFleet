@@ -222,7 +222,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `src/utils/` | `Write-NexusLog` (with secret redaction), config loading |
 | `config/` | `nexusinfra.psd1` (every NexusInfra-specific value), `inventory.example.json` |
 | `tests/` | Pester, mirrors `src/`. `tests/NexusFleet.Tests.ps1` covers the manifest and the loader (fake module copy in `TestDrive` with probe scripts) and that the module exports exactly the manifest list |
-| `lab/` | Experiments (phase 1), not part of the module, but linted. `E2-concurrency/Measure-Concurrency.ps1` (benchmark), `E3-mocks-parallel/` (Pester proof, run with `Invoke-Pester -Path ./lab/E3-mocks-parallel`) |
+| `lab/` | Experiments (phase 1), not part of the module, but linted; index in `lab/README.md`. `E1-transport/` (Docker lab targets + transport comparison; keys in git-ignored `.keys/`), `E2-concurrency/` (benchmark), `E3-mocks-parallel/` (Pester proof), `E4-token-scopes/` (source notes) |
 | `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's; holds one draft note written by Claude Code at Tom's explicit request, 2026-11-02, for Tom to rewrite — never add to it otherwise) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
 | `logs/` | Run logs, created at runtime, git-ignored |
@@ -265,6 +265,11 @@ description as files land. `logs/` is created at runtime, never committed.
 - Native `ssh` must never wait for input: `-o BatchMode=yes -o ConnectTimeout=<n>`. Check
   `$LASTEXITCODE` after every call.
 - Scripts sent to a Linux host need **LF** line endings (`.gitattributes`); CRLF breaks bash.
+- **A string piped to `ssh` gets CRLF appended on Windows** (`[Environment]::NewLine`), so a secret arrives
+  with a trailing ``. Pipe bytes instead: `[Text.Encoding]::UTF8.GetBytes($secret) | ssh ...` (PowerShell 7.4+,
+  see `docs/ontwerpkeuzes.md` E1 and K4).
+- Use `StrictHostKeyChecking=accept-new` (never `no`): new hosts are trusted, a changed host key is refused.
+- In the lab, address containers as `127.0.0.1`: `localhost` tries IPv6 first and costs ~2 s per connection.
 - Target hosts: fresh Ubuntu VMs with a key-authorised user that may `sudo`.
 
 ### NexusInfra facts (verified at `nexusfleet-baseline`, v0.4.0 — re-check when NexusInfra changes)

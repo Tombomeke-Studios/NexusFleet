@@ -222,7 +222,8 @@ Format per keuze:
   wegknippen.
 - **Opties:** 7.2 houden (breedst, maar niet meer ondersteund) · 7.4 (byte-pijpen, nog een week ondersteund) ·
   7.6 (de enige ondersteunde LTS na 10 november 2026).
-- **Voorstel (Claude Code):** 7.6. Dat is na volgende week de enige ondersteunde versie, de CI draait er al op, en
+- **Voorstel (Claude Code):** 7.6. Dat is na volgende week de enige ondersteunde versie, de CI draait er al op
+  (`PowerShell 7.6.9 on Ubuntu 26.04.1 LTS`, uit het CI-log), en
   het maakt de byte-pijp uit E1 vanzelfsprekend. Het voorstel noemt "PowerShell 7" zonder subversie, dus dit
   verandert het goedgekeurde voorstel niet.
 - **Keuze:** _door Tom te maken._

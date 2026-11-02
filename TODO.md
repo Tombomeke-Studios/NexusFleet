@@ -15,10 +15,11 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 - [ ] **[Tom]** E0 — Lab ready: NexusInfra control plane reachable from the VMs; one fresh Ubuntu VM with SSH key access (#14)
 - [ ] **[Tom]** E0 — Add one node **by hand** following `docs/images.md` ("Adding a machine") and note the time and the mistakes (baseline for the Analyse measurement) (#15)
-- [ ] E1 — Remoting: compare `ssh`, PowerShell remoting over SSH and Posh-SSH on a fresh VM (setup needed, speed, error behaviour, stdin for secrets) → choose the transport (#16)
-- [ ] E2 — Concurrency: `ForEach-Object -Parallel` vs `Start-ThreadJob` vs `Start-Job` for 10 and 50 targets (simulated work) → time and memory (#17)
-- [ ] E3 — Prove that Pester mocks do not reach into `-Parallel` runspaces, and that the per-host-function pattern solves it (#18)
-- [ ] E4 — API token: which scopes (`write`, `admin`) are needed for `POST /nodes`, `PATCH /nodes/:id/maintenance` and `DELETE /nodes/:id` (#19)
+- [x] E1 — Remoting: compare `ssh`, PowerShell remoting over SSH and Posh-SSH on a fresh VM (setup needed, speed, error behaviour, stdin for secrets) → choose the transport (#16)
+- [x] E2 — Concurrency: `ForEach-Object -Parallel` vs `Start-ThreadJob` vs `Start-Job` for 10 and 50 targets (simulated work) → time and memory (#17)
+- [x] E3 — Prove that Pester mocks do not reach into `-Parallel` runspaces, and that the per-host-function pattern solves it (#18)
+- [x] E4 — API token: which scopes (`write`, `admin`) are needed for `POST /nodes`, `PATCH /nodes/:id/maintenance` and `DELETE /nodes/:id` (#19)
+- [ ] Confirm E4 live against the lab control plane (#21)
 - [ ] **[Tom]** Confirm the decisions of E1–E4 in `docs/ontwerpkeuzes.md` (Claude Code records measurements and a proposed choice) and write your own learnings in the leerlogboek (#20)
 - [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
 
