@@ -14,7 +14,7 @@ done with Claude Code, one unit at a time.
 - [x] Create the folder structure from CLAUDE.md section 7 (empty files with a one-line purpose comment) (#1)
 - [x] `NexusFleet.psd1` manifest (PowerShell 7.2+, explicit empty `FunctionsToExport`) + `NexusFleet.psm1` loader in the fixed order (#2)
 - [x] `PSScriptAnalyzerSettings.psd1` + a first test: the module imports and exports exactly the listed functions (#3)
-- [ ] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`) (#4)
+- [x] `.gitignore` (`logs/`, local config with secrets) and `.gitattributes` (LF for `*.ps1`, `*.sh`, `*.psd1`, `*.psm1`) (#4)
 - [ ] CI: `.github/workflows/ci.yml` — `pwsh` on ubuntu-latest, Pester (no `Integration` tag) + PSScriptAnalyzer (#5)
 - [ ] README skeleton (what it is, requirements, quick start placeholder) (#6)
 - [ ] `docs/architecture.md`, `docs/ontwerpkeuzes.md`, `docs/nexusinfra-wijzigingen.md` (headers only) (#7)

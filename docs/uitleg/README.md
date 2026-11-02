@@ -8,3 +8,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 |---|---|---|
 | Module-opbouw | [module-opbouw.md](module-opbouw.md) | De mappenstructuur, de manifest en de loader |
 | Kwaliteitscontrole | [kwaliteitscontrole.md](kwaliteitscontrole.md) | PSScriptAnalyzer-regels, de exporttest en de Pester-valkuil (later ook de CI) |
+| Repository-instellingen | [repository-instellingen.md](repository-instellingen.md) | `.gitignore`, `.gitattributes` en waarom scripts LF nodig hebben |

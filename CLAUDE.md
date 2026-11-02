@@ -200,6 +200,8 @@ description as files land. `logs/` is created at runtime, never committed.
 | Path | Contents |
 |---|---|
 | `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.2+, `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
+| `.gitignore` | Ignores `logs/`, local config (`config/*.local.*`, `config/inventory.json`), Pester output, OS files |
+| `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |
 | `PSScriptAnalyzerSettings.psd1` | Lint rules: all severities, default rules + formatting (4-space indent, same-line braces, consistent whitespace, aligned hashtables, correct casing) + syntax compatibility with 7.2 |
 | `NexusFleet.psm1` | Loader: dot-sources `src/*/*.ps1` in a fixed folder order (`core` → `utils` → `transports` → `api` → `steps` → `public`), files sorted by name; throws if a folder is missing and names the file when a script fails to load |
 | `src/core/` | Contracts: the **step** (`Test` / `Apply` / `Rollback`) and the **transport** (run a command on a host) |
@@ -242,6 +244,8 @@ description as files land. `logs/` is created at runtime, never committed.
 - Secrets (API token, `INTERNAL_API_TOKEN`, broker password) **never** go on a command line, in a
   log, or in the repo. Store with SecretManagement; send to a host over **stdin** of the SSH call or
   as a file with mode `600`.
+- **Local config** (real addresses, your own inventory) lives in `config/*.local.*` and `config/inventory.json`,
+  both git-ignored. The repo only holds the examples. Ignoring is not secret storage: secrets still go to SecretManagement.
 - Every public cmdlet run gets a `RunId`. `Write-NexusLog` writes one human-readable line per event:
   time (UTC ISO-8601), RunId, host, step, level, message. It redacts known secrets before writing.
 - A dry run is logged too.
