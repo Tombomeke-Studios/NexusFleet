@@ -2,7 +2,7 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: experiment E1 (#16). De echte functie `Invoke-NexusHostCommand` komt hier later bij (fase 2)._
+_Stand: experiment E1 (#16) en de echte transportfunctie `Invoke-NexusHostCommand` (#26)._
 
 ## 1. Wat het doet
 
@@ -19,7 +19,11 @@ Ubuntu-machine.
 | `lab/E1-transport/Start-LabTarget.ps1` | Maakt lab-sleutels, bouwt en start de twee containers (poort 2222 en 2223) |
 | `lab/E1-transport/Measure-Transport.ps1` | Meet de drie transporten |
 | `lab/E1-transport/.keys/` | Lab-sleutels en `known_hosts`, door git genegeerd |
-| `docs/ontwerpkeuzes.md`, E1 en K4 | Resultaten, voorstel en de open vraag over de PowerShell-versie |
+| `docs/ontwerpkeuzes.md`, E1 en K4 | Resultaten, voorstel en de keuze voor PowerShell 7.6 |
+| `src/core/ConvertTo-NexusCommandResult.ps1` | Het **contract**: de vorm van het resultaat van elk transport |
+| `src/transports/Invoke-NexusHostCommand.ps1` | Het SSH-transport: bouwt de `ssh`-opties, stuurt een geheim als bytes, maakt het resultaat |
+| `src/transports/Invoke-NexusSshClient.ps1` | De kleinst mogelijke functie rond het `ssh`-programma (het "naadje" voor de tests) |
+| `tests/core/`, `tests/transports/` | 3 + 15 unit tests, en 5 integratietests tegen de lab-container (tag `Integration`) |
 
 ## 3. Hoe het werkt
 
@@ -76,6 +80,31 @@ Invoke-Command -Session $session -ScriptBlock { bash -c 'exit 7'; $LASTEXITCODE 
 
 **Posh-SSH** doet hetzelfde met `New-SSHSession` en `Invoke-SSHCommand`; het resultaat heeft een `ExitStatus`.
 
+**De echte functie.** `Invoke-NexusHostCommand` zet de lessen van het experiment om in één functie:
+
+```powershell
+$result = Invoke-NexusHostCommand -HostName '10.0.0.5' -UserName 'fleet' -Command 'docker --version'
+$result.ExitCode; $result.StdOut; $result.Succeeded
+```
+
+1. De opties worden in een lijst opgebouwd: `BatchMode=yes`, `ConnectTimeout`, `StrictHostKeyChecking=accept-new`,
+   `LogLevel=ERROR` (zodat meldingen als "Permanently added ... to known hosts" niet in `StdErr` belanden), de
+   poort, en eventueel `-i` en `UserKnownHostsFile`.
+2. Zonder geheim komt er `-n` bij: stdin wordt gesloten, zodat een commando op de host dat iets wil lezen meteen
+   "niets" krijgt in plaats van eeuwig te wachten.
+3. Met een geheim (`-Secret`, een `SecureString`) wordt het geheim omgezet naar bytes en via
+   `Invoke-NexusSshClient -InputBytes` naar stdin gestuurd. Daarna wordt de byte-array leeggemaakt
+   (`[array]::Clear`).
+4. `Invoke-NexusSshClient` start `ssh` met `2>&1`. Daardoor komen foutregels (stderr) terug als
+   `ErrorRecord`-objecten tussen de gewone tekstregels. `Invoke-NexusHostCommand` scheidt ze op type in `StdOut`
+   en `StdErr`.
+5. `ConvertTo-NexusCommandResult` maakt het resultaat: `HostName`, `ExitCode`, `StdOut`, `StdErr`, `Succeeded`
+   (exitcode 0) en `TransportFailed` (exitcode 255: `ssh` zelf faalde, bijvoorbeeld een verkeerde sleutel).
+
+**Het contract.** Elke stap kijkt alleen naar die zes eigenschappen. Een ander transport later (bijvoorbeeld
+voor Windows-hosts) is een ander bestand in `src/transports/` dat hetzelfde object teruggeeft; de stappen
+veranderen dan niet.
+
 **Niet blijven hangen.** De gevallen "verkeerde sleutel" en "onbereikbare host" draaien via `Invoke-Guarded`:
 een thread job, waarop het script hoogstens `-TimeoutSeconds` wacht (`Wait-Job -Timeout`). Hangt er toch iets,
 dan staat in de resultaten "hangs" in plaats van dat het experiment vastloopt.
@@ -94,6 +123,18 @@ dan staat in de resultaten "hangs" in plaats van dat het experiment vastloopt.
   PowerShell 7.4). Daarom de open vraag K4 over de minimumversie.
 - **Valkuil 2: `localhost` is traag.** Op deze machine probeert `localhost` eerst IPv6 (`::1`); de lab-poorten
   luisteren alleen op IPv4. Dat kost 2 s per verbinding. Daarom gebruikt het lab `127.0.0.1`.
+- **Het naadje `Invoke-NexusSshClient`.** In de unit tests wilde ik `ssh` zelf mocken. Een proefje toonde dat een
+  Pester-mock van een **extern programma** niet ziet wat er naar binnen gepijpt wordt (`$input` bleef leeg). Dus
+  zit de echte aanroep in een minimale functie met een parameter `-InputBytes`; die kan Pester wel zien en
+  controleren. Die minimale functie zelf wordt getest met de integratietest tegen de lab-container, met een echte
+  `ssh`: het geheim kwam daar exact aan (`S 3 c r 3 t - v a l u e`, zonder `` of `
+`).
+- **Strenge controle op de hostnaam.** De hostnaam komt later uit een inventarisbestand. Een "hostnaam" als
+  `-oProxyCommand=...` zou `ssh` als optie lezen en een willekeurig programma laten starten; `web01; rm -rf /` hoort
+  er ook niet in. De `ValidatePattern` laat alleen letters, cijfers, punten en streepjes toe (niet beginnend met
+  een streepje), of een IPv6-adres.
+- **`$ErrorActionPreference = 'Continue'` in de functie.** Een aanroeper (of de CI-shell) kan `Stop` hebben gezet;
+  foutregels van `ssh` moeten dan nog steeds als tekst verzameld worden, niet de functie afbreken.
 - **Containers in plaats van wachten op een VM.** Een container met sshd gedraagt zich voor SSH zoals een verse
   VM, start in seconden en kun je weggooien. Wat een container niet kan nabootsen (Docker installeren op de host,
   een echte netwerkverbinding over het internet), komt in E0 met een echte VM.
@@ -110,6 +151,11 @@ dan staat in de resultaten "hangs" in plaats van dat het experiment vastloopt.
 - **OpenSSH-opties** (`BatchMode`, `ConnectTimeout`, `StrictHostKeyChecking`): `man ssh_config`,
   https://man.openbsd.org/ssh_config
 - **Posh-SSH:** https://github.com/darkoperator/Posh-SSH
+- **Redirection `2>&1`** (stderr naar de gewone uitvoer):
+  https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_redirection
+- **`ValidatePattern`:** https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_functions_advanced_parameters#validatepattern-validation-attribute
+- **`SecureString` naar tekst** (`[System.Net.NetworkCredential]::new('', $secure).Password`):
+  https://learn.microsoft.com/dotnet/api/system.net.networkcredential
 - **`Wait-Job -Timeout`:** https://learn.microsoft.com/powershell/module/microsoft.powershell.core/wait-job
 
 ## 6. Zelf proberen
@@ -121,6 +167,19 @@ dan staat in de resultaten "hangs" in plaats van dat het experiment vastloopt.
 
 # Zelf inloggen op de lab-host
 ssh -i ./lab/E1-transport/.keys/id_ed25519 -p 2222 -o UserKnownHostsFile=./lab/E1-transport/.keys/known_hosts fleet@127.0.0.1
+
+# De echte transportfunctie tegen de lab-host (functies zijn intern: bestanden rechtstreeks laden)
+. ./src/core/ConvertTo-NexusCommandResult.ps1
+. ./src/transports/Invoke-NexusSshClient.ps1
+. ./src/transports/Invoke-NexusHostCommand.ps1
+$lab = @{ HostName = '127.0.0.1'; Port = 2222; UserName = 'fleet'
+          KeyFile = './lab/E1-transport/.keys/id_ed25519'; KnownHostsFile = './lab/E1-transport/.keys/known_hosts' }
+Invoke-NexusHostCommand @lab -Command 'uname -a; sudo -n true && echo sudo-ok'
+Invoke-NexusHostCommand @lab -Command 'exit 7'                         # ExitCode 7, Succeeded False
+Invoke-NexusHostCommand @lab -HostName '-oProxyCommand=calc' -Command 'true'   # geweigerd door ValidatePattern
+
+# De integratietests
+Invoke-Pester -Path ./tests/transports -TagFilter Integration -Output Detailed
 
 # Opruimen
 ./lab/E1-transport/Start-LabTarget.ps1 -Remove
@@ -152,3 +211,5 @@ Measure-Command { ssh @o fleet@127.0.0.1 true }
 3. Wat gaat er mis als je een string naar `ssh` pijpt op Windows, en hoe lost een `byte[]` dat op?
 4. Waarom valt PowerShell-remoting af, hoewel het per commando sneller is en objecten teruggeeft?
 5. Wat doet `StrictHostKeyChecking=accept-new`, en waarom is dat veiliger dan `no`?
+6. Waarom bestaat `Invoke-NexusSshClient` als aparte, minimale functie, en hoe wordt die zelf getest?
+7. Waarom weigert `Invoke-NexusHostCommand` een hostnaam die met een streepje begint?

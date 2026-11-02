@@ -14,8 +14,8 @@ Describe 'NexusFleet manifest' {
         $script:manifest.Name | Should -Be 'NexusFleet'
     }
 
-    It 'requires PowerShell 7.2 or later' {
-        $script:manifest.PowerShellVersion | Should -Be ([version]'7.2')
+    It 'requires PowerShell 7.6 or later' {
+        $script:manifest.PowerShellVersion | Should -Be ([version]'7.6')
     }
 
     It 'only supports PowerShell 7 (Core)' {

@@ -61,7 +61,7 @@ Format per keuze:
     hosts (E2) is dat klein. Kan later met minder, grotere scripts per oproep.
 - **Gevolg:** `Invoke-NexusHostCommand` roept `ssh` aan met `BatchMode=yes`, `ConnectTimeout`, een eigen
   `UserKnownHostsFile`-keuze en `StrictHostKeyChecking=accept-new`; geheimen gaan als `byte[]` naar stdin.
-  **Open vraag voor Tom:** de minimumversie in de manifest van 7.2 naar 7.4 of 7.6 brengen (zie K4).
+  Minimumversie: 7.6 (keuze K4), dus de byte-pijp is altijd beschikbaar.
 
 ### E2 — Parallel werken: `ForEach-Object -Parallel`, `Start-ThreadJob` of `Start-Job`
 
@@ -205,7 +205,7 @@ Format per keuze:
   optreden.
 - **Gevolg:** lokaal eerst Pester 5 importeren, of lint en tests in aparte processen draaien (CLAUDE.md, sectie 4).
 
-### K4 — Minimale PowerShell-versie (open, beslissing van Tom)
+### K4 — Minimale PowerShell-versie
 
 - **Vraag:** blijft de manifest op PowerShell 7.2, of gaat de ondergrens omhoog?
 - **Feiten** ([PowerShell support lifecycle](https://learn.microsoft.com/powershell/scripting/install/powershell-support-lifecycle),
@@ -226,4 +226,19 @@ Format per keuze:
   (`PowerShell 7.6.9 on Ubuntu 26.04.1 LTS`, uit het CI-log), en
   het maakt de byte-pijp uit E1 vanzelfsprekend. Het voorstel noemt "PowerShell 7" zonder subversie, dus dit
   verandert het goedgekeurde voorstel niet.
-- **Keuze:** _door Tom te maken._
+- **Keuze (Tom, 2 november 2026):** 7.6, voor de langdurige ondersteuning (LTS). Doorgevoerd in de manifest,
+  de PSScriptAnalyzer-instellingen en de documentatie (#28).
+
+### K5 — Het API-token over `http://`
+
+- **Vraag:** mag NexusFleet het API-token over gewone `http://` sturen? NexusInfra draait in de MVP zonder TLS
+  (`http://localhost:9400`), en `Invoke-RestMethod` weigert standaard een token over `http://` te sturen
+  (gevonden met de lokale HTTP-test).
+- **Opties:** altijd toestaan (eenvoudig, maar een token met beheerrechten kan onderweg meegelezen worden) ·
+  nooit (dan werkt de MVP niet met een lokaal panel) · alleen naar de eigen machine, en voor andere hosts alleen
+  als het uitdrukkelijk aangezet is.
+- **Keuze (Claude Code, door Tom te bevestigen):** de laatste. `localhost`, `127.0.0.1` en `::1` mogen altijd
+  (het verkeer verlaat de machine niet). Voor een andere `http://`-host is `Api.AllowUnencryptedHttp = $true` in
+  `config/nexusinfra.local.psd1` nodig, met een waarschuwing bij elke oproep. Anders stopt `Invoke-NexusApi` met
+  `NexusApi.UnencryptedNotAllowed`, vóór er iets verstuurd is.
+- **Gevolg:** veilig als standaard; de beveiligde verbinding (TLS, extra) maakt de uitzondering overbodig.

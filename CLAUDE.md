@@ -152,9 +152,14 @@ Allowed — the two tools are built for each other — but they never happen fro
   always lives in its own function, which is tested directly; the parallel loop is a thin wrapper.
 - **Scale is tested with generated inventories** of 50–100 mocked hosts, a few of them offline or
   failing: every host gets its own correct result and nothing crashes.
+- **Local HTTP tests** (tag `LocalHttp`) use a real `HttpListener` on a free loopback port, no external hosts;
+  they run with the unit tests and in CI, because they catch what mocks of `Invoke-RestMethod` cannot.
 - **Integration tests** carry the `Integration` tag, are excluded by default, and run by hand against
   the lab VMs. Put a test there only when the real thing is the only proof.
 - **Every bug fix starts with the test that catches it.**
+- **A mock of an external program (`ssh`) does not see piped input** (`$input` is empty). Wrap the native call in a
+  minimal function with an explicit parameter (`Invoke-NexusSshClient -InputBytes`), mock that, and cover the
+  wrapper with an Integration test.
 - **Pin Pester to 5.x.** `-MinimumVersion 5.0` alone installs Pester 6, and Windows ships Pester 3.4.
   Tests and CI load it with `Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99`.
 - **Import Pester 5 before running PSScriptAnalyzer in the same session.** Analysing the test files makes
@@ -209,21 +214,21 @@ description as files land. `logs/` is created at runtime, never committed.
 | Path | Contents |
 |---|---|
 | `README.md` | English user docs: what/why, planned MVP cmdlets, requirements, quick start (placeholder until the MVP), dev commands, layout. Update with every public cmdlet change |
-| `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.2+, `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
+| `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.6+ (LTS, decision K4), `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
 | `.gitignore` | Ignores `logs/`, local config (`config/*.local.*`, `config/inventory.json`), Pester output, OS files |
 | `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |
-| `PSScriptAnalyzerSettings.psd1` | Lint rules: all severities, default rules + formatting (4-space indent, same-line braces, consistent whitespace, aligned hashtables) + syntax compatibility with 7.2. `PSUseCorrectCasing` is off on purpose (see section 4) |
+| `PSScriptAnalyzerSettings.psd1` | Lint rules: all severities, default rules + formatting (4-space indent, same-line braces, consistent whitespace, aligned hashtables) + syntax compatibility with 7.6. `PSUseCorrectCasing` is off on purpose (see section 4) |
 | `NexusFleet.psm1` | Loader: dot-sources `src/*/*.ps1` in a fixed folder order (`core` → `utils` → `transports` → `api` → `steps` → `public`), files sorted by name; throws if a folder is missing and names the file when a script fails to load |
-| `src/core/` | Contracts: the **step** (`Test` / `Apply` / `Rollback`) and the **transport** (run a command on a host) |
-| `src/steps/` | One file per installation step: Docker, agent container, register node, verify healthy. Each declares its order; `Install-NexusNode` reads them from this folder, so adding, replacing or removing a step is adding, replacing or removing a file |
-| `src/transports/` | `Invoke-NexusHostCommand` over SSH (method chosen by experiment E1) |
-| `src/api/` | `Invoke-NexusApi` — the **only** place that calls the NexusInfra REST API |
+| `src/core/` | Contracts. Transport: `ConvertTo-NexusCommandResult` builds the `NexusFleet.CommandResult` every transport returns (`HostName`, `ExitCode`, `StdOut`, `StdErr`, `Succeeded`, `TransportFailed` = exit 255). Step: `Register-NexusStep` (unique Name and Order; registry `$script:NexusStepRegistry`), `Get-NexusStep` (sorted), `Invoke-NexusStepSequence` (Test then Apply, reverse rollback of what this run changed, `-PlanOnly` dry run, optional logging, step output discarded) |
+| `src/steps/` | One file per installation step (phase 3: Docker, agent container, register node, verify healthy). Each file calls `Register-NexusStep` once with a unique `Order` (use gaps: 10, 20, 30); adding, replacing or removing a step is adding, replacing or removing a file |
+| `src/transports/` | `Invoke-NexusHostCommand`: one command on one host over native ssh (E1): BatchMode, ConnectTimeout, accept-new, LogLevel=ERROR, `-n` without input, secret as stdin bytes, strict host/user validation. `Invoke-NexusSshClient`: the minimal wrapper around `ssh` (seam for tests; covered by the Integration test against the E1 lab container) |
+| `src/api/` | `Invoke-NexusApi` — the **only** place that calls the NexusInfra REST API. Bearer token as SecureString, time-out, retries only GET after network errors/502-504 (doubling delay), error ids `NexusApi.Unauthorized/Forbidden/NotFound/Conflict/Unavailable/Unreachable/RequestFailed/UnencryptedNotAllowed`, token over `http://` only to loopback unless `-AllowUnencryptedHttp` (K5) |
 | `src/public/` | The cmdlets: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus` |
-| `src/utils/` | `Write-NexusLog` (with secret redaction), config loading |
-| `config/` | `nexusinfra.psd1` (every NexusInfra-specific value), `inventory.example.json` |
+| `src/utils/` | `Initialize-NexusRunContext` (RunId, log folder `./logs/<RunId>/`, secrets; a plain object so it can go into runspaces via `$using:`), `Write-NexusLog` (one line per event, one file per host + `run.log`, redaction of context secrets and `nxi_` tokens, writes under `-WhatIf` too). `Get-NexusConfig` (reads `config/nexusinfra.psd1` + optional `nexusinfra.local.psd1`, validates every value with a rules list, reports all problems at once), `Merge-NexusHashtable` (deep merge, warns on unknown keys). All internal (not exported) |
+| `config/` | `nexusinfra.psd1` (every NexusInfra-specific value: `Api`, `Agent`, `Health`; checked against NexusInfra `docs/images.md`), local overrides in git-ignored `nexusinfra.local.psd1`; `inventory.example.json` planned |
 | `tests/` | Pester, mirrors `src/`. `tests/NexusFleet.Tests.ps1` covers the manifest and the loader (fake module copy in `TestDrive` with probe scripts) and that the module exports exactly the manifest list |
 | `lab/` | Experiments (phase 1), not part of the module, but linted; index in `lab/README.md`. `E1-transport/` (Docker lab targets + transport comparison; keys in git-ignored `.keys/`), `E2-concurrency/` (benchmark), `E3-mocks-parallel/` (Pester proof), `E4-token-scopes/` (source notes) |
-| `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's; holds one draft note written by Claude Code at Tom's explicit request, 2026-11-02, for Tom to rewrite — never add to it otherwise) |
+| `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's; holds draft notes (facts only) written by Claude Code at Tom's explicit request on 2026-11-02, for Tom to rewrite — only add to it when Tom asks) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
 | `logs/` | Run logs, created at runtime, git-ignored |
 | `tools/` | Dev tooling, not part of the module. `Invoke-NexusLint.ps1`: lint with the repo settings, findings as warnings or GitHub annotations, retries only `RULE_ERROR*`. Tested in `tests/tools/` |
@@ -241,8 +246,19 @@ description as files land. `logs/` is created at runtime, never committed.
   is not available inside a `-Parallel` block: decide what will run **before** the parallel loop,
   and with `-WhatIf` only run each step's `Test` and return the plan.
 - **`ForEach-Object -Parallel`:** variables come in through `$using:`; the module's functions are
-  **not** visible in the runspaces — import the module inside the block by path. Always pass
-  `-ThrottleLimit` from a parameter.
+  **not** visible in the runspaces — import the module inside the block by path. Internal (non-exported)
+  functions are still invisible after that import: run the work in the module's scope with
+  `$m = Import-Module $using:manifest -PassThru; & $m { param(...) ... } $args` (tested in
+  `tests/utils/Write-NexusLog.Tests.ps1`). Module variables do not carry over either: pass a context object.
+  Always pass `-ThrottleLimit` from a parameter.
+- **`-WhatIf` is inherited** (`$WhatIfPreference`) by every command below a cmdlet. Anything that must happen
+  in a dry run too (logging) uses `-WhatIf:$false` explicitly.
+- **In a `catch`, save the error first** (`$caught = $_`): inside a `switch` (and `ForEach-Object`, `Where-Object`)
+  `$_` is that block's current value, not the error.
+- **`Invoke-RestMethod` refuses a bearer token over `http://`** unless `-AllowUnencryptedAuthentication`;
+  `Invoke-NexusApi` only allows it for loopback or with `-AllowUnencryptedHttp` (K5).
+- **`HttpResponseException` derives from `HttpRequestException`**: check for an HTTP status first, then treat
+  `HttpRequestException`/`TaskCanceledException`/`TimeoutException` without a status as a network error.
 - **One host failing never stops the others.** Catch per host and return a result object with
   `Host`, `Success`, `Step`, `Error`.
 - **Validate parameters** with `ValidateNotNullOrEmpty`, `ValidatePattern`, `ValidateRange`,
@@ -266,7 +282,8 @@ description as files land. `logs/` is created at runtime, never committed.
   `$LASTEXITCODE` after every call.
 - Scripts sent to a Linux host need **LF** line endings (`.gitattributes`); CRLF breaks bash.
 - **A string piped to `ssh` gets CRLF appended on Windows** (`[Environment]::NewLine`), so a secret arrives
-  with a trailing ``. Pipe bytes instead: `[Text.Encoding]::UTF8.GetBytes($secret) | ssh ...` (PowerShell 7.4+,
+  with a trailing `
+`. Pipe bytes instead: `[Text.Encoding]::UTF8.GetBytes($secret) | ssh ...` (PowerShell 7.4+,
   see `docs/ontwerpkeuzes.md` E1 and K4).
 - Use `StrictHostKeyChecking=accept-new` (never `no`): new hosts are trusted, a changed host key is refused.
 - In the lab, address containers as `127.0.0.1`: `localhost` tries IPv6 first and costs ~2 s per connection.

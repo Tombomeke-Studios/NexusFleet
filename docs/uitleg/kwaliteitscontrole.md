@@ -43,7 +43,7 @@ het niets terug, dan is de code schoon. Het settings-bestand doet drie dingen:
    - `{` op dezelfde regel, `}` op een eigen regel (`PSPlaceOpenBrace`, `PSPlaceCloseBrace`),
    - één spatie rond operatoren, na komma's en rond `|` (`PSUseConsistentWhitespace`),
    - de `=`-tekens in een hashtable onder elkaar (`PSAlignAssignmentStatement`),
-   - geen syntax die PowerShell 7.2 niet kent (`PSUseCompatibleSyntax`).
+   - geen syntax die PowerShell 7.6 niet kent (`PSUseCompatibleSyntax`).
 
    `PSUseCorrectCasing` (commando's met hun echte hoofdletters) staat bewust **uit**. Zie de tweede valkuil
    onder "Waarom zo".

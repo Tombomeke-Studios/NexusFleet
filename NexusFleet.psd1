@@ -8,8 +8,9 @@
     Copyright            = '(c) 2026 Tom Dekoning. All rights reserved.'
     Description          = 'Turns Linux hosts into NexusInfra nodes and manages them as a fleet.'
 
-    # ForEach-Object -Parallel and the other PowerShell 7 features the module uses need 7.2+.
-    PowerShellVersion    = '7.2'
+    # PowerShell 7.6 (LTS, supported until November 2028); decision K4 in docs/ontwerpkeuzes.md.
+    # 7.4+ is needed anyway to pipe secrets as bytes to ssh (experiment E1).
+    PowerShellVersion    = '7.6'
     CompatiblePSEditions = @('Core')
 
     # Explicit lists, never '*': only the public cmdlets are visible to the user.

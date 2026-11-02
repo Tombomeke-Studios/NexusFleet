@@ -49,10 +49,10 @@
         # 105 runs. Casing is cosmetic; re-enable when the bug is fixed (#12, docs/ontwerpkeuzes.md K2).
         # Lint with ./tools/Invoke-NexusLint.ps1, which retries the analyzer's own internal errors.
 
-        # The module targets PowerShell 7.2+ only: flag syntax that 7.2 does not understand.
+        # The module targets PowerShell 7.6+ only: flag syntax that 7.6 does not understand.
         PSUseCompatibleSyntax      = @{
             Enable         = $true
-            TargetVersions = @('7.2')
+            TargetVersions = @('7.6')
         }
     }
 }
