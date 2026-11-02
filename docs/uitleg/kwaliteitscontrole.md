@@ -2,14 +2,15 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: unit 3 (PSScriptAnalyzer-instellingen en exporttest, #3). De CI-workflow komt erbij in #5._
+_Stand: unit 3 (PSScriptAnalyzer-instellingen en exporttest, #3) en unit 5 (CI-workflow, #5)._
 
 ## 1. Wat het doet
 
 Twee automatische controles bewaken de kwaliteit van de code. **PSScriptAnalyzer** leest de scripts zonder
 ze uit te voeren en meldt alles wat tegen de afgesproken regels ingaat: stijl, foutgevoelige constructies,
 verboden werkwoorden. Een **Pester-test** controleert dat de module precies de functies aanbiedt die in de
-manifest staan, niet meer en niet minder.
+manifest staan, niet meer en niet minder. De **CI** (GitHub Actions) draait allebei bij elke push en elke
+pull request op een verse Linux-machine, zodat een fout zichtbaar wordt voordat ze in `dev` belandt.
 
 ## 2. Waar het staat
 
@@ -17,6 +18,7 @@ manifest staan, niet meer en niet minder.
 |---|---|
 | `PSScriptAnalyzerSettings.psd1` | De regels voor PSScriptAnalyzer |
 | `tests/NexusFleet.Tests.ps1`, blok `Describe 'NexusFleet module'` | De import- en exporttests |
+| `.github/workflows/ci.yml` | De CI: job `lint` (PSScriptAnalyzer) en job `test` (Pester), elk op `ubuntu-latest` |
 
 ## 3. Hoe het werkt
 
@@ -61,6 +63,40 @@ $exported | Should -Be $listed
 
 Een tweede test controleert dat er geen cmdlets, variabelen of aliassen geëxporteerd worden.
 
+**De CI.** Bij elke `git push` en elke pull request leest GitHub `.github/workflows/ci.yml` en start twee
+**jobs** tegelijk, elk op een eigen, verse Ubuntu-machine met `pwsh`:
+
+1. `actions/checkout` haalt de code op.
+2. De job installeert precies één vaste versie van wat hij nodig heeft: PSScriptAnalyzer `1.25.0` voor `lint`,
+   Pester `5.7.1` voor `test`.
+3. *Lint* draait de analyzer met hetzelfde settings-bestand als lokaal. Voor elke melding schrijft hij een
+   speciale regel naar de uitvoer:
+
+   ```powershell
+   $file = [System.IO.Path]::GetRelativePath($PWD.Path, $finding.ScriptPath)
+   Write-Output "::error file=$file,line=$($finding.Line)::$($finding.RuleName): $($finding.Message)"
+   ```
+
+   GitHub herkent `::error file=...,line=...::` en toont de melding als **annotatie** bij dat bestand en die
+   regel, in de run en in een pull request. Is er minstens één melding, dan stopt `throw` de stap en wordt de
+   job rood.
+4. *Test* bouwt een Pester-configuratie op en draait de tests zonder de `Integration`-tag:
+
+   ```powershell
+   $config = New-PesterConfiguration
+   $config.Run.Path = './tests'
+   $config.Run.Exit = $true
+   $config.Filter.ExcludeTag = 'Integration'
+   ```
+
+   `Run.Exit = $true` laat Pester het proces afsluiten met een foutcode als er een test faalt. Aan die
+   foutcode ziet GitHub dat de job rood moet worden.
+
+Tijdens deze unit zijn beide kanten uitgeprobeerd. De gewone push gaf een groene run (10 tests geslaagd onder
+Pester 5.7.1, geen meldingen). Een commit op een wegwerpbranch met een stijlfout en een bewust falende test gaf
+twee rode jobs, met de analyzer-meldingen als annotatie op `src/utils/Stijl.ps1` regel 2. Daarna is die
+branch verwijderd.
+
 ## 4. Waarom zo
 
 - **Een settings-bestand in de repo** in plaats van de regels telkens op de commandoregel mee te geven. Zo
@@ -90,7 +126,25 @@ in hetzelfde proces laden, dus `Import-Module Pester -MaximumVersion 5.99` faalt
 same name is already loaded"*.
 
 Oplossing: importeer Pester 5 **vóór** je de analyzer draait, of draai lint en tests in aparte
-`pwsh`-processen. De CI (#5) doet het tweede.
+`pwsh`-processen. De CI doet het tweede: lint en test zijn aparte jobs op aparte machines.
+
+### Keuzes in de CI
+
+- **Twee jobs in plaats van één job met twee stappen.** Ze draaien tegelijk (sneller), in GitHub zie je
+  meteen *welke* controle faalde, en de Pester-valkuil hierboven kan niet optreden. Het alternatief, één job,
+  zou ook werken (elke stap is een eigen proces), maar toont één rood kruis voor twee soorten fouten.
+- **Vaste versies** (`-RequiredVersion`) in plaats van "de nieuwste". Op deze laptop installeerde
+  `-MinimumVersion 5.0` stilletjes Pester 6. Met een vaste versie draait de CI vandaag en over drie maanden
+  exact hetzelfde, en een nieuwe versie kies je bewust.
+- **`ubuntu-latest`**: NexusFleet stuurt Linux-hosts aan, en de CI bewijst meteen dat de module ook op Linux
+  laadt en slaagt, niet alleen op Windows.
+- **`permissions: contents: read`**: de workflow krijgt alleen leesrechten op de repo. Hij hoeft niets te
+  schrijven, en zo kan een fout of een kwaadaardige actie ook niets veranderen (minste rechten).
+- **Annotaties in plaats van alleen een tabel in het log.** De fout staat dan bij het bestand en de regel,
+  ook in een pull request. Dat sluit aan bij het criterium *usability*: duidelijke feedback.
+- **Op elke push, ook van feature-branches**, niet alleen op pull requests. Je ziet een fout dan al terwijl
+  je aan een branch werkt, niet pas bij het openen van de PR. Het nadeel: bij een open PR draait alles twee
+  keer (voor de push en voor de PR). Voor een paar seconden werk is dat geen probleem.
 
 ## 5. PowerShell-concepten
 
@@ -110,6 +164,16 @@ Oplossing: importeer Pester 5 **vóór** je de analyzer draait, of draai lint en
   `ExportedAliases`: https://learn.microsoft.com/dotnet/api/system.management.automation.psmoduleinfo
 - **`Import-PowerShellDataFile`:** leest een `.psd1` veilig als hashtable, zonder code uit te voeren.
   https://learn.microsoft.com/powershell/module/microsoft.powershell.utility/import-powershelldatafile
+- **GitHub Actions workflow-syntax** (`on`, `jobs`, `runs-on`, `steps`, `defaults.run.shell`, `permissions`):
+  https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+- **Workflow commands** (`::error file=...,line=...::`):
+  https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands
+- **Rechten van het workflow-token (`permissions`):**
+  https://docs.github.com/en/actions/tutorials/authenticate-with-github_token
+- **Pester-configuratie** (`New-PesterConfiguration`, `Run.Exit`, `Filter.ExcludeTag`):
+  https://pester.dev/docs/usage/configuration
+- **`[System.IO.Path]::GetRelativePath()`:** maakt van een volledig pad een pad relatief aan een map.
+  https://learn.microsoft.com/dotnet/api/system.io.path.getrelativepath
 
 ## 6. Zelf proberen
 
@@ -139,6 +203,15 @@ Invoke-ScriptAnalyzer -Path ./tests -Settings ./PSScriptAnalyzerSettings.psd1
 Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99   # faalt
 ```
 
+De CI bekijken:
+
+```bash
+gh run list --limit 5                 # de laatste runs en hun status
+gh run view --log-failed              # alleen het log van wat faalde, van de laatste run
+```
+
+Of op GitHub: tabblad **Actions** van de repository.
+
 ## 7. Controlevragen
 
 1. Wat is het verschil tussen wat PSScriptAnalyzer controleert en wat een Pester-test controleert?
@@ -146,3 +219,5 @@ Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99   # faalt
 3. Welke twee regels botsten, en waarom heb je de optie gekozen in plaats van een van de regels uit te zetten?
 4. Waarom is de exporttest nodig, als `Import-Module` toch zou falen bij een fout in de manifest?
 5. Leg uit waarom Pester 5 niet meer kan laden nadat PSScriptAnalyzer de testbestanden heeft geanalyseerd.
+6. Hoe weet GitHub dat de Pester-job rood moet worden als er een test faalt?
+7. Waarom installeert de CI een vaste versie van Pester en PSScriptAnalyzer, en niet gewoon de nieuwste?

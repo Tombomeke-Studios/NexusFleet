@@ -216,7 +216,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `docs/` | `projectvoorstel.md`, `architecture.md`, `ontwerpkeuzes.md`, `nexusinfra-wijzigingen.md`, `leerlogboek.md` (Tom's) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
 | `logs/` | Run logs, created at runtime, git-ignored |
-| `.github/workflows/ci.yml` | Pester + PSScriptAnalyzer on every push and PR |
+| `.github/workflows/ci.yml` | On every push and PR: two jobs on `ubuntu-latest` — `lint` (PSScriptAnalyzer 1.25.0, findings as `::error` annotations) and `test` (Pester 5.7.1, `Run.Exit`, `Integration` excluded). Versions pinned; read-only token |
 
 ## 8. Conventions & gotchas
 
