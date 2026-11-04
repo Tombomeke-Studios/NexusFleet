@@ -326,3 +326,24 @@ Format per keuze:
 - **Verworpen:** `GET <agentUrl>/health` vanaf de beheermachine. Dat test de verkeerde richting: de beheermachine is
   niet de orchestrator (een `agentUrl` in het thuisnetwerk werkt voor de orchestrator, niet vanaf school), en
   `/health` vraagt geen token. Ook verworpen: een nieuw endpoint in NexusInfra, omdat er al een is.
+
+### K11 — Nodes achter NAT: de agent verbindt zelf (#105)
+
+- **Vraag:** hoe kan NexusInfra een node besturen die geen adres heeft dat de orchestrator kan bellen, zoals de VM
+  op een laptop op de school-wifi, een server thuis of een 4G-verbinding (CGNAT)?
+- **Gevonden:** zo'n node wordt *healthy* (de heartbeats gaan naar buiten), maar `GET /nodes/<id>/disk` faalt
+  (K10): de orchestrator belt de agent op zijn `agentUrl`, en dat adres bestaat niet van buitenaf. Bovendien gaat
+  het gedeelde `INTERNAL_API_TOKEN` op die weg in klare tekst over het internet.
+- **Keuze:** per host een `reach`. `direct` is wat er al was. `outbound` is nieuw: de agent opent zelf één
+  WebSocket naar de gateway (`wss://`, dus via 443 en TLS), en de orchestrator stuurt zijn aanroepen daarover
+  terug. Elke node krijgt een eigen link-token. Dit wordt gebouwd in NexusInfra (#416, `fleet-support:`); NexusFleet
+  registreert de node als `outbound`, publiceert poort 9100 niet en geeft de agent de link-URL en het token.
+  Ontwerp: [agent-link.md](agent-link.md).
+- **Verworpen:** een VPN (Tailscale): dan moet elke node eerst in een privénetwerk, wat het voorstel uitsluit.
+  Een SSH-tunnel per node vanuit NexusFleet: werkt voor elk platform, maar vraagt een sshd op de control plane en
+  een tunnel-account per node, en past slecht op een netwerk dat alleen 443 doorlaat. Voor NexusInfra, dat we zelf
+  kunnen aanpassen, is een verbinding die de agent zelf opent netter. De tunnel blijft een optie (`reach: tunnel`)
+  voor andere platformen, bij de extra over connectors. Ook verworpen: het gedeelde `INTERNAL_API_TOKEN` als
+  sleutel van de link, want daarmee kan een node zich voordoen als een andere node.
+- **Nog niet opgelost:** de broker heeft nog zijn eigen poort (5672) nodig. Een netwerk dat alleen 443 doorlaat,
+  blokkeert dus nog altijd de heartbeats.
