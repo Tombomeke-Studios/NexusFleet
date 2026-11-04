@@ -119,6 +119,28 @@ Describe 'Import-NexusInventory' {
             { Import-NexusInventory -Path $path } | Should -Throw -ExpectedMessage '*node-a*port*70000*'
         }
 
+        It 'refuses a user name Linux would not accept' {
+            $path = Write-TestInventory @{ hosts = @(@{ name = 'node-a'; address = '10.0.0.5'; user = 'Fleet User'; location = 'home' }) }
+
+            { Import-NexusInventory -Path $path } | Should -Throw -ErrorId 'NexusFleet.InventoryInvalid*' -ExpectedMessage "*node-a*user 'Fleet User' is not a Linux user name*"
+        }
+
+        It 'refuses an agentUrl that is not an http(s) URL' {
+            $path = Write-TestInventory @{ hosts = @(@{ name = 'node-a'; address = '10.0.0.5'; user = 'fleet'; location = 'home'; agentUrl = 'ftp://10.0.0.5' }) }
+
+            { Import-NexusInventory -Path $path } | Should -Throw -ExpectedMessage "*node-a*agentUrl 'ftp://10.0.0.5' must be an http(s) URL*"
+        }
+
+        It 'names a host without a usable name by its position' {
+            $hosts = @(
+                @{ name = 'node-a'; address = '10.0.0.5'; user = 'fleet'; location = 'home' }
+                @{ address = '10.0.0.6'; user = 'fleet'; location = 'home' }
+            )
+            $path = Write-TestInventory @{ hosts = $hosts }
+
+            { Import-NexusInventory -Path $path } | Should -Throw -ExpectedMessage '*host 2: name is missing*'
+        }
+
         It 'names a missing required field' {
             $path = Write-TestInventory @{ hosts = @(@{ name = 'node-a'; address = '10.0.0.5'; location = 'home' }) }
 

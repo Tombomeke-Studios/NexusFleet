@@ -4,29 +4,54 @@ function Export-NexusFleetStatus {
     Writes the fleet status from Get-NexusFleetStatus to a JSON or CSV file.
 
     .DESCRIPTION
-    Collects the NexusFleet.NodeStatus objects from the pipeline and writes them in one go:
-      JSON  { "generatedAt": "<UTC time>", "nodes": [ ... ] }, every field of every node
-      CSV   one row per node, a header with the field names; times as ISO-8601 UTC, so a spreadsheet sorts them
-    The format comes from -Format, or else from the extension of -Path (.json or .csv). An existing file is
-    replaced. Returns the file.
+    Collects the NexusFleet.NodeStatus objects from the pipeline and writes them to one file:
+
+      JSON  { "generatedAt": "<UTC time>", "nodes": [ ... ] } with every field of every node, for scripts and tools
+      CSV   one row per node and a header with the field names, for a spreadsheet
+
+    Times (LastHeartbeat) are written as ISO-8601 in UTC, e.g. 2026-11-04T07:35:00.0000000Z: the same on every
+    machine and in every language setting, and sortable. The format comes from -Format, or else from the extension of
+    -Path (.json or .csv). A missing folder is created; an existing file is replaced. Supports -WhatIf.
 
     .PARAMETER InputObject
-    The status objects, through the pipeline.
+    The status objects from Get-NexusFleetStatus, through the pipeline.
 
     .PARAMETER Path
-    The file to write.
+    The file to write, e.g. ./status.csv. A relative path is relative to the current folder.
 
     .PARAMETER Format
-    Json or Csv. Default: from the extension of -Path.
+    Json or Csv. Default: from the extension of -Path; needed when the extension is neither .json nor .csv.
 
     .EXAMPLE
     Import-NexusInventory ./config/inventory.json | Get-NexusFleetStatus | Export-NexusFleetStatus -Path ./status.json
 
+    Writes the status of every host of the inventory as JSON.
+
     .EXAMPLE
     Get-NexusFleetStatus | Export-NexusFleetStatus -Path ./reports/fleet.txt -Format Csv
 
+    Writes NexusInfra's view of all nodes as CSV to a file with another extension; the folder is created.
+
+    .INPUTS
+    NexusFleet.NodeStatus
+    The statuses from Get-NexusFleetStatus.
+
     .OUTPUTS
-    System.IO.FileInfo: the written file.
+    System.IO.FileInfo
+    The written file.
+
+    .NOTES
+    Error id NexusFleet.UnknownExportFormat when the format cannot be told from the extension and -Format is not
+    given. The file holds no secrets: a status has none.
+
+    .LINK
+    https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/user-guide.md#export-nexusfleetstatus
+
+    .LINK
+    about_NexusFleet
+
+    .LINK
+    Get-NexusFleetStatus
     #>
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([System.IO.FileInfo])]

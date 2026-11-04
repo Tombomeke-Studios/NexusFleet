@@ -101,6 +101,20 @@ foreach ($attempt in 1..60) {
 }
 if (-not $jwt) { throw "The lab panel at $baseUrl did not answer within 2 minutes; see: docker @compose logs orchestrator" }
 
+# The panel can answer before RabbitMQ accepts connections. Wait until the broker is reachable from the hosts
+# themselves (that is the path the agents take, and what Test-NexusHost checks), so a test never meets a lab that is
+# still starting.
+$brokerUp = $false
+foreach ($attempt in 1..60) {
+    docker @compose exec -T node1 bash -c 'timeout 2 bash -c "</dev/tcp/172.29.50.10/5672"' 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $brokerUp = $true
+        break
+    }
+    Start-Sleep -Seconds 2
+}
+if (-not $brokerUp) { throw 'The lab broker did not accept connections from the hosts within 2 minutes; see: docker compose logs rabbitmq' }
+
 $tokenFile = Join-Path -Path $keyFolder -ChildPath 'api-token'
 # A kept token only counts when this panel still knows it: the panel's database lives in its container, so a
 # recreated lab has forgotten every token.

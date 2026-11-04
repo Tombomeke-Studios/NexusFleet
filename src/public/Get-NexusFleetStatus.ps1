@@ -1,32 +1,36 @@
 function Get-NexusFleetStatus {
     <#
     .SYNOPSIS
-    Shows the status of every node: what NexusInfra reports, merged with what ssh sees on the hosts.
+    Shows the status of every node: what NexusInfra reports, merged with what SSH sees on the hosts.
 
     .DESCRIPTION
-    Asks NexusInfra once for all nodes (GET /nodes: health, last heartbeat, maintenance, CPU and RAM). When hosts
-    come in from Import-NexusInventory, each host is also looked at over ssh, in parallel (at most -ThrottleLimit at
-    once): reachable, Docker, the agent container's state and restarts, uptime and free disk. Nothing is changed.
+    Asks NexusInfra once for all nodes (GET /nodes): health (healthy, degraded or offline, from the time of the last
+    heartbeat), the last heartbeat, maintenance, CPU and RAM. When hosts come in from Import-NexusInventory, each host
+    is also looked at over SSH, in parallel: is it reachable, which Docker version, the agent container's state and
+    restart count, uptime and free disk space. Nothing is changed.
 
-    One NexusFleet.NodeStatus per node, first the hosts of the inventory in their order, then nodes NexusInfra knows
-    but the inventory does not. Ok says whether all is well; Problem says what is not, in plain words. A host that
-    cannot be reached is reported as such, and when NexusInfra itself cannot be asked, the hosts are still checked
-    (Health 'unknown', and a warning): nothing in this command stops the run.
+    Both sides together say why a node is not well. NexusInfra only sees that heartbeats stopped ("offline"); the
+    host then says whether the agent container exited, is missing, or the host itself is unreachable.
 
-    Needs Connect-NexusInfra first. Each run is logged in logs/<RunId>/. Export the result with Export-NexusFleetStatus.
+    The result is one status per node: first the hosts of the inventory, in their order, then the nodes NexusInfra
+    knows but the inventory does not. Ok says whether all is well; Problem says what is not, in plain words, e.g.
+    "NexusInfra reports it offline; the agent container is exited". Maintenance is shown, but is not a problem.
+
+    Nothing in this command stops the run: an unreachable host is reported in its status, and when NexusInfra itself
+    cannot be asked, the hosts are still looked at (Health 'unknown') and a warning says why.
 
     .PARAMETER InputObject
-    The hosts to look at over ssh: NexusFleet.Host objects from Import-NexusInventory, through the pipeline. Without
-    hosts only NexusInfra's view is shown.
+    The hosts to look at over SSH: NexusFleet.Host objects from Import-NexusInventory, through the pipeline. Without
+    hosts, only NexusInfra's view is shown.
 
     .PARAMETER ThrottleLimit
-    How many hosts are looked at the same time. Default: Preflight.ThrottleLimit from the config. 1 = one after the
-    other.
+    How many hosts are looked at the same time (1-256). Default: Preflight.ThrottleLimit from the config. 1 looks at
+    them one after the other.
 
     .EXAMPLE
     Get-NexusFleetStatus | Format-Table Name, Ok, Health, LastHeartbeat, Problem
 
-    NexusInfra's view of all nodes, without ssh.
+    NexusInfra's view of all nodes, without SSH.
 
     .EXAMPLE
     Import-NexusInventory ./config/inventory.json | Get-NexusFleetStatus | Format-Table Name, Ok, Health, AgentState, Problem
@@ -43,10 +47,32 @@ function Get-NexusFleetStatus {
 
     Writes the status of the fleet to a CSV file.
 
+    .INPUTS
+    NexusFleet.Host
+    The hosts from Import-NexusInventory (optional).
+
     .OUTPUTS
-    NexusFleet.NodeStatus: Name, Ok, Health, Problem, InInventory, Registered, Maintenance, LastHeartbeat, Location,
-    AgentUrl, CpuPercent, RamUsedMb, RamTotalMb, Address, Reachable, Docker, AgentState, AgentRestarts, UptimeSeconds,
-    DiskFreeMB.
+    NexusFleet.NodeStatus
+    Name, Ok, Health, Problem, InInventory, Registered, Maintenance, LastHeartbeat (UTC, empty when the node never sent
+    one), Location, AgentUrl, CpuPercent, RamUsedMb, RamTotalMb, and from the host: Address, Reachable, Docker,
+    AgentState (running, exited, ... or missing), AgentRestarts, UptimeSeconds, DiskFreeMB.
+
+    .NOTES
+    Needs Connect-NexusInfra first (error NexusFleet.NotConnected otherwise); reading nodes needs no extra scope.
+    Looking at hosts needs what Test-NexusHost needs (SSH with a key, sudo without a password for docker inspect).
+    Each run is logged in logs/<RunId>/.
+
+    .LINK
+    https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/user-guide.md#get-nexusfleetstatus
+
+    .LINK
+    about_NexusFleet
+
+    .LINK
+    Export-NexusFleetStatus
+
+    .LINK
+    Install-NexusNode
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]

@@ -70,6 +70,8 @@ Describe 'Invoke-NexusApi' {
             @{ Status = 404; ErrorId = 'NexusApi.NotFound'; Text = '*404*not found*' }
             @{ Status = 409; ErrorId = 'NexusApi.Conflict'; Text = '*409*conflict*' }
             @{ Status = 503; ErrorId = 'NexusApi.Unavailable'; Text = '*503*temporarily unavailable*' }
+            @{ Status = 500; ErrorId = 'NexusApi.HttpError'; Text = '*500*unexpected answer from the panel*' }
+            @{ Status = 400; ErrorId = 'NexusApi.HttpError'; Text = '*400*unexpected answer from the panel*' }
         ) {
             Mock -CommandName Invoke-RestMethod -MockWith { throw (Get-TestHttpError -Status $Status -ServerMessage 'detail from NexusInfra') }
 
@@ -79,6 +81,15 @@ Describe 'Invoke-NexusApi' {
                 Should -Throw -ExpectedMessage '*detail from NexusInfra*'
         }
 
+        It 'shows NexusInfra''s answer as it is when it is not JSON' {
+            Mock -CommandName Invoke-RestMethod -MockWith {
+                $record = Get-TestHttpError -Status 502
+                $record.ErrorDetails = [System.Management.Automation.ErrorDetails]::new('<html>Bad Gateway</html>')
+                throw $record
+            }
+
+            { Invoke-NexusApi @https -Method POST -Path '/nodes' } | Should -Throw -ErrorId 'NexusApi.Unavailable*' -ExpectedMessage '*<html>Bad Gateway</html>*'
+        }
         It 'does not retry a 403, because asking again will not help' {
             Mock -CommandName Invoke-RestMethod -MockWith { throw (Get-TestHttpError -Status 403) }
 

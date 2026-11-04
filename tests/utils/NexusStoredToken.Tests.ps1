@@ -60,6 +60,15 @@ Describe 'Save-NexusStoredToken' {
         Should -Invoke -CommandName Set-Secret -ParameterFilter { $Name -eq 'NexusFleet-ApiToken' -and $SecureStringSecret -is [securestring] }
     }
 
+    It 'explains how to install SecretManagement when it is missing' {
+        Mock -CommandName Get-Command -ParameterFilter { $Name -eq 'Set-Secret' } -MockWith { $null }
+        Mock -CommandName Set-Secret -MockWith { }
+
+        { Save-NexusStoredToken -SecretName 'NexusFleet-ApiToken' -Token $token } |
+            Should -Throw -ErrorId 'NexusFleet.SecretManagementMissing*' -ExpectedMessage '*Install-Module Microsoft.PowerShell.SecretManagement*'
+        Should -Invoke -CommandName Set-Secret -Times 0 -Exactly
+    }
+
     It 'explains how to register a vault when storing fails' {
         Mock -CommandName Set-Secret -MockWith { throw 'There are currently no extension vaults registered.' }
 

@@ -4,26 +4,35 @@ function Connect-NexusInfra {
     Connects NexusFleet to a NexusInfra panel with an API token and checks that the token may manage nodes.
 
     .DESCRIPTION
-    Checks the token before anything else happens, so a missing right shows up now and not halfway through an
-    installation:
-      - GET /me: the account behind the token must be a platform administrator (role admin or owner).
-      - GET /users: the token must have the admin scope (node routes need it, see docs/ontwerpkeuzes.md E4).
-    The write scope, also needed, cannot be checked without changing something; a token without it fails on
-    the first change with a clear NexusApi.Forbidden error.
+    Every other NexusFleet cmdlet that talks to NexusInfra (Install-NexusNode, Get-NexusFleetStatus) needs this
+    connection first. Connect-NexusInfra checks the token before anything else happens, so a missing right shows
+    up now and not halfway through an installation:
 
-    Without -Token the token is read from SecretManagement (saved earlier with -Save). The connection is kept
-    for the other NexusFleet cmdlets in this PowerShell session. The output shows the connection, never the
-    token. Each run is logged in logs/<RunId>/run.log, without the token.
+      GET /me     the account behind the token must be a platform administrator (role admin or owner)
+      GET /users  the token must have the admin scope; this read-only route sits behind the same check as the
+                  node routes, so it answers 200 with the scope and 403 without it
+
+    The write scope, also needed to register nodes, cannot be checked without changing something. A token
+    without it fails on the first change with a clear NexusApi.Forbidden error.
+
+    Without -Token, the token is read from SecretManagement (stored earlier with -Save). The connection (address,
+    token as a SecureString, account and API settings) is kept for the rest of this PowerShell session. The output
+    shows the connection, never the token, and the run's log (logs/<RunId>/run.log) never contains the token.
+
+    The token is only sent over plain http:// to this machine (localhost); for another http:// address set
+    Api.AllowUnencryptedHttp = $true in config/nexusinfra.local.psd1, which is meant for a trusted lab network only.
 
     .PARAMETER BaseUrl
-    The address of the panel (the gateway, e.g. https://panel.example.com). Default: Api.BaseUrl from the config.
+    The address of the panel: its gateway, e.g. https://panel.example.com or http://localhost:9400. Default:
+    Api.BaseUrl from the config.
 
     .PARAMETER Token
-    The API token (nxi_...) as a SecureString, e.g. from Read-Host -AsSecureString. Create it in the panel with
-    the scopes write and admin. Default: the token stored with -Save.
+    The API token (nxi_...) as a SecureString, e.g. from Read-Host -AsSecureString. Create it in the panel as a
+    platform administrator, with the scopes write and admin. Default: the token stored earlier with -Save.
 
     .PARAMETER Save
-    Also store the token with SecretManagement (default vault), so later sessions can connect without -Token.
+    Also store the token with SecretManagement (in the default vault, under Api.SecretName), so a later session
+    connects without -Token. Supports -WhatIf.
 
     .EXAMPLE
     Connect-NexusInfra -Token (Read-Host -AsSecureString 'API token') -Save
@@ -33,15 +42,37 @@ function Connect-NexusInfra {
     .EXAMPLE
     Connect-NexusInfra
 
-    Connects with the stored token.
+    Connects with the token stored earlier with -Save.
 
     .EXAMPLE
     Connect-NexusInfra -BaseUrl 'https://panel.example.com' -Token $token
 
-    Connects to another panel than the one in the config.
+    Connects to another panel than the one in the config, with a token already in $token.
+
+    .INPUTS
+    None. Connect-NexusInfra does not take pipeline input.
 
     .OUTPUTS
-    NexusFleet.Connection: BaseUrl, User, PlatformRole, TokenSaved, RunId.
+    NexusFleet.Connection
+    BaseUrl, User (the account's e-mail), PlatformRole, TokenSaved (did -Save store it), RunId (of the log).
+
+    .NOTES
+    Error ids: NexusFleet.NotPlatformAdmin (the account is not admin or owner), NexusFleet.TokenMissingAdminScope,
+    NexusFleet.TokenNotStored (no -Token and nothing stored), NexusFleet.SecretManagementMissing, and the NexusApi.*
+    errors of the API client (Unauthorized for a wrong or expired token, Unreachable when the panel does not answer).
+    Storing the token needs Microsoft.PowerShell.SecretManagement and a registered vault (see the user guide).
+
+    .LINK
+    https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/user-guide.md#connect-nexusinfra
+
+    .LINK
+    about_NexusFleet
+
+    .LINK
+    Install-NexusNode
+
+    .LINK
+    Get-NexusFleetStatus
     #>
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([pscustomobject])]

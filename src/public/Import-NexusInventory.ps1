@@ -4,25 +4,27 @@ function Import-NexusInventory {
     Reads a JSON inventory of target hosts, checks every field and returns one NexusFleet.Host object per host.
 
     .DESCRIPTION
-    The inventory is a JSON file with an optional "defaults" object and a "hosts" list. A field missing on a host
-    is taken from "defaults". Fields per host:
+    The inventory is the list of machines NexusFleet works on. It is a JSON file with an optional "defaults" object
+    and a "hosts" list; a field a host does not set is taken from "defaults". The fields of a host:
+
       name      the node id in NexusInfra (required): lowercase letters, digits and dashes, starting with a letter,
-                at most 63 characters (a NexusFleet rule: safe as NODE_ID, file name and DNS name)
+                at most 63 characters, so it is safe as NODE_ID, as a file name and as a DNS name
       address   host name, IPv4 or IPv6 address to reach the host over SSH (required)
       port      SSH port (default 22)
-      user      SSH user that may use sudo (required)
+      user      SSH user that may use sudo without a password (required)
       location  where the node is, shown in NexusInfra (required)
-      role      free label, e.g. "worker" (optional)
-      keyFile   SSH private key for this host (optional; otherwise ssh's default)
-      agentUrl  the address the orchestrator uses to reach the agent
+      role      a free label, e.g. "worker" (optional)
+      keyFile   SSH private key for this host (optional; otherwise ssh's default keys and agent)
+      agentUrl  the address the orchestrator uses to reach this host's agent
                 (default http://<address>:<Agent.Port from the config>)
 
-    Every problem in the file is reported in one error, with the host it belongs to, so a broken inventory can be
-    fixed in one go. Duplicate names and duplicate address:port pairs are refused. An unknown field (probably a
-    typo) gives a warning. The output objects go straight into Test-NexusHost and Install-NexusNode.
+    Every problem in the file is reported in one error, each with the host it belongs to ("host 3 (node-vps01):
+    port must be 1-65535"), so a broken inventory is fixed in one go. Duplicate names and duplicate address:port
+    pairs are refused. An unknown field, probably a typo, gives a warning. Nothing is contacted: this only reads and
+    checks the file. The objects go straight into Test-NexusHost, Install-NexusNode and Get-NexusFleetStatus.
 
     .PARAMETER Path
-    The inventory file. Accepts pipeline input.
+    The inventory file (JSON). Several files can come in through the pipeline; each is read and checked on its own.
 
     .EXAMPLE
     Import-NexusInventory -Path ./config/inventory.json
@@ -32,13 +34,37 @@ function Import-NexusInventory {
     .EXAMPLE
     Import-NexusInventory -Path ./config/inventory.json | Format-Table Name, Address, Port, User, Location
 
-    .EXAMPLE
-    Get-Content ./config/inventory.example.json
+    Shows the hosts as a table, to check what NexusFleet will work on.
 
-    Shows the format: { "defaults": { "user": "fleet", "location": "home" }, "hosts": [ { "name": "node-web01", "address": "10.0.0.5" } ] }
+    .EXAMPLE
+    Import-NexusInventory -Path ./config/inventory.json | Test-NexusHost
+
+    Reads the inventory and checks every host (the usual first step).
+
+    .INPUTS
+    System.String
+    The path of an inventory file.
 
     .OUTPUTS
-    NexusFleet.Host: Name, Address, Port, User, Location, Role, KeyFile, AgentUrl.
+    NexusFleet.Host
+    Name, Address, Port, User, Location, Role, KeyFile, AgentUrl: one object per host, in the order of the file.
+
+    .NOTES
+    Error ids: NexusFleet.InventoryNotFound (no such file) and NexusFleet.InventoryInvalid (broken JSON, or every
+    problem found, in one message). The format is described in docs/inventory.md; config/inventory.example.json is
+    an example. Keep your own inventory in config/inventory.json: that file is git-ignored.
+
+    .LINK
+    https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/inventory.md
+
+    .LINK
+    about_NexusFleet
+
+    .LINK
+    Test-NexusHost
+
+    .LINK
+    Install-NexusNode
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]

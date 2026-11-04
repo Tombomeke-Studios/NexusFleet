@@ -70,12 +70,12 @@ documentation, good comments and help pages.
 - [x] CI: run the integration tests against the node lab in the pipeline (#64)
 
 ### `feature/test-quality`
-- [ ] Help quality test: descriptions, parameters, examples that parse, inputs, outputs, links (#66)
-- [ ] Test review: close the gaps (every config rule, every error id, missed lines) (#67)
+- [x] Help quality test: descriptions, parameters, examples that parse, inputs, outputs, links (#66)
+- [x] Test review: close the gaps (every config rule, every error id, missed lines) (#67)
 
 ### `feature/docs`
-- [ ] Help pages: INPUTS, OUTPUTS, NOTES and LINK on every public cmdlet (#69)
-- [ ] `about_NexusFleet` help topic (#68)
+- [x] Help pages: INPUTS, OUTPUTS, NOTES and LINK on every public cmdlet (#69)
+- [x] `about_NexusFleet` help topic (#68)
 - [ ] English project documentation: user guide, configuration, inventory, testing, development, troubleshooting (#70)
 - [ ] Code comments: review every file in `src/` (#71)
 

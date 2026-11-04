@@ -22,6 +22,7 @@ Describe 'Build-NexusModule' {
         $built | Should -Contain 'NexusFleet.psm1'
         $built | Should -Contain 'config/nexusinfra.psd1'
         $built | Should -Contain 'config/inventory.example.json'
+        $built | Should -Contain 'en-US/about_NexusFleet.help.txt'
         $sources = Get-ChildItem -Path (Join-Path -Path $root -ChildPath 'src') -Filter '*.ps1' -Recurse -File
         @($built | Where-Object { $_ -like 'src/*.ps1' -or $_ -like 'src/*/*.ps1' }).Count | Should -Be $sources.Count
     }
