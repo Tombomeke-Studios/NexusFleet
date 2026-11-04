@@ -1,7 +1,15 @@
-# Runs PSScriptAnalyzer and the Pester unit tests on every push and pull request, and keeps the test results
-# and the code coverage as an artifact.
-# Lint and tests are separate jobs: each runs in its own process, so PSScriptAnalyzer
-# can never load a Pester assembly that blocks Pester 5 (see CLAUDE.md, section 4).
+# CI: lint and unit tests on every push and pull request.
+#
+#   lint   PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1)
+#   test   the Pester unit tests on Linux and on Windows (tools/Invoke-NexusTests.ps1), with code coverage
+#
+# Every job writes what it found to the run's summary page: the totals, every failed test with its reason and
+# file:line, the results per test file, the slowest tests and the coverage per source file. Each failure is also
+# an annotation, so it shows on its line in the pull request. The raw results (NUnit XML, JaCoCo coverage and the
+# Markdown report) are kept as artifacts.
+#
+# Lint and tests are separate jobs, so PSScriptAnalyzer can never load a Pester assembly that blocks Pester 5
+# (CLAUDE.md, section 4). The scripts are the same ones you run locally.
 
 name: CI
 
@@ -27,70 +35,45 @@ jobs:
       - name: Install PSScriptAnalyzer
         run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
 
-      # The same script you run locally. It fails on any finding, writes each finding as an
-      # annotation, and retries only PSScriptAnalyzer's own internal errors (see the script's help).
+      # Fails on any finding; each finding becomes an annotation and a row in the summary. Only PSScriptAnalyzer's
+      # own internal errors are retried (see the script's help).
       - name: Run PSScriptAnalyzer
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
-          ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations
+          ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath $env:GITHUB_STEP_SUMMARY
           Write-Output 'PSScriptAnalyzer: no findings.'
 
   test:
-    name: Pester
-    runs-on: ubuntu-latest
+    name: Pester (${{ matrix.os }})
+    strategy:
+      # Both systems always finish, so one failing system never hides the result of the other.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v7
 
-      # PSScriptAnalyzer and SecretManagement are only mocked here (tests/tools, tests/utils), but Pester can
-      # only mock a command that exists.
+      # PSScriptAnalyzer and SecretManagement are only mocked here (tests/tools, tests/utils), but Pester can only
+      # mock a command that exists.
       - name: Install Pester 5, PSScriptAnalyzer and SecretManagement
         run: |
           Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
           Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
           Install-Module Microsoft.PowerShell.SecretManagement -RequiredVersion 1.1.2 -Scope CurrentUser -Force
 
-      # Test results (NUnit XML) and code coverage of src/ (JaCoCo) are kept as an artifact, and the totals go
-      # into the job summary. The profiler-based coverage (no breakpoints) keeps the run fast.
-      - name: Run Pester (without Integration tests)
+      - name: Run the unit tests
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
-          Import-Module Pester -RequiredVersion 5.7.1
-          New-Item -Path ./TestResults -ItemType Directory -Force | Out-Null
-          $config = New-PesterConfiguration
-          $config.Run.Path = './tests'
-          $config.Run.PassThru = $true
-          $config.Filter.ExcludeTag = 'Integration'
-          $config.Output.Verbosity = 'Detailed'
-          $config.TestResult.Enabled = $true
-          $config.TestResult.OutputFormat = 'NUnitXml'
-          $config.TestResult.OutputPath = './TestResults/pester.xml'
-          $config.CodeCoverage.Enabled = $true
-          $config.CodeCoverage.Path = './src'
-          $config.CodeCoverage.UseBreakpoints = $false
-          $config.CodeCoverage.OutputFormat = 'JaCoCo'
-          $config.CodeCoverage.OutputPath = './TestResults/coverage.xml'
-          $result = Invoke-Pester -Configuration $config
+          ./tools/Invoke-NexusTests.ps1 -Suite Unit -CI | Out-Null
 
-          $summary = @(
-              '### Pester'
-              ''
-              '| Passed | Failed | Skipped | Not run | Coverage of src/ |'
-              '|---|---|---|---|---|'
-              ('| {0} | {1} | {2} | {3} | {4:n1} % |' -f $result.PassedCount, $result.FailedCount, $result.SkippedCount,
-                  $result.NotRunCount, $result.CodeCoverage.CoveragePercent)
-          )
-          $summary | Add-Content -Path $env:GITHUB_STEP_SUMMARY
-          if ($result.FailedCount -gt 0 -or $result.Result -ne 'Passed') {
-              throw "Pester: $($result.FailedCount) test(s) failed."
-          }
-
-      - name: Keep test results and coverage
+      - name: Keep the test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.os }}
           path: TestResults/
           if-no-files-found: ignore
