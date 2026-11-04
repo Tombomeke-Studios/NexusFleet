@@ -20,8 +20,10 @@ Rules the code follows (and tests):
   bash reads them and writes `/etc/nexusinfra/agent.env`: folder mode 700, file mode 600, owner root. The agent gets
   them with `docker run --env-file`.
 - **Never in a log.** Every run knows its secrets (`Initialize-NexusRunContext -Secret`), and `Write-NexusLog`
-  replaces them with `***` (and any `nxi_...` token with `nxi_***`) before a line is written. A test checks every log file of an
-  install run for the three test secrets.
+  replaces them with `***` (and any `nxi_...` token with `nxi_***`) before a line is written. The broker password is
+  registered on its own too, because an error can show it without the rest of the URL, and the longest secret is
+  replaced first, so a secret inside another one never leaves part of it behind. A test checks every log file of an
+  install run for the test secrets. A log line that cannot be written gives a warning; it never fails the run.
 - **Never in the repository.** Your config (`config/*.local.*`) and inventory (`config/inventory.json`) are
   git-ignored, and so are the lab keys (`lab/**/.keys/`). Being ignored is not secret storage, though: the secrets
   themselves belong in SecretManagement.

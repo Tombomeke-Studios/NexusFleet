@@ -49,6 +49,14 @@ Describe 'Write-NexusLog' {
         $line | Should -Match 'token \*\*\* sent, again \*\*\*$'
     }
 
+    It 'redacts a longer secret as a whole, also when a shorter secret is part of it' {
+        # The broker password is part of the broker URL; both are secrets, given short one first.
+        $both = Initialize-NexusRunContext -LogRoot $TestDrive -Secret 'Br0ker-pass', 'amqp://fleet:Br0ker-pass@broker:5672'
+
+        Write-NexusLog -Context $both -Message 'connecting to amqp://fleet:Br0ker-pass@broker:5672 failed'
+
+        Get-Content -Path (Join-Path -Path $both.LogDirectory -ChildPath 'run.log') | Should -Match 'connecting to \*\*\* failed$'
+    }
     It 'redacts NexusInfra API tokens (nxi_...) even when they were not registered' {
         Write-NexusLog -Context $context -Message 'Authorization: Bearer nxi_Ab-9_xYz0123'
 
@@ -67,6 +75,17 @@ Describe 'Write-NexusLog' {
         Write-NexusLog -Context $context -HostName 'fe80::1' -Message 'IPv6 host'
 
         Test-Path -Path (Join-Path -Path $context.LogDirectory -ChildPath 'fe80__1.log') | Should -BeTrue
+    }
+
+    It 'warns instead of failing when the log file cannot be written, so logging never fails the work' {
+        # A folder with the name of the log file: writing to it fails on every OS.
+        $null = New-Item -Path (Join-Path -Path $context.LogDirectory -ChildPath 'web01.log') -ItemType Directory
+
+        # Called directly: an error, even a non-terminating one, would fail the test through -ErrorAction Stop.
+        Write-NexusLog -Context $context -HostName 'web01' -Message 'installed' -ErrorAction Stop -WarningVariable warned -WarningAction SilentlyContinue
+
+        $warned | Should -HaveCount 1
+        $warned[0] | Should -BeLike '*could not write to the log*web01.log*'
     }
 
     It 'still writes under -WhatIf, because a dry run is logged too' {

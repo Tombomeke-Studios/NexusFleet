@@ -9,6 +9,7 @@ function Write-NexusLog {
     Because one host is handled by one runspace, two runspaces never write to the same file.
     Known secrets from the run context and NexusInfra API tokens (nxi_...) are replaced before writing.
     The line is also written to the verbose stream, so -Verbose shows the log live.
+    When the file cannot be written, a warning says so and the run goes on: logging never fails the work.
 
     .PARAMETER Context
     The run context from Initialize-NexusRunContext.
@@ -62,7 +63,13 @@ function Write-NexusLog {
     $fileName = if ($HostName -eq '-') { 'run' } else { $HostName -replace '[^A-Za-z0-9._-]', '_' }
     $logFile = Join-Path -Path $Context.LogDirectory -ChildPath "$fileName.log"
 
-    # -WhatIf:$false: a dry run is logged too.
-    Add-Content -Path $logFile -Value $line -Encoding utf8 -WhatIf:$false
+    # -WhatIf:$false: a dry run is logged too. A log that cannot be written (a locked file, a full disk) must never make
+    # the work itself fail: the host's result would then say "failed" for a host that was installed. So it warns.
+    try {
+        Add-Content -Path $logFile -Value $line -Encoding utf8 -WhatIf:$false -ErrorAction Stop
+    }
+    catch {
+        Write-Warning -Message "NexusFleet could not write to the log ${logFile}: $($_.Exception.Message)"
+    }
     Write-Verbose -Message $line
 }

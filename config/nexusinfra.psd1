@@ -87,4 +87,11 @@
         VerifyTimeoutSeconds = 60
         PollIntervalSeconds  = 2
     }
+
+    Log       = @{
+        # The folder that holds one folder per run (<RunId>/), or '' for logs/ in the folder you run NexusFleet from.
+        Directory = ''
+        # How many run folders to keep; starting a run removes the oldest beyond this number. 0 keeps every run.
+        KeepRuns  = 50
+    }
 }

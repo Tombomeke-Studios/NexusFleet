@@ -53,6 +53,18 @@ Describe 'Test-NexusHost' {
         }
     }
 
+    It 'writes its log to the folder of Log.Directory, keeping Log.KeepRuns runs' {
+        $withLog = $config.Clone()
+        $withLog.Log = @{ Directory = (Join-Path -Path $TestDrive -ChildPath 'fleet-logs'); KeepRuns = 7 }
+        Mock -ModuleName NexusFleet -CommandName Get-NexusConfig -MockWith { $withLog }
+
+        $null = Get-TestHost -Number 1 | Test-NexusHost -ThrottleLimit 1
+
+        Should -Invoke -ModuleName NexusFleet -CommandName Initialize-NexusRunContext -Times 1 -Exactly -ParameterFilter {
+            $LogRoot -eq (Join-Path -Path $TestDrive -ChildPath 'fleet-logs') -and $KeepRuns -eq 7
+        }
+    }
+
     It 'keeps going when one host throws, and gives that host a failed result' {
         Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostPreflight -ParameterFilter { $HostInfo.Name -eq 'node-002' } -MockWith { throw 'kaboom' }
         $hosts = 1..3 | ForEach-Object { Get-TestHost -Number $_ }
