@@ -43,6 +43,18 @@ Describe 'Get-NexusHostStatus' {
         }
     }
 
+    It 'uses the host''s key file and the configured known_hosts file' {
+        Mock -CommandName Invoke-NexusHostCommand -MockWith { Get-FactsResult }
+        $withKey = $hostInfo.PSObject.Copy()
+        $withKey.KeyFile = 'C:/keys/fleet'
+        $sshConfig = @{ Ssh = @{ ConnectTimeoutSeconds = 7; KnownHostsFile = 'C:/keys/known_hosts' }; Agent = $config.Agent }
+
+        $null = Get-NexusHostStatus -HostInfo $withKey -Config $sshConfig
+
+        Should -Invoke -CommandName Invoke-NexusHostCommand -Times 1 -Exactly -ParameterFilter {
+            $KeyFile -eq 'C:/keys/fleet' -and $KnownHostsFile -eq 'C:/keys/known_hosts' -and $ConnectTimeoutSeconds -eq 7
+        }
+    }
     It 'reports a missing agent container as missing' {
         Mock -CommandName Invoke-NexusHostCommand -MockWith { Get-FactsResult -Change @{ agent = '' } }
 

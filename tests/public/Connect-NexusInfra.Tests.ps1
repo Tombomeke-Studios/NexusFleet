@@ -101,6 +101,15 @@ Describe 'Connect-NexusInfra' {
         { Connect-NexusInfra -Token $token } | Should -Throw -ErrorId 'NexusApi.Unauthorized*'
     }
 
+    It 'passes a failure of GET /users other than 403 on unchanged (here: the panel went away)' {
+        Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -ParameterFilter { $Path -eq '/users' } -MockWith {
+            throw (Get-ApiError -ErrorId 'NexusApi.Unreachable' -Message 'cannot reach the panel at https://panel.test')
+        }
+
+        { Connect-NexusInfra -Token $token } | Should -Throw -ErrorId 'NexusApi.Unreachable*' -ExpectedMessage '*cannot reach the panel*'
+        & $module { $script:NexusSession } | Should -BeNullOrEmpty
+    }
+
     It 'stores the token with -Save' {
         $connection = Connect-NexusInfra -Token $token -Save
 

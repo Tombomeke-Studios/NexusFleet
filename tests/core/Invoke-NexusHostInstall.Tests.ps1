@@ -176,6 +176,20 @@ Describe 'Invoke-NexusHostInstall' {
         }
     }
 
+    Context 'ssh settings' {
+        It 'uses the host''s key file and the configured known_hosts file for every step' {
+            $withKey = $hostInfo.PSObject.Copy()
+            $withKey.KeyFile = 'C:/keys/fleet'
+            $sshConfig = & $module { Get-NexusConfig }
+            $sshConfig.Ssh.KnownHostsFile = 'C:/keys/known_hosts'
+
+            $null = & $module { param($HostInfo, $Config, $Session, $Secrets) Invoke-NexusHostInstall -HostInfo $HostInfo -Config $Config -Session $Session -Secrets $Secrets } $withKey $sshConfig $session (Get-FakeSecretSet)
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -ParameterFilter { $KeyFile -ne 'C:/keys/fleet' -or $KnownHostsFile -ne 'C:/keys/known_hosts' } -Times 0 -Exactly
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -ParameterFilter { $KeyFile -eq 'C:/keys/fleet' }
+        }
+    }
+
     Context 'a host that is not ready' {
         It 'touches nothing when the preflight fails, and names the check' {
             $preflightFails = 'Sudo'
@@ -200,6 +214,14 @@ Describe 'Invoke-NexusHostInstall' {
             $result.Error | Should -Match 'ssh to node-web01 \(10\.0\.0\.5\) failed'
         }
 
+        It 'logs an unexpected error in the host''s log' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostPreflight -MockWith { throw 'boom' }
+            $run = & $module { param($Root) Initialize-NexusRunContext -LogRoot $Root } $TestDrive
+
+            $null = & $module { param($HostInfo, $Config, $Session, $Run) Invoke-NexusHostInstall -HostInfo $HostInfo -Config $Config -Session $Session -RunContext $Run } $hostInfo $config $session $run
+
+            Get-Content -Path (Join-Path -Path $run.LogDirectory -ChildPath 'node-web01.log') -Raw | Should -Match 'ERROR.*step=Install.*failed unexpectedly: boom'
+        }
         It 'turns an unexpected error into a failed result' {
             Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostPreflight -MockWith { throw 'boom' }
 
