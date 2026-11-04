@@ -1,26 +1,33 @@
 function Test-NexusHost {
     <#
     .SYNOPSIS
-    Checks in parallel whether hosts are ready to become NexusInfra nodes (preflight). Changes nothing.
+    Checks in parallel whether hosts are ready to become NexusInfra nodes (preflight); changes nothing.
 
     .DESCRIPTION
-    For every host from Import-NexusInventory, checks over ssh: Reachable, SshAuth, OS (supported list in the
-    config), Sudo (without a password), DiskSpace (Preflight.MinDiskFreeMB), Docker (only a warning when missing:
-    Install-NexusNode installs it) and Broker (Broker.Host:Port reachable from the host).
+    For every host from Import-NexusInventory, Test-NexusHost logs in over SSH and checks, in this order:
 
-    Hosts are checked at the same time, at most -ThrottleLimit at once (default Preflight.ThrottleLimit). One host
-    that fails or misbehaves never stops the others: every host gets its own NexusFleet.PreflightResult. Results
-    appear as hosts finish, so with more than one at a time the order can differ from the inventory; with
-    -ThrottleLimit 1 the hosts run one after the other, in order (useful when looking for a problem).
+      Reachable  the host answers on its SSH port within Ssh.ConnectTimeoutSeconds
+      SshAuth    the host accepts the key for the inventory's user
+      OS         the operating system is supported (Preflight.SupportedOs, e.g. ubuntu)
+      Sudo       the user may use sudo without a password (needed to install Docker and the agent)
+      DiskSpace  at least Preflight.MinDiskFreeMB free on /
+      Docker     Docker is installed; only a warning when it is not, because Install-NexusNode installs it
+      Broker     the broker (Broker.Host:Broker.Port) can be reached from the host itself, as the agent will need it
 
-    Every check is logged per host in logs/<RunId>/<host>.log, the summary in run.log.
+    When the host cannot be reached or refuses the key, the other checks are not run. A host is ready (Success) when
+    no check failed; Step names the first failed check and Error says why, in plain words.
+
+    Hosts are checked at the same time, at most -ThrottleLimit at once. One host that fails or misbehaves never stops
+    the others: every host gets its own result. With more than one host at a time the results appear as hosts
+    finish, so the order can differ from the inventory; with -ThrottleLimit 1 they run one after the other, in order.
+    Nothing on the hosts changes. Every check is logged per host in logs/<RunId>/<host>.log.
 
     .PARAMETER InputObject
-    The hosts: NexusFleet.Host objects from Import-NexusInventory, usually through the pipeline.
+    The hosts to check: NexusFleet.Host objects from Import-NexusInventory, usually through the pipeline.
 
     .PARAMETER ThrottleLimit
-    How many hosts are checked at the same time. Default: Preflight.ThrottleLimit from the config. 1 = one after
-    the other.
+    How many hosts are checked at the same time (1-256). Default: Preflight.ThrottleLimit from the config.
+    1 checks them one after the other, in the order of the inventory.
 
     .EXAMPLE
     Import-NexusInventory ./config/inventory.json | Test-NexusHost
@@ -37,8 +44,30 @@ function Test-NexusHost {
 
     Checks the hosts one by one and shows every check of the first host.
 
+    .INPUTS
+    NexusFleet.Host
+    The hosts from Import-NexusInventory.
+
     .OUTPUTS
-    NexusFleet.PreflightResult: Host, Address, Success, Step (first failed check), Error, Checks (Name, Status, Detail).
+    NexusFleet.PreflightResult
+    Host, Address, Success, Step (the first failed check), Error, Checks (Name, Status Pass/Fail/Warning, Detail).
+
+    .NOTES
+    Needs the OpenSSH client (ssh) and a key the hosts accept; ssh never asks for a password (BatchMode). Does not
+    need Connect-NexusInfra: it only talks to the hosts. A new host key is accepted and remembered once; a changed
+    host key is refused (StrictHostKeyChecking=accept-new).
+
+    .LINK
+    https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/user-guide.md#test-nexushost
+
+    .LINK
+    about_NexusFleet
+
+    .LINK
+    Import-NexusInventory
+
+    .LINK
+    Install-NexusNode
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
