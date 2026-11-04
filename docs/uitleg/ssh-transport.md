@@ -89,7 +89,7 @@ $result.ExitCode; $result.StdOut; $result.Succeeded
 ```
 
 1. De opties worden in een lijst opgebouwd: `BatchMode=yes`, `ConnectTimeout`, `StrictHostKeyChecking=accept-new`,
-   `LogLevel=ERROR` (zodat meldingen als "Permanently added ... to known hosts" niet in `StdErr` belanden), de
+   `LogLevel=INFO` (de melding "Permanently added ... to known hosts" filtert de functie zelf uit `StdErr`; met `LogLevel=ERROR` gaf de OpenSSH van Windows 9.5 bij een geweigerde verbinding helemaal geen reden, gevonden door de Windows-CI), de
    poort, en eventueel `-i` en `UserKnownHostsFile`.
 2. Zonder geheim komt er `-n` bij: stdin wordt gesloten, zodat een commando op de host dat iets wil lezen meteen
    "niets" krijgt in plaats van eeuwig te wachten.

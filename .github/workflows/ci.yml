@@ -62,19 +62,6 @@ jobs:
       - name: Install Pester 5, PSScriptAnalyzer and SecretManagement
         run: ./tools/Install-NexusTooling.ps1
 
-      - name: TEMP ssh diagnostics
-        run: |
-          Get-Command ssh | Format-List Source, Version
-          ssh -V
-          $out = & ssh -o BatchMode=yes -o ConnectTimeout=5 -o LogLevel=ERROR -p 1 -n fleet@127.0.0.1 true 2>&1
-          "exit: $LASTEXITCODE"
-          $out | ForEach-Object { "$($_.GetType().Name): [$_]" }
-          $out2 = & ssh -o BatchMode=yes -o ConnectTimeout=5 -p 1 -n fleet@127.0.0.1 true 2>&1
-          "exit without LogLevel: $LASTEXITCODE"
-          $out2 | ForEach-Object { "$($_.GetType().Name): [$_]" }
-          $out3 = & ssh -v -o BatchMode=yes -o ConnectTimeout=5 -p 1 -n fleet@127.0.0.1 true 2>&1
-          $out3 | Select-Object -Last 5 | ForEach-Object { "$($_.GetType().Name): [$_]" }
-
       - name: Run the unit tests
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
