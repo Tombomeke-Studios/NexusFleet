@@ -118,7 +118,8 @@ Nothing else changes: the runner, the cmdlet and `-WhatIf` pick the step up.
 
 1. Write `src/public/<Verb>-Nexus<Noun>.ps1`, with full comment-based help.
 2. Add it to `FunctionsToExport` in the manifest. The export test fails otherwise.
-3. Put the per-host work in its own function in `src/core/`, and keep the cmdlet a thin wrapper.
+3. Put the per-host work in its own function in `src/core/`, with a failure function next to it, and run it with
+   `Invoke-NexusHostLoop`. The cmdlet stays a thin wrapper: collect the hosts in `process`, call the loop in `end`.
 4. Write tests: the per-host function directly, the cmdlet with `-ThrottleLimit 1`, a LocalSsh test, and an
    integration test when only the real thing proves it.
 5. Document it in `about_NexusFleet`, the user guide and the README. The about test checks that every cmdlet is
