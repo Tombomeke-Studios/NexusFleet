@@ -13,12 +13,18 @@ Also creates a second, unauthorised key to test the "wrong key" case. Requires D
 ./lab/E1-transport/Start-LabTarget.ps1
 
 .EXAMPLE
+./lab/E1-transport/Start-LabTarget.ps1 -PlainOnly
+Only the plain target (all the tests need); skips building the image with PowerShell. CI does this.
+
+.EXAMPLE
 ./lab/E1-transport/Start-LabTarget.ps1 -Remove
 Stops and removes both containers.
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [switch]$Remove
+    [switch]$Remove,
+
+    [switch]$PlainOnly
 )
 
 $keyFolder = Join-Path -Path $PSScriptRoot -ChildPath '.keys'
@@ -48,6 +54,9 @@ foreach ($keyName in 'id_ed25519', 'wrong_ed25519') {
 }
 $publicKey = Get-Content -Path (Join-Path -Path $keyFolder -ChildPath 'id_ed25519.pub') -Raw
 
+if ($PlainOnly) {
+    $containers = @($containers | Where-Object { $_.WithPwsh -eq 'false' })
+}
 foreach ($container in $containers) {
     $image = "$($container.Name):latest"
     if ($PSCmdlet.ShouldProcess($image, 'Build image and start container')) {
