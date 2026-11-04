@@ -272,11 +272,16 @@ Branches: `feature/<topic>` → `dev` (default, always green) → `main` (milest
 
 ## Documentation
 
-- [docs/projectvoorstel.md](docs/projectvoorstel.md) — the approved project proposal (Dutch)
-- [docs/architecture.md](docs/architecture.md) — parts, contracts and data flow
-- [docs/ontwerpkeuzes.md](docs/ontwerpkeuzes.md) — design decisions and experiment results (Dutch)
-- [docs/nexusinfra-wijzigingen.md](docs/nexusinfra-wijzigingen.md) — changes made in NexusInfra for this module (Dutch)
-- [docs/uitleg/](docs/uitleg/README.md) — explanations per topic, written as study material (Dutch)
+Index: [docs/README.md](docs/README.md). In the shell: `Get-Help about_NexusFleet` and `Get-Help <cmdlet> -Full`.
+
+**Using NexusFleet:** [user guide](docs/user-guide.md) · [inventory format](docs/inventory.md) ·
+[configuration](docs/configuration.md) · [security](docs/security.md) · [troubleshooting](docs/troubleshooting.md)
+
+**Working on NexusFleet:** [architecture](docs/architecture.md) · [development](docs/development.md) ·
+[testing](docs/testing.md) · [labs](lab/README.md)
+
+**Course documents (Dutch):** [project proposal](docs/projectvoorstel.md) · [design decisions](docs/ontwerpkeuzes.md) ·
+[changes in NexusInfra](docs/nexusinfra-wijzigingen.md) · [explanations per topic](docs/uitleg/README.md)
 
 ## About
 

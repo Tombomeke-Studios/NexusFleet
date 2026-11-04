@@ -67,6 +67,8 @@ function Get-NexusHostStatus {
     if ($Config.Ssh.KnownHostsFile) { $ssh.KnownHostsFile = $Config.Ssh.KnownHostsFile }
 
     try {
+        # One connection for every fact, printed as key=value lines (as the preflight does). Nothing is changed:
+        # docker inspect only reads. Without the container, inspect fails and 'agent=' stays empty.
         $script = @'
 echo "uptime=$(cut -d. -f1 /proc/uptime)"
 echo "diskfreemb=$(df -Pm / | awk 'NR==2 {print $4}')"
@@ -76,6 +78,8 @@ if a=$(sudo -n docker inspect --format '{{.State.Status}}|{{.State.StartedAt}}|{
         $script = $script.Replace('{Name}', (ConvertTo-NexusShellArgument -Value $Config.Agent.ContainerName))
         $answer = Invoke-NexusHostCommand @ssh -Command $script
 
+        # Exit 255 is ssh itself failing (host down, key refused): then nothing is known about the host. Any other
+        # exit code still came from the host, so the facts it printed count.
         if ($answer.TransportFailed) {
             $status.Error = "cannot reach $($HostInfo.Address):$($HostInfo.Port) over ssh: $($answer.StdErr)"
         }
@@ -86,11 +90,13 @@ if a=$(sudo -n docker inspect --format '{{.State.Status}}|{{.State.StartedAt}}|{
                 if ($key) { $facts[$key.Trim()] = "$value".Trim() }
             }
             $status.Reachable = $true
+            # A fact that is not a number (an old df, an empty line) stays $null instead of failing the whole status.
             $number = 0
             if ([int]::TryParse($facts.uptime, [ref]$number)) { $status.UptimeSeconds = $number }
             if ([int]::TryParse($facts.diskfreemb, [ref]$number)) { $status.DiskFreeMB = $number }
             $status.Docker = if ($facts.docker) { $facts.docker } else { $null }
 
+            # docker inspect printed state|started|restarts|image in one line; split it back into its four parts.
             if ($facts.agent) {
                 $state, $started, $restarts, $image = $facts.agent -split '\|', 4
                 $status.AgentState = $state
@@ -104,6 +110,7 @@ if a=$(sudo -n docker inspect --format '{{.State.Status}}|{{.State.StartedAt}}|{
         }
     }
     catch {
+        # Never throw: one host that misbehaves must not stop the status of the others.
         $status.Reachable = $false
         $status.Error = "status of $($HostInfo.Name) failed unexpectedly: $($_.Exception.Message)"
     }

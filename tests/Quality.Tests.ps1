@@ -80,6 +80,57 @@ Describe 'Every config value has a validation rule' {
     }
 }
 
+Describe 'Every link in the documentation works' {
+    BeforeDiscovery {
+        $root = Join-Path -Path $PSScriptRoot -ChildPath '..'
+        $markdownFiles = @(Get-ChildItem -Path $root -Filter '*.md' -Recurse -File |
+                Where-Object { $_.FullName -notmatch '[\\/](\.git|node_modules|out|TestResults|logs)[\\/]' } |
+                ForEach-Object { @{ File = $_.FullName; Name = [System.IO.Path]::GetRelativePath($root, $_.FullName).Replace('\', '/') } })
+    }
+
+    BeforeAll {
+        # The anchor GitHub makes of a heading: lowercase, spaces to dashes, punctuation dropped.
+        function Get-Anchor {
+            param([string]$Heading)
+            ($Heading.Trim().ToLowerInvariant() -replace '[^\w\- ]', '' -replace ' ', '-')
+        }
+        function Get-HeadingAnchor {
+            param([string]$Path)
+            @(Get-Content -Path $Path | Where-Object { $_ -match '^#{1,6} ' } | ForEach-Object { Get-Anchor -Heading ($_ -replace '^#+ ', '') })
+        }
+    }
+
+    It '<Name>: every relative link points to a file (and heading) that exists' -ForEach $markdownFiles {
+        $text = Get-Content -Path $File -Raw
+        # [text](target) outside code: links to http(s), mail or a pure anchor are not checked here.
+        $withoutCode = [regex]::Replace($text, '(?s)```.*?```', '')
+        $withoutCode = [regex]::Replace($withoutCode, '`[^`\n]*`', '')
+        foreach ($match in [regex]::Matches($withoutCode, '\]\(([^)\s]+)\)')) {
+            $target = $match.Groups[1].Value
+            if ($target -match '^(https?:|mailto:|#)') { continue }
+            $path, $anchor = $target -split '#', 2
+            $resolved = Join-Path -Path (Split-Path -Path $File -Parent) -ChildPath ([uri]::UnescapeDataString($path))
+            Test-Path -Path $resolved | Should -BeTrue -Because "$Name links to '$target'"
+            if ($anchor -and $resolved -like '*.md') {
+                Get-HeadingAnchor -Path $resolved | Should -Contain $anchor -Because "$Name links to the heading '#$anchor' in '$path'"
+            }
+        }
+    }
+
+    It 'every online link in the cmdlet help points to an existing document and heading' {
+        $helpLinks = Get-ChildItem -Path (Join-Path -Path $root -ChildPath 'src/public') -Filter '*.ps1' | Get-Content |
+            ForEach-Object { [regex]::Match($_, 'NexusFleet/blob/dev/(docs/[\w.-]+\.md)(#[\w-]+)?') } | Where-Object Success
+        $helpLinks | Should -Not -BeNullOrEmpty
+        foreach ($link in $helpLinks) {
+            $document = Join-Path -Path $root -ChildPath $link.Groups[1].Value
+            Test-Path -Path $document | Should -BeTrue -Because "the help links to $($link.Value)"
+            if ($link.Groups[2].Success) {
+                Get-HeadingAnchor -Path $document | Should -Contain $link.Groups[2].Value.TrimStart('#') -Because "the help links to $($link.Value)"
+            }
+        }
+    }
+}
+
 Describe 'Every error id is tested' {
     It '<Id> is asserted by at least one test' -ForEach $errorIds {
         $testText | Should -Match ([regex]::Escape($Id)) -Because "a test should prove when $Id is raised"

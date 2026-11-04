@@ -68,6 +68,7 @@ documentation, good comments and help pages.
 ### `feature/ci-integration`
 - [x] Node lab: default to the public NexusInfra 0.4.0-community images (#65)
 - [x] CI: run the integration tests against the node lab in the pipeline (#64)
+- [x] Fix: wait for the lab broker, not only for the panel (found by the integration job) (#76)
 
 ### `feature/test-quality`
 - [x] Help quality test: descriptions, parameters, examples that parse, inputs, outputs, links (#66)
@@ -76,8 +77,8 @@ documentation, good comments and help pages.
 ### `feature/docs`
 - [x] Help pages: INPUTS, OUTPUTS, NOTES and LINK on every public cmdlet (#69)
 - [x] `about_NexusFleet` help topic (#68)
-- [ ] English project documentation: user guide, configuration, inventory, testing, development, troubleshooting (#70)
-- [ ] Code comments: review every file in `src/` (#71)
+- [x] English project documentation: user guide, configuration, inventory, testing, development, troubleshooting (#70)
+- [x] Code comments: review every file in `src/` (#71)
 
 ## Phase 5 — Extras (only after `v1.0.0`, in this order)
 
