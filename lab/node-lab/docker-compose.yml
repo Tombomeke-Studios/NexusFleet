@@ -1,0 +1,79 @@
+# The node lab: a NexusInfra control plane (published community images) and two fresh "hosts" for Install-NexusNode.
+# Started and filled by Start-NodeLab.ps1, which also writes .keys/.env (secrets) and the lab inventory and config.
+#
+# Fixed addresses on one network, because the agent runs in a container *inside* a host container: Docker's names
+# (rabbitmq, orchestrator) do not resolve there, addresses do.
+#   172.29.50.10 rabbitmq       the broker the agents connect to (Broker.Host in the lab config)
+#   172.29.50.11 orchestrator   reaches the agents at http://172.29.50.2x:9100 (AGENT_URL)
+#   172.29.50.21 node1          ssh on 127.0.0.1:2231
+#   172.29.50.22 node2          ssh on 127.0.0.1:2232
+# Only the gateway (127.0.0.1:29400) and the two ssh ports are published, and only on this machine.
+name: nexusfleet-node-lab
+
+x-nexusinfra-env: &nexusinfra-env
+  RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@172.29.50.10:5672
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    networks: { lab: { ipv4_address: 172.29.50.10 } }
+
+  control-room:
+    image: ghcr.io/tombomeke-studios/nexusinfra/control-room:${NEXUSINFRA_VERSION}
+    environment: *nexusinfra-env
+    depends_on: [rabbitmq]
+    networks: { lab: { ipv4_address: 172.29.50.13 } }
+
+  orchestrator:
+    image: ghcr.io/tombomeke-studios/nexusinfra/orchestrator:${NEXUSINFRA_VERSION}
+    environment:
+      <<: *nexusinfra-env
+      DATABASE_URL: file:/data/orchestrator.db
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      ADMIN_EMAIL: admin@lab.local
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CONTROL_ROOM_URL: http://172.29.50.13:9000
+      NODE_AGENT_URL: http://172.29.50.21:9100
+    depends_on: [rabbitmq]
+    networks: { lab: { ipv4_address: 172.29.50.11 } }
+
+  gateway:
+    image: ghcr.io/tombomeke-studios/nexusinfra/gateway:${NEXUSINFRA_VERSION}
+    ports: ['127.0.0.1:29400:9400']
+    environment:
+      <<: *nexusinfra-env
+      ORCHESTRATOR_URL: http://172.29.50.11:9200
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on: [orchestrator]
+    networks: { lab: { ipv4_address: 172.29.50.12 } }
+
+  node1: &node
+    build: { context: ./node, args: { PUBKEY: '${LAB_PUBKEY}' } }
+    image: nexusfleet-node-lab-host:latest
+    hostname: node1
+    # Privileged so the Docker daemon that Install-NexusNode installs can run in here; its data in a volume
+    # (overlay on overlay does not work).
+    privileged: true
+    volumes: ['node1-docker:/var/lib/docker']
+    ports: ['127.0.0.1:2231:22']
+    networks: { lab: { ipv4_address: 172.29.50.21 } }
+
+  node2:
+    <<: *node
+    hostname: node2
+    volumes: ['node2-docker:/var/lib/docker']
+    ports: ['127.0.0.1:2232:22']
+    networks: { lab: { ipv4_address: 172.29.50.22 } }
+
+volumes:
+  node1-docker:
+  node2-docker:
+
+networks:
+  lab:
+    ipam:
+      config: [{ subnet: 172.29.50.0/24 }]
