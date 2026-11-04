@@ -20,6 +20,7 @@ $results | Where-Object { -not $_.Success } | Format-List Host, Step, Error
 | `NexusFleet.TokenMissingAdminScope` | The token lacks the `admin` scope | Create a token with the scopes `write` and `admin` |
 | `NexusApi.Forbidden` (403) on the first change | The token lacks the `write` scope | As above |
 | `NexusApi.Unreachable`: "cannot reach the panel at ..." | Wrong `Api.BaseUrl`, the panel is down, or a firewall | Check the address in your local config; open it in a browser |
+| `NexusApi.RateLimited` (429) | The gateway allows 50 requests/s per token. A GET is retried first; this error means it stayed full, usually with very many hosts at once | Lower `-ThrottleLimit`, or raise `Health.PollIntervalSeconds` |
 | `NexusApi.UnencryptedNotAllowed` | `http://` to another machine | Use `https://`, or on a trusted lab network set `Api.AllowUnencryptedHttp = $true` |
 | `NexusFleet.TokenNotStored` | No `-Token`, and nothing stored | `Connect-NexusInfra -Token (Read-Host -AsSecureString 'API token') -Save` |
 | `NexusFleet.SecretManagementMissing` / `TokenNotSaved` | SecretManagement or a vault is missing | See [the user guide](user-guide.md#before-you-start) |
