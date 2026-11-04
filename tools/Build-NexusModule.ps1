@@ -5,7 +5,7 @@ Builds the NexusFleet module as it is shipped: only the files the module needs, 
 .DESCRIPTION
 Used locally and by the release workflow (.github/workflows/release.yml), so both build the same way.
 Copies into <OutputPath>/NexusFleet/:
-  NexusFleet.psd1, NexusFleet.psm1, README.md
+  NexusFleet.psd1, NexusFleet.psm1, README.md, en-US/about_NexusFleet.help.txt (Get-Help about_NexusFleet)
   src/<folder>/*.ps1                     (not the README.md placeholders)
   config/nexusinfra.psd1, config/inventory.example.json   (never a local config or a real inventory)
 Then checks the result: the manifest is valid, and the built module loads and exports exactly the cmdlets of the
@@ -38,7 +38,7 @@ if (Test-Path -Path $target) {
 }
 
 # What the module needs, and nothing else.
-$files = @('NexusFleet.psd1', 'NexusFleet.psm1', 'README.md', 'config/nexusinfra.psd1', 'config/inventory.example.json')
+$files = @('NexusFleet.psd1', 'NexusFleet.psm1', 'README.md', 'config/nexusinfra.psd1', 'config/inventory.example.json', 'en-US/about_NexusFleet.help.txt')
 $files += Get-ChildItem -Path (Join-Path -Path $root -ChildPath 'src') -Filter '*.ps1' -Recurse -File |
     ForEach-Object { [System.IO.Path]::GetRelativePath($root, $_.FullName) }
 

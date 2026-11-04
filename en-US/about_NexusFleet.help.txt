@@ -1,0 +1,107 @@
+TOPIC
+    about_NexusFleet
+
+SHORT DESCRIPTION
+    NexusFleet turns Linux hosts into NexusInfra nodes and manages them as a fleet.
+
+LONG DESCRIPTION
+    NexusInfra is a self-hosted server panel. A machine becomes a NexusInfra
+    node when the NexusInfra node agent runs on it: the agent sends heartbeats
+    to NexusInfra's message broker, and NexusInfra places servers on it. Doing
+    that by hand means installing Docker, starting the agent container with
+    the right variables and options, registering the node and checking that
+    it becomes healthy. NexusFleet does it for many hosts at once, repeatably:
+    it checks before every step whether the step is still needed, undoes what
+    it changed when a step fails, and gives one result object per host.
+
+THE WORKFLOW
+    1. Connect to the panel (once per session; -Save stores the token):
+
+           Connect-NexusInfra -Token (Read-Host -AsSecureString 'API token') -Save
+
+    2. Read the inventory, the list of hosts (a JSON file):
+
+           $hosts = Import-NexusInventory -Path ./config/inventory.json
+
+    3. Check the hosts; this changes nothing:
+
+           $hosts | Test-NexusHost
+
+    4. Look at the plan, then install:
+
+           $hosts | Install-NexusNode -WhatIf
+           $hosts | Install-NexusNode
+
+       A second run changes nothing: every host reports Changed = False.
+
+    5. See how the fleet is doing, and export it:
+
+           $hosts | Get-NexusFleetStatus | Format-Table Name, Ok, Health, Problem
+           $hosts | Get-NexusFleetStatus | Export-NexusFleetStatus -Path ./status.csv
+
+THE CMDLETS
+    Connect-NexusInfra       Connects to a panel and checks the token's rights.
+    Import-NexusInventory    Reads and checks the inventory of hosts.
+    Test-NexusHost           Checks in parallel whether hosts are ready.
+    Install-NexusNode        Turns hosts into healthy nodes, with rollback.
+    Get-NexusFleetStatus     Status per node, from NexusInfra and the host.
+    Export-NexusFleetStatus  Writes that status to JSON or CSV.
+
+    Get-Help <cmdlet> -Full shows every parameter, the output and examples.
+
+WHAT A HOST NEEDS
+    Ubuntu (tested on 24.04), reachable over SSH with a key, a user that may
+    use sudo without a password, at least 2 GB free on /, and internet access
+    for apt and ghcr.io. The broker must be reachable from the host, and the
+    orchestrator must reach the host's agent on port 9100 (the inventory's
+    agentUrl). Test-NexusHost checks all of this except the last.
+
+CONFIGURATION
+    Every NexusInfra-specific value (panel address, agent image, port, the
+    names of the environment variables, time-outs) is in
+    config/nexusinfra.psd1 in the module folder. Put your own values in
+    config/nexusinfra.local.psd1, with only the keys you change, e.g.:
+
+        @{ Api = @{ BaseUrl = 'https://panel.example.com' }; Broker = @{ Host = '10.0.0.2' } }
+
+    Every value is checked when a cmdlet starts; all problems are reported at
+    once.
+
+SECRETS
+    Three secrets are involved: the API token, the broker URL (it contains the
+    broker's password) and NexusInfra's INTERNAL_API_TOKEN. NexusFleet keeps
+    them as SecureStrings and stores them with SecretManagement:
+
+        Set-Secret -Name NexusFleet-RabbitMqUrl -Secret (Read-Host -AsSecureString 'RABBITMQ_URL')
+        Set-Secret -Name NexusFleet-InternalApiToken -Secret (Read-Host -AsSecureString 'INTERNAL_API_TOKEN')
+
+    They reach a host over the stdin of ssh, never on a command line, and are
+    written there to /etc/nexusinfra/agent.env (mode 600). Logs never contain
+    them. The API token is only sent over plain http:// to this machine,
+    unless Api.AllowUnencryptedHttp is set.
+
+LOGS
+    Every run gets a RunId and a folder logs/<RunId>/ in the current folder:
+    one file per host and run.log for the run, one line per event:
+
+        2026-11-04T07:35:00.123Z INFO run=20261104T073500Z-1a2b3c host=node-web01 step=Docker applied
+
+    A dry run (-WhatIf) is logged too.
+
+TROUBLESHOOTING
+    Test-NexusHost names the first failed check per host and why. A failed
+    installation names the step and the reason in Step and Error, and
+    $result.Steps shows every step. The host's log has the details. The user
+    guide (docs/troubleshooting.md) lists the common problems and fixes.
+
+SEE ALSO
+    Connect-NexusInfra
+    Import-NexusInventory
+    Test-NexusHost
+    Install-NexusNode
+    Get-NexusFleetStatus
+    Export-NexusFleetStatus
+    https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/user-guide.md
+
+KEYWORDS
+    NexusInfra, node, fleet, agent, inventory, preflight
