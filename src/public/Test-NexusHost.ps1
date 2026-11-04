@@ -13,6 +13,9 @@ function Test-NexusHost {
       DiskSpace  at least Preflight.MinDiskFreeMB free on /
       Docker     Docker is installed; only a warning when it is not, because Install-NexusNode installs it
       Broker     the broker (Broker.Host:Broker.Port) can be reached from the host itself, as the agent will need it
+      AgentLink  only for a host with reach "outbound": the control plane supports the agent link (known when
+                 connected with Connect-NexusInfra), and the host reaches the link's address (Agent.Link.Url, or
+                 the panel address of the connection or of Api.BaseUrl)
 
     When the host cannot be reached or refuses the key, the other checks are not run. A host is ready (Success) when
     no check failed; Step names the first failed check and Error says why, in plain words.
@@ -99,11 +102,24 @@ function Test-NexusHost {
         $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory -KeepRuns $config.Log.KeepRuns
         Write-NexusLog -Context $run -Message "Preflight of $($hosts.Count) host(s), $ThrottleLimit at a time"
 
+        $parameter = @{ Config = $config; RunContext = $run }
+        # Hosts whose agent connects outbound also need the agent link (docs/agent-link.md). Without a connection
+        # the panel address comes from the config, and whether the control plane supports the link is unknown.
+        if ($hosts | Where-Object Reach -EQ 'outbound') {
+            $session = $null
+            try { $session = Get-NexusSession } catch { $session = $null }
+            $baseUrl = if ($session) { $session.BaseUrl } else { $config.Api.BaseUrl }
+            $parameter.LinkUrl = Get-NexusAgentLinkUrl -Link $config.Agent.Link -BaseUrl $baseUrl
+            if ($session -and 'agent-link' -notin @($session.Features)) {
+                $parameter.LinkUnsupported = $true
+            }
+        }
+
         # Every host on its own, $ThrottleLimit at a time (see Invoke-NexusHostLoop); one result per host, always.
         $loop = @{
             InputObject     = @($hosts | ForEach-Object { @{ HostInfo = $_ } })
             FunctionName    = 'Invoke-NexusHostPreflight'
-            Parameter       = @{ Config = $config; RunContext = $run }
+            Parameter       = $parameter
             FailureFunction = 'ConvertTo-NexusPreflightFailure'
             ThrottleLimit   = $ThrottleLimit
             Activity        = 'NexusFleet preflight'

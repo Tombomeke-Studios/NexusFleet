@@ -11,6 +11,8 @@ function Connect-NexusInfra {
       GET /me     the account behind the token must be a platform administrator (role admin or owner)
       GET /users  the token must have the admin scope; this read-only route sits behind the same check as the
                   node routes, so it answers 200 with the scope and 403 without it
+      GET /config the features of this control plane, e.g. agent-link (needed for hosts with reach outbound);
+                  an older NexusInfra lists none, which is not an error
 
     The write scope, also needed to register nodes, cannot be checked without changing something. A token
     without it fails on the first change with a clear NexusApi.Forbidden error.
@@ -135,6 +137,16 @@ function Connect-NexusInfra {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 
+    # What this control plane supports beyond NexusInfra 0.4.0, e.g. 'agent-link' (docs/agent-link.md). An older
+    # version lists no features; a failure here is not a reason to refuse the connection, it only means "none".
+    $features = @()
+    try {
+        $features = @((Invoke-NexusApi @api -Method GET -Path '/config').features | Where-Object { $_ })
+    }
+    catch {
+        Write-Verbose "GET /config failed, so no extra features are assumed: $($_.Exception.Message)"
+    }
+
     $script:NexusSession = [pscustomobject]@{
         PSTypeName           = 'NexusFleet.Session'
         BaseUrl              = $BaseUrl
@@ -144,6 +156,7 @@ function Connect-NexusInfra {
         TimeoutSeconds       = $api.TimeoutSeconds
         RetryCount           = $api.RetryCount
         AllowUnencryptedHttp = $api.AllowUnencryptedHttp
+        Features             = $features
         ConnectedAt          = [datetime]::UtcNow
     }
     Write-NexusLog -Context $run -Message "Connected to $BaseUrl as $($me.email) ($($me.platformRole))"

@@ -64,6 +64,32 @@ Describe 'Import-NexusInventory' {
             $hosts[1].AgentUrl | Should -Be 'https://agent-b.example.com'
         }
 
+        It 'reaches a host directly unless it says otherwise, and an outbound host has no agent URL' {
+            $path = Write-TestInventory @{
+                defaults = @{ user = 'fleet'; location = 'home' }
+                hosts    = @(
+                    @{ name = 'node-a'; address = '10.0.0.5' }
+                    @{ name = 'node-b'; address = '10.0.0.6'; reach = 'outbound' }
+                )
+            }
+
+            $hosts = @(Import-NexusInventory -Path $path)
+
+            $hosts[0].Reach | Should -Be 'direct'
+            $hosts[0].AgentUrl | Should -Be 'http://10.0.0.5:9100'
+            $hosts[1].Reach | Should -Be 'outbound'
+            $hosts[1].AgentUrl | Should -BeNullOrEmpty
+        }
+
+        It 'takes reach from the defaults' {
+            $path = Write-TestInventory @{
+                defaults = @{ user = 'fleet'; location = 'home'; reach = 'outbound' }
+                hosts    = @(@{ name = 'node-a'; address = '10.0.0.5' })
+            }
+
+            (Import-NexusInventory -Path $path).Reach | Should -Be 'outbound'
+        }
+
         It 'reads the example inventory of the repository without problems' {
             $example = Join-Path -Path $PSScriptRoot -ChildPath '../../config/inventory.example.json'
 
@@ -129,6 +155,18 @@ Describe 'Import-NexusInventory' {
             $path = Write-TestInventory @{ hosts = @(@{ name = 'node-a'; address = '10.0.0.5'; user = 'fleet'; location = 'home'; agentUrl = 'ftp://10.0.0.5' }) }
 
             { Import-NexusInventory -Path $path } | Should -Throw -ExpectedMessage "*node-a*agentUrl 'ftp://10.0.0.5' must be an http(s) URL*"
+        }
+
+        It 'refuses an unknown reach' {
+            $path = Write-TestInventory @{ hosts = @(@{ name = 'node-a'; address = '10.0.0.5'; user = 'fleet'; location = 'home'; reach = 'tunnel' }) }
+
+            { Import-NexusInventory -Path $path } | Should -Throw -ExpectedMessage "*node-a*reach 'tunnel' must be direct or outbound*"
+        }
+
+        It 'refuses an agentUrl on an outbound host (it would never be used)' {
+            $path = Write-TestInventory @{ hosts = @(@{ name = 'node-a'; address = '10.0.0.5'; user = 'fleet'; location = 'home'; reach = 'outbound'; agentUrl = 'http://10.0.0.5:9100' }) }
+
+            { Import-NexusInventory -Path $path } | Should -Throw -ExpectedMessage '*node-a*agentUrl*outbound*'
         }
 
         It 'names a host without a usable name by its position' {

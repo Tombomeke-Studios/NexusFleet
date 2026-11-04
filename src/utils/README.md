@@ -17,6 +17,7 @@ Small internal functions the rest of the module builds on. None is exported.
 | **Talking to hosts** | |
 | `Get-NexusSshParameter.ps1` | The ssh settings of one host (from the inventory and the config), as a splat for `Invoke-NexusHostCommand` |
 | `Get-NexusApiParameter.ps1` | The connection settings of the session, as a splat for `Invoke-NexusApi` |
+| `Get-NexusAgentLinkUrl.ps1` | The WebSocket URL an outbound agent dials: `Agent.Link.Url`, or the panel address as `ws(s)://` plus `Agent.Link.Path` |
 | `ConvertTo-NexusShellArgument.ps1` | Single-quotes a value for bash, so no value can break out of a remote command |
 | `ConvertFrom-NexusFactLine.ps1` | Reads the `key=value` lines a host prints into a hashtable |
 | **The per-host loop** | |

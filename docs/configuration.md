@@ -61,6 +61,11 @@ The test `tests/Quality.Tests.ps1` makes sure every key below has such a rule.
 | `EnvNames.RabbitMqUrl` | `RABBITMQ_URL` | variable name | |
 | `EnvNames.InternalApiToken` | `INTERNAL_API_TOKEN` | variable name | |
 | `EnvNames.AgentUrl` | `AGENT_URL` | variable name | |
+| `EnvNames.LinkUrl` | `AGENT_LINK_URL` | variable name | For a host with `reach: outbound` only (see [agent-link.md](agent-link.md)). |
+| `EnvNames.LinkToken` | `AGENT_LINK_TOKEN` | variable name | |
+| `EnvNames.LinkInsecure` | `AGENT_LINK_ALLOW_INSECURE` | variable name | Set to `true` only when the link URL is `ws://` (a lab). |
+| `Link.Url` | `''` | `''` or a `ws://`/`wss://` URL | The URL an outbound agent dials, as the nodes reach the control plane. Empty: `Api.BaseUrl` with `http` → `ws` and `https` → `wss`, plus `Link.Path`. |
+| `Link.Path` | `/agent-link` | path starting with `/` | The gateway route of the agent link. |
 | `SecretNames.RabbitMqUrl` | `NexusFleet-RabbitMqUrl` | secret name | Where `Install-NexusNode` finds the broker URL with SecretManagement when `-RabbitMqUrl` is not given. |
 | `SecretNames.InternalApiToken` | `NexusFleet-InternalApiToken` | secret name | Likewise for `-InternalApiToken`. |
 

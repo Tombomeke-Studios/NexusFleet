@@ -81,12 +81,18 @@ broker: AMQP is not HTTP.
 |---|---|---|---|
 | a cloud VM (Azure, or any VPS) | its public address | default: `http://<public address>:9100` | in the network security group: 22, and 9100 only from the home address |
 | a VM at home, next to the control plane (VirtualBox, bridged) | `nexus.<your-domain>`, `port` 2222 (router: 2222 → the VM's 22) | `http://<the VM's home address>:9100`: the orchestrator is on the same network | nothing for 9100 |
-| a VM on a laptop at school | its address on the laptop | none that works | nothing can be opened: the school's network is in between |
+| a VM on a laptop at school | its address on the laptop | none: `"reach": "outbound"` | nothing: its agent connects to `wss://nexus.<your-domain>/agent-link` itself |
 
-The laptop VM cannot become a working node from school: the orchestrator at home cannot open a connection to it, and
-no port forwarding at home changes that. A real server has a public address or a port forward; a laptop on someone
-else's network has neither. In the demo it shows criterion 3 honestly: it fails at `AgentReachable` with the reason,
-and the other hosts are not stopped by it. Run NexusFleet itself from the laptop.
+The orchestrator at home can never open a connection to the laptop VM at school: the school's network is in between,
+and no port forwarding at home changes that. So that host gets `"reach": "outbound"`: its agent connects to the
+control plane over the agent link, through the same gateway as the panel, and the control plane's calls come back
+over that connection ([agent-link.md](../../docs/agent-link.md), K11). It needs a NexusInfra with the agent link
+(NexusInfra #416) and TLS in front of the gateway (`wss://`). Until then, this host shows criterion 3 honestly: it
+fails at `AgentReachable` with the reason, and the other hosts are not stopped by it. Run NexusFleet itself from the
+laptop.
+
+The broker still needs its own port (5672) from every host, also the outbound one: a network that only lets 443
+out (some school and guest networks) blocks the heartbeats. Test the school network beforehand.
 
 Two things to check before the demo:
 - **The broker from each host:** `Test-NexusHost` checks it from the host itself (`Broker`).

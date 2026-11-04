@@ -54,7 +54,7 @@ Describe 'Step AgentContainer' {
             $null = & $step.Test $context
 
             Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -Times 1 -Exactly -ParameterFilter {
-                $Command -match "grep -E '\^\(NODE_ID\|AGENT_URL\)='" -and $Command -notmatch 'RABBITMQ_URL|INTERNAL_API_TOKEN'
+                $Command -match "grep -E '\^\(NODE_ID\|AGENT_URL\|AGENT_LINK_URL\)='" -and $Command -notmatch 'RABBITMQ_URL|INTERNAL_API_TOKEN|AGENT_LINK_TOKEN'
             }
         }
 
@@ -144,6 +144,77 @@ Describe 'Step AgentContainer' {
         It 'puts NODE_ID and AGENT_URL of this host in the env file' {
             Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -ParameterFilter {
                 $Command -match "'NODE_ID' 'node-web01'" -and $Command -match "'AGENT_URL' 'http://10.0.0.5:9100'"
+            }
+        }
+    }
+
+    Context 'a host with reach outbound' {
+        BeforeEach {
+            $context = Get-TestStepContext -Module $module -Outbound
+            $outboundLines = @{ url = 'env=AGENT_LINK_URL=wss://nexus.example.com/agent-link' }
+        }
+
+        It 'is in order without a published port and with the link URL' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-InspectResult -Replace $outboundLines -Drop 'port' }
+
+            & $step.Test $context | Should -BeTrue
+        }
+
+        It 'is not in order when <Why>' -ForEach @(
+            @{ Why = 'the agent port is still published (nothing should be open)'; Drop = @() ; Replace = @{ url = 'env=AGENT_LINK_URL=wss://nexus.example.com/agent-link' } }
+            @{ Why = 'the link URL differs'; Drop = @('port'); Replace = @{ url = 'env=AGENT_LINK_URL=wss://old.example.com/agent-link' } }
+            @{ Why = 'the agent has no link (a direct agent)'; Drop = @('port'); Replace = @{ url = 'env=AGENT_URL=http://10.0.0.5:9100' } }
+        ) {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-InspectResult -Replace $Replace -Drop $Drop }
+
+            & $step.Test $context | Should -BeFalse
+        }
+
+        Context 'Apply' {
+            BeforeEach {
+                Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-TestCommandResult }
+                Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { [pscustomobject]@{ token = 'link-T0ken' } }
+            }
+
+            It 'mints a link token for this node and sends it on stdin as the third secret, never in the command' {
+                & $step.Apply $context
+
+                Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 1 -Exactly -ParameterFilter {
+                    $Method -eq 'POST' -and $Path -eq '/nodes/node-web01/link-token'
+                }
+                Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -Times 1 -Exactly -ParameterFilter {
+                    $Secret.Count -eq 3 -and [System.Net.NetworkCredential]::new('', $Secret[2]).Password -eq 'link-T0ken' -and
+                    $Command -match 'IFS= read -r link_token' -and $Command -notmatch 'link-T0ken'
+                }
+            }
+
+            It 'writes the link URL and token to the env file, publishes no port and sets no AGENT_URL' {
+                & $step.Apply $context
+
+                Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -ParameterFilter {
+                    $Command -match "'AGENT_LINK_URL' 'wss://nexus.example.com/agent-link'" -and
+                    $Command -match "'AGENT_LINK_TOKEN' `"\`$link_token`"" -and
+                    $Command -notmatch '-p 9100' -and $Command -notmatch 'AGENT_URL' -and $Command -notmatch 'AGENT_LINK_ALLOW_INSECURE'
+                }
+            }
+
+            It 'refuses a ws:// link (no TLS) unless Api.AllowUnencryptedHttp is set, before it touches anything' {
+                $context.LinkUrl = 'ws://192.168.0.6:9400/agent-link'
+
+                { & $step.Apply $context } | Should -Throw '*ws://*not encrypted*AllowUnencryptedHttp*'
+                Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 0 -Exactly
+                Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -Times 0 -Exactly
+            }
+
+            It 'allows a ws:// link in a lab with Api.AllowUnencryptedHttp, and tells the agent so' {
+                $context.LinkUrl = 'ws://172.29.50.1:9400/agent-link'
+                $context.Config.Api.AllowUnencryptedHttp = $true
+
+                & $step.Apply $context
+
+                Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -ParameterFilter {
+                    $Command -match "'AGENT_LINK_ALLOW_INSECURE' 'true'"
+                }
             }
         }
     }

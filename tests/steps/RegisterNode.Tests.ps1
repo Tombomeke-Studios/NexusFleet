@@ -70,6 +70,37 @@ Describe 'Step RegisterNode' {
         }
     }
 
+    Context 'a host with reach outbound' {
+        BeforeEach {
+            $context = Get-TestStepContext -Module $module -Outbound
+            $outboundNode = [pscustomobject]@{ id = 'node-web01'; name = 'node-web01'; location = 'home'; agentUrl = $null; connection = 'outbound'; linked = $false }
+        }
+
+        It 'is in order when the node is registered as outbound, whatever its agentUrl' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { @($outboundNode) }
+
+            & $step.Test $context | Should -BeTrue
+        }
+
+        It 'is not in order when the node is registered as direct' {
+            $direct = $outboundNode.PSObject.Copy()
+            $direct.connection = 'direct'
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { @($direct) }
+
+            & $step.Test $context | Should -BeFalse
+        }
+
+        It 'sends POST /nodes with connection outbound and no agentUrl' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { $outboundNode }
+
+            & $step.Apply $context
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 1 -Exactly -ParameterFilter {
+                $Method -eq 'POST' -and $Path -eq '/nodes' -and $Body.connection -eq 'outbound' -and -not $Body.ContainsKey('agentUrl')
+            }
+        }
+    }
+
     Context 'Rollback' {
         It 'deletes the node when this run created it' {
             Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { }

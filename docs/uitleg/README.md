@@ -21,5 +21,6 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | Preflight | [preflight.md](preflight.md) | `Test-NexusHost`: de checks, het parallelle patroon in de praktijk, drie soorten tests |
 | Installatie | [installatie.md](installatie.md) | `Install-NexusNode`: de vier stappen, geheimen naar de agent, `-WhatIf`, de nep-fleet, het node-lab |
 | Status | [status.md](status.md) | `Get-NexusFleetStatus` en `Export-NexusFleetStatus`: twee kanten van een node, nooit stoppen, export |
+| Bereik (outbound) | [agent-link.md](agent-link.md) | `reach: outbound`: de agent verbindt zelf, link-token per node, geen open poort, de check `AgentLink` |
 | CI/CD | [ci-cd.md](ci-cd.md) | Testresultaten en dekking in CI, het buildscript, de release-workflow, schaaltests, het demoscript |
 | Gedeelde hulpfuncties | [gedeelde-hulpfuncties.md](gedeelde-hulpfuncties.md) | De gedeelde lus per server (`Invoke-NexusHostLoop`), ssh- en API-parameters, `sleutel=waarde` lezen |

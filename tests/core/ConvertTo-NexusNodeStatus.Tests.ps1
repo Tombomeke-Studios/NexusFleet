@@ -66,6 +66,31 @@ Describe 'ConvertTo-NexusNodeStatus' {
         $status.Problem | Should -Be $Expected
     }
 
+    It 'shows how NexusInfra reaches the node: direct by default, and for outbound whether the link is up' {
+        $direct = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $node -HostInfo $hostInfo -HostStatus $seen
+        $direct.Connection | Should -Be 'direct'
+        $direct.Linked | Should -BeNullOrEmpty
+
+        $outbound = $node.PSObject.Copy()
+        $outbound | Add-Member -NotePropertyName connection -NotePropertyValue 'outbound'
+        $outbound | Add-Member -NotePropertyName linked -NotePropertyValue $true
+        $linked = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $outbound -HostInfo $hostInfo -HostStatus $seen
+        $linked.Connection | Should -Be 'outbound'
+        $linked.Linked | Should -BeTrue
+        $linked.Ok | Should -BeTrue
+    }
+
+    It 'names a healthy outbound node whose link is down as a problem (NexusInfra hears it but cannot control it)' {
+        $outbound = $node.PSObject.Copy()
+        $outbound | Add-Member -NotePropertyName connection -NotePropertyValue 'outbound'
+        $outbound | Add-Member -NotePropertyName linked -NotePropertyValue $false
+
+        $status = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $outbound -HostInfo $hostInfo -HostStatus $seen
+
+        $status.Ok | Should -BeFalse
+        $status.Problem | Should -BeLike '*agent link is down*'
+    }
+
     It 'lists several problems at once' {
         $offline = $node.PSObject.Copy()
         $offline.health = 'offline'

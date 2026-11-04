@@ -59,6 +59,56 @@ Describe 'Invoke-NexusHostInstall' {
         }
     }
 
+    Context 'a host with reach outbound (behind NAT)' {
+        BeforeEach {
+            $outboundHost = Get-FakeHostInfo -Name 'node-laptop' -Address '10.0.0.7' -Outbound
+            Add-FakeHost -Fake $fake -Address '10.0.0.7'
+            # Behind TLS, as over the internet: the link is then wss://.
+            $tlsSession = Get-FakeSession
+            $tlsSession.BaseUrl = 'https://nexus.example.com'
+            $installOutbound = {
+                param([pscustomobject]$Session = $tlsSession)
+                & $module {
+                    param($HostInfo, $Config, $Session, $Secrets)
+                    Invoke-NexusHostInstall -HostInfo $HostInfo -Config $Config -Session $Session -Secrets $Secrets
+                } $outboundHost $config $Session (Get-FakeSecretSet)
+            }
+        }
+
+        It 'becomes a node NexusInfra can control over the link, with a token minted for it, and a second run changes nothing' {
+            $result = & $installOutbound
+
+            $result.Success | Should -BeTrue
+            $result.Steps.Outcome | Should -Be @('Applied', 'Applied', 'Applied', 'Applied', 'AlreadyDone')
+            $fake.Changes | Should -Be @('10.0.0.7 install docker', 'POST /nodes node-laptop', 'POST /nodes/node-laptop/link-token', '10.0.0.7 start agent')
+            $fake.Nodes['node-laptop'].connection | Should -Be 'outbound'
+            $fake.Nodes['node-laptop'].linked | Should -BeTrue
+
+            $fake.Changes.Clear()
+            $second = & $installOutbound
+
+            $second.Changed | Should -BeFalse
+            $fake.Changes | Should -BeNullOrEmpty
+        }
+
+        It 'gives the preflight and the steps the link URL of the connection' {
+            $null = & $installOutbound
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostPreflight -ParameterFilter {
+                $LinkUrl -eq 'wss://nexus.example.com/agent-link' -and -not $LinkUnsupported
+            }
+        }
+
+        It 'tells the preflight when the control plane does not support the agent link' {
+            $old = $tlsSession.PSObject.Copy()
+            $old.Features = @()
+
+            $null = & $installOutbound -Session $old
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostPreflight -ParameterFilter { $LinkUnsupported }
+        }
+    }
+
     Context 'a second run (idempotency)' {
         It 'changes nothing on a host that is already a healthy node' {
             $null = & $install

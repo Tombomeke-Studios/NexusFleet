@@ -8,6 +8,7 @@
 | `NexusStoredToken.Tests.ps1` | SecretManagement: storing and reading, and clear errors when it or a vault is missing |
 | `Get-NexusSession.Tests.ps1` | The error when you are not connected |
 | `Get-NexusSshParameter.Tests.ps1`, `Get-NexusApiParameter.Tests.ps1` | The splats for ssh and the API |
+| `Get-NexusAgentLinkUrl.Tests.ps1` | The link URL derived from the panel address, or the one from the config |
 | `ConvertTo-NexusShellArgument.Tests.ps1` | Quoting for bash, including quotes inside the value |
 | `ConvertFrom-NexusFactLine.Tests.ps1` | `key=value` answers: an `=` in the value, Windows line endings, empty lines |
 | `Get-NexusUrlPassword.Tests.ps1` | The password from a broker URL, encoded or missing, and a text that is no URL |

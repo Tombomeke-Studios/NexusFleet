@@ -70,7 +70,8 @@ everything a step needs, because module variables do not exist in a parallel run
 
 | Key | Contents |
 |---|---|
-| `HostInfo` | The `NexusFleet.Host` from the inventory (name = node id, location, agentUrl) |
+| `HostInfo` | The `NexusFleet.Host` from the inventory (name = node id, location, reach, agentUrl) |
+| `LinkUrl` | For a host with `reach: outbound`: the `ws(s)://` URL its agent dials (`Get-NexusAgentLinkUrl`); else `$null` |
 | `Config` | The validated config |
 | `Ssh` | Arguments for `Invoke-NexusHostCommand` (address, port, user, key, known_hosts, time-out) |
 | `Api` | Arguments for `Invoke-NexusApi` (base URL, token, time-out, retries), from the session |
@@ -119,6 +120,18 @@ Import-NexusInventory ──► Get-NexusFleetStatus (process: collect hosts; no
 `config/nexusinfra.psd1` holds every NexusInfra-specific value (`Api`, `Agent`, `Docker`, `Broker`, `Ssh`, `Preflight`, `Install`, `Health`). An optional, git-ignored
 `config/nexusinfra.local.psd1` overrides only what differs (deep merge; unknown keys give a warning).
 `Get-NexusConfig` validates every value against a list of rules and reports all problems in one error.
+
+## Reach: how the control plane reaches an agent
+
+A host's `reach` decides the direction of the control plane → agent connection ([agent-link.md](agent-link.md)):
+
+| | `direct` | `outbound` |
+|---|---|---|
+| `RegisterNode` | `POST /nodes` with `agentUrl` | `POST /nodes` with `connection: outbound` |
+| `AgentContainer` | publishes `Agent.Port`, sets `AGENT_URL` | publishes nothing; mints a link token (`POST /nodes/<id>/link-token`), sets `AGENT_LINK_URL` and the token (stdin, env file) |
+| Preflight | — | `AgentLink`: the control plane lists `agent-link` (`GET /config`, kept on the session by `Connect-NexusInfra`), and the host reaches the link's host and port |
+| `AgentReachable` | the same `GET /nodes/<id>/disk` for both: NexusInfra calls the agent, directly or over the link | |
+| Status | `Connection = direct` | `Connection = outbound`, `Linked` |
 
 ## REST API
 

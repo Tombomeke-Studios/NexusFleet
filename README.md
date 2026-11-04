@@ -62,12 +62,15 @@ flowchart LR
 
 | Step | Checks first | Then |
 |---|---|---|
-| **Preflight** | ssh login, Ubuntu, `sudo`, free disk space, Docker, the broker reachable from the host | a host that is not ready is left untouched |
+| **Preflight** | ssh login, Ubuntu, `sudo`, free disk space, Docker, the broker reachable from the host (and for `reach: outbound`, the agent link) | a host that is not ready is left untouched |
 | **Docker** | is Docker installed and running? | installs Ubuntu's `docker.io` |
 | **RegisterNode** | is the node in NexusInfra, with the same name, location and agent URL? | `POST /nodes` |
-| **AgentContainer** | does the agent run with every setting, including the three that fail silently? | writes `/etc/nexusinfra/agent.env` (mode 600) and starts the agent |
+| **AgentContainer** | does the agent run with every setting, including the three that fail silently? | writes `/etc/nexusinfra/agent.env` (mode 600) and starts the agent; for `reach: outbound` with the agent link and no open port |
 | **VerifyHealthy** | does NexusInfra report the node healthy? | waits until it does, or rolls back |
 | **AgentReachable** | can NexusInfra call the agent, not only hear its heartbeats? | fails with what to check, and rolls back |
+
+A host behind NAT (a laptop on Wi-Fi, a home server) gets `"reach": "outbound"` in the inventory: its agent connects
+to the control plane itself, so no port has to be opened on it. See [docs/agent-link.md](docs/agent-link.md).
 
 ## Quick start
 

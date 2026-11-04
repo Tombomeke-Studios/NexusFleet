@@ -65,7 +65,14 @@ function ConvertTo-NexusNodeStatus {
         if ($health -ne 'healthy') {
             $problems.Add("NexusInfra reports it $health")
         }
+        # An outbound node is only controllable while its agent link is up (docs/agent-link.md).
+        if ($Node.connection -eq 'outbound' -and -not $Node.linked) {
+            $problems.Add('its agent link is down: NexusInfra hears its heartbeats but cannot send it anything')
+        }
     }
+
+    # How NexusInfra reaches the agent. NexusInfra 0.4.0 says nothing, and then it is direct.
+    $connection = if ($Node -and $Node.connection) { $Node.connection } elseif ($HostInfo -and $HostInfo.Reach) { $HostInfo.Reach } else { 'direct' }
 
     if ($HostStatus) {
         if (-not $HostStatus.Reachable) {
@@ -101,6 +108,8 @@ function ConvertTo-NexusNodeStatus {
         Maintenance   = if ($Node) { [bool]$Node.maintenance } else { $null }
         LastHeartbeat = $lastHeartbeat
         Location      = if ($Node -and $Node.location) { $Node.location } elseif ($HostInfo) { $HostInfo.Location } else { $null }
+        Connection    = $connection
+        Linked        = if ($connection -eq 'outbound' -and $Node) { [bool]$Node.linked } else { $null }
         AgentUrl      = if ($Node -and $Node.agentUrl) { $Node.agentUrl } elseif ($HostInfo) { $HostInfo.AgentUrl } else { $null }
         CpuPercent    = if ($Node) { $Node.cpuPercent } else { $null }
         RamUsedMb     = if ($Node) { $Node.ramUsedMb } else { $null }

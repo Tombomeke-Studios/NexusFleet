@@ -35,6 +35,17 @@
             RabbitMqUrl      = 'RABBITMQ_URL'
             InternalApiToken = 'INTERNAL_API_TOKEN'
             AgentUrl         = 'AGENT_URL'
+            # Only for a host with reach "outbound" (docs/agent-link.md).
+            LinkUrl          = 'AGENT_LINK_URL'
+            LinkToken        = 'AGENT_LINK_TOKEN'
+            LinkInsecure     = 'AGENT_LINK_ALLOW_INSECURE'
+        }
+        # The agent link: how an agent with reach "outbound" connects to the control plane (docs/agent-link.md).
+        Link            = @{
+            # The WebSocket URL the agents dial, as the nodes reach it. Empty: Api.BaseUrl with http -> ws and
+            # https -> wss, plus Path. Set it when the nodes reach the control plane under another name.
+            Url  = ''
+            Path = '/agent-link'
         }
         # Names under which Install-NexusNode finds the agent's secrets with SecretManagement, when they are not
         # passed as parameters. Store them with: Set-Secret -Name NexusFleet-RabbitMqUrl -Secret (Read-Host -AsSecureString)

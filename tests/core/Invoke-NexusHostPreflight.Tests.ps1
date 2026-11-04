@@ -67,6 +67,51 @@ Describe 'Invoke-NexusHostPreflight' {
         Should -Invoke -CommandName Invoke-NexusHostCommand -ParameterFilter { $Command -like '*/dev/tcp/broker.example.com/5672*' }
     }
 
+    Context 'a host with reach outbound' {
+        BeforeAll {
+            $outbound = $hostInfo.PSObject.Copy()
+            $outbound | Add-Member -NotePropertyName Reach -NotePropertyValue 'outbound'
+            $outbound.AgentUrl = $null
+            $linkUrl = 'wss://nexus.example.com/agent-link'
+        }
+
+        It 'also checks from the host that the agent link''s address can be reached' {
+            $facts = @{ link = 'yes' }
+
+            $result = Invoke-NexusHostPreflight -HostInfo $outbound -Config $config -LinkUrl $linkUrl
+
+            $result.Success | Should -BeTrue
+            $result.Checks.Name | Should -Be @('Reachable', 'SshAuth', 'OS', 'Sudo', 'DiskSpace', 'Docker', 'Broker', 'AgentLink')
+            Should -Invoke -CommandName Invoke-NexusHostCommand -ParameterFilter { $Command -like '*/dev/tcp/nexus.example.com/443*' }
+        }
+
+        It 'fails AgentLink when the host cannot reach the link''s address' {
+            $facts = @{ link = 'no' }
+
+            $result = Invoke-NexusHostPreflight -HostInfo $outbound -Config $config -LinkUrl $linkUrl
+
+            $result.Success | Should -BeFalse
+            $result.Step | Should -Be 'AgentLink'
+            $result.Error | Should -BeLike '*nexus.example.com:443*not reachable*'
+        }
+
+        It 'fails AgentLink when the control plane does not support the agent link' {
+            $facts = @{ link = 'yes' }
+
+            $result = Invoke-NexusHostPreflight -HostInfo $outbound -Config $config -LinkUrl $linkUrl -LinkUnsupported
+
+            $result.Step | Should -Be 'AgentLink'
+            $result.Error | Should -BeLike '*does not support the agent link*'
+        }
+
+        It 'fails AgentLink when there is no link URL' {
+            $result = Invoke-NexusHostPreflight -HostInfo $outbound -Config $config
+
+            $result.Step | Should -Be 'AgentLink'
+            $result.Error | Should -BeLike '*no agent link URL*'
+        }
+    }
+
     It 'only warns when Docker is missing, because the install adds it' {
         $facts = @{ docker = '' }
 

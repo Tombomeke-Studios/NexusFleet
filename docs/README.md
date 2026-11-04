@@ -17,6 +17,7 @@
 | Document | What it covers |
 |---|---|
 | [architecture.md](architecture.md) | The parts, the contracts (step, transport, step context) and the data flow |
+| [agent-link.md](agent-link.md) | Design of `reach: outbound`: agents that connect to the control plane themselves (with NexusInfra #416) |
 | [development.md](development.md) | Setup, layout, conventions, workflow, adding a step or a cmdlet, building and releasing |
 | [testing.md](testing.md) | The kinds of tests, how to run them, the labs, what CI shows |
 | [../lab/README.md](../lab/README.md) | The labs and the experiments |

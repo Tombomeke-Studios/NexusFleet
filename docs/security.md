@@ -10,6 +10,7 @@ them, and what it deliberately does not do.
 | API token (`nxi_...`) | NexusInfra token of a platform administrator, with the scopes `write` and `admin` | SecretManagement (`Api.SecretName`) or the `-Token` parameter |
 | Broker URL | `amqp://user:password@host:5672`, so it contains the broker's password | SecretManagement (`Agent.SecretNames.RabbitMqUrl`) or `-RabbitMqUrl` |
 | `INTERNAL_API_TOKEN` | NexusInfra's shared token between the orchestrator and the agents | SecretManagement (`Agent.SecretNames.InternalApiToken`) or `-InternalApiToken` |
+| Link token | Only for a host with `reach: outbound`: the credential of that one node's agent link | Nowhere: minted with `POST /nodes/<id>/link-token` while the agent is (re)created, sent over stdin into the env file, and never kept. NexusInfra stores only its hash; a new install rotates it |
 
 Rules the code follows (and tests):
 
@@ -60,6 +61,10 @@ touching anything else.
 
 - The agent speaks **plain HTTP** on port 9100. Its `/health` route is open; everything else needs the
   `INTERNAL_API_TOKEN`. Allow port 9100 only from the orchestrator's address.
+- A host with **`reach: outbound`** publishes no port at all: its agent connects to the gateway itself, over
+  `wss://` (TLS), with a link token for that node only. One node's token cannot open another node's link. A `ws://`
+  link (no TLS) is refused unless `Api.AllowUnencryptedHttp` is set, which is for a lab
+  ([agent-link.md](agent-link.md)).
 - **Docker-published ports bypass `ufw`**, because Docker writes its own iptables rules. Do not rely on `ufw` alone to
   close 9100; restrict it at the network level, or in the `DOCKER-USER` chain.
 - The broker must not use NexusInfra's default `guest/guest` credentials on any network the hosts share.

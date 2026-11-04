@@ -63,6 +63,9 @@ inventory.json ─► Import-NexusInventory ─► Test-NexusHost ─► Install
   because RabbitMQ refuses `guest` from another machine. Before these NexusInfra changes, publish the port by hand.
 - The **orchestrator** must reach each host's agent on port 9100 (it calls the agent to deploy; `Install-NexusNode`
   checks this). For hosts on other networks, see [the demo guide](../lab/demo/README.md#over-the-internet-without-a-vpn).
+  A host behind NAT, which the orchestrator can never call, gets `"reach": "outbound"` in the inventory: its agent
+  then connects to the control plane itself and needs no open port. That needs a NexusInfra with the agent link
+  ([agent-link.md](agent-link.md)).
 - You need its `INTERNAL_API_TOKEN` (from its `.env`) and the broker URL `amqp://user:password@host:5672`.
 - An **API token** of a platform administrator, with the scopes `write` and `admin`.
 
