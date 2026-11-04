@@ -15,12 +15,12 @@ BeforeAll {
     $hostInfo = Get-FakeHostInfo -Name 'node-web01' -Address '10.0.0.5'
 
     $install = {
-        param([switch]$PlanOnly, [switch]$NoSecrets)
+        param([switch]$PlanOnly, [switch]$NoSecrets, [switch]$Force)
         $secrets = if ($NoSecrets) { $null } else { Get-FakeSecretSet }
         & $module {
-            param($HostInfo, $Config, $Session, $Secrets, $PlanOnly)
-            Invoke-NexusHostInstall -HostInfo $HostInfo -Config $Config -Session $Session -Secrets $Secrets -PlanOnly:$PlanOnly
-        } $hostInfo $config $session $secrets $PlanOnly
+            param($HostInfo, $Config, $Session, $Secrets, $PlanOnly, $Force)
+            Invoke-NexusHostInstall -HostInfo $HostInfo -Config $Config -Session $Session -Secrets $Secrets -PlanOnly:$PlanOnly -Force:$Force
+        } $hostInfo $config $session $secrets $PlanOnly $Force
     }
 }
 
@@ -69,6 +69,18 @@ Describe 'Invoke-NexusHostInstall' {
             $second.Changed | Should -BeFalse
             $second.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone')
             $fake.Changes | Should -BeNullOrEmpty
+        }
+
+        It 'with -Force recreates only the agent on a finished host (to apply a changed secret)' {
+            $null = & $install
+            $fake.Changes.Clear()
+
+            $forced = & $install -Force
+
+            $forced.Success | Should -BeTrue
+            $forced.Changed | Should -BeTrue
+            $forced.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'Applied', 'Applied')
+            $fake.Changes | Should -Be @('10.0.0.5 start agent')
         }
 
         It 'only does what is missing: Docker present, node and agent not' {

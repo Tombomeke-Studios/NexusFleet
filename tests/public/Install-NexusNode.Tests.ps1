@@ -80,6 +80,16 @@ Describe 'Install-NexusNode' {
         $fake.Hosts['10.0.0.2'].Docker | Should -BeFalse
     }
 
+    It 'passes -Force on to every host' {
+        $null = $hosts | Install-NexusNode -ThrottleLimit 1
+        $fake.Changes.Clear()
+
+        $forced = @($hosts | Install-NexusNode -ThrottleLimit 1 -Force)
+
+        $forced.Changed | Should -Not -Contain $false
+        @($fake.Changes | Where-Object { $_ -like '*start agent' }) | Should -HaveCount 3
+    }
+
     Context 'secrets' {
         It 'reads the agent secrets from SecretManagement when they are not passed' {
             $null = $hosts | Install-NexusNode -ThrottleLimit 1

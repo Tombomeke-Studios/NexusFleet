@@ -37,6 +37,10 @@ function Install-NexusNode {
     NexusInfra's INTERNAL_API_TOKEN (shared by the orchestrator and the agents) as a SecureString. Default: the
     secret named in Agent.SecretNames.InternalApiToken.
 
+    .PARAMETER Force
+    Recreate the agent container on every host, even when it looks in order. Needed after a change of RABBITMQ_URL
+    or INTERNAL_API_TOKEN: the check never reads the secrets back from a host, so it cannot see that they changed.
+
     .PARAMETER ThrottleLimit
     How many hosts are installed at the same time. Default: Install.ThrottleLimit from the config. 1 = one after
     the other, in order.
@@ -62,6 +66,11 @@ function Install-NexusNode {
 
     Installs the hosts one by one and shows what happened in every step of one host.
 
+    .EXAMPLE
+    Import-NexusInventory ./config/inventory.json | Install-NexusNode -Force
+
+    After changing the broker password: recreates the agent on every host with the new secrets.
+
     .OUTPUTS
     NexusFleet.InstallResult: Host, Success, PlanOnly, Changed, Step (where it failed), Error, Steps (Step, Outcome,
     Rollback, Error), Preflight.
@@ -76,6 +85,8 @@ function Install-NexusNode {
         [securestring]$RabbitMqUrl,
 
         [securestring]$InternalApiToken,
+
+        [switch]$Force,
 
         [ValidateRange(1, 256)]
         [int]$ThrottleLimit
@@ -147,7 +158,7 @@ function Install-NexusNode {
             $results = foreach ($item in $work) {
                 try {
                     Invoke-NexusHostInstall -HostInfo $item.HostInfo -Config $config -Session $session -Secrets $secrets `
-                        -PlanOnly:$item.PlanOnly -RunContext $run
+                        -PlanOnly:$item.PlanOnly -Force:$Force -RunContext $run
                 }
                 catch {
                     ConvertTo-NexusInstallFailure -HostInfo $item.HostInfo -Message $_.Exception.Message -PlanOnly:$item.PlanOnly
@@ -162,15 +173,15 @@ function Install-NexusNode {
             $results = $work | ForEach-Object -ThrottleLimit $ThrottleLimit -Parallel {
                 $module = Import-Module -Name $using:manifest -PassThru
                 & $module {
-                    param($Item, $Config, $Session, $Secrets, $Run)
+                    param($Item, $Config, $Session, $Secrets, $Run, $Force)
                     try {
                         Invoke-NexusHostInstall -HostInfo $Item.HostInfo -Config $Config -Session $Session -Secrets $Secrets `
-                            -PlanOnly:$Item.PlanOnly -RunContext $Run
+                            -PlanOnly:$Item.PlanOnly -Force:$Force -RunContext $Run
                     }
                     catch {
                         ConvertTo-NexusInstallFailure -HostInfo $Item.HostInfo -Message $_.Exception.Message -PlanOnly:$Item.PlanOnly
                     }
-                } $_ $using:config $using:session $using:secrets $using:run
+                } $_ $using:config $using:session $using:secrets $using:run ([bool]$using:Force)
             } | & $showProgress
         }
         Write-Progress -Activity 'NexusFleet install' -Completed
