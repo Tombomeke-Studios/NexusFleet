@@ -66,8 +66,8 @@ documentation, good comments and help pages.
 - [x] Fix: ssh's reason was empty on Windows OpenSSH 9.5 (found by the Windows job) (#72)
 
 ### `feature/ci-integration`
-- [ ] Node lab: default to the public NexusInfra 0.4.0-community images (#65)
-- [ ] CI: run the integration tests against the node lab in the pipeline (#64)
+- [x] Node lab: default to the public NexusInfra 0.4.0-community images (#65)
+- [x] CI: run the integration tests against the node lab in the pipeline (#64)
 
 ### `feature/test-quality`
 - [ ] Help quality test: descriptions, parameters, examples that parse, inputs, outputs, links (#66)

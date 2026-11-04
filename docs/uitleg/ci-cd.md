@@ -19,6 +19,7 @@ Het demoscript draait de hele flow op een inventaris en meet de tijden voor het 
 | `.github/workflows/ci.yml` | Lint en unit-tests op Linux én Windows; rapport in de samenvatting, annotaties, artifacts |
 | `tools/Invoke-NexusTests.ps1` | Eén testrun, lokaal en in CI hetzelfde: Pester 5, resultaten, dekking, rapport |
 | `tools/Write-NexusTestReport.ps1` | Maakt van een Pester-run een rapport: totalen, elke gefaalde test met reden en `bestand:regel`, per testbestand, traagste tests, dekking per bronbestand; plus een annotatie per fout |
+| `.github/workflows/integration.yml` | Beide labs in Docker op de runner, de integratietests, logs als artifact, opruimen |
 | `tools/Install-NexusTooling.ps1` | Installeert de vastgezette versies van Pester, PSScriptAnalyzer en SecretManagement, met herkansingen |
 | `.github/workflows/release.yml` | Bij een tag `v*`: dezelfde controles, versie nakijken, bouwen, release maken |
 | `tools/Build-NexusModule.ps1` | Bouwt `out/NexusFleet/` en `out/NexusFleet-<versie>.zip` met alleen wat de module nodig heeft |
@@ -42,6 +43,13 @@ regel (`ErrorRecord.TargetObject.File` en `.Line`). Het rapport zet ze in een li
 Een testbestand waarvan de `BeforeAll` faalt, staat er één keer in, met de reden, in plaats van al zijn tests apart.
 Per fout maakt het ook een regel `::error file=...,line=...,title=...::melding`. GitHub leest die uit de uitvoer van de stap
 en toont de fout op die regel in de pull request. Het rapport komt in `$env:GITHUB_STEP_SUMMARY`, de pagina van de run.
+
+**Integratie in de pipeline.** `integration.yml` start op een GitHub-runner met Docker het E1-lab en het node-lab
+(NexusInfra 0.4.0 uit de gepubliceerde images, twee verse Ubuntu-servers) en draait alle `Integration`-tests: ook de
+drie criteria van "Klaar als". Dat gebeurt bij elke pull request en push naar `dev` en `main`, en met de hand. Een
+overgeslagen test laat de job hier falen: in CI worden de labs eerst gestart, dus een overslag betekent dat een lab
+niet opkwam. De logs van NexusFleet (`logs/<RunId>/`) en van elke container gaan mee als artifact, en de labs worden
+altijd weer opgeruimd (`if: always()`).
 
 **Linux en Windows.** De testjob draait als matrix op `ubuntu-latest` en `windows-latest`, met `fail-fast: false`, zodat
 het ene systeem het resultaat van het andere nooit verbergt. De eerste Windows-run vond meteen een echte fout (#72): de

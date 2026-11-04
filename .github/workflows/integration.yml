@@ -1,0 +1,81 @@
+# Integration: the real thing, end to end, on a GitHub runner with Docker.
+#
+# Starts the two labs (lab/README.md):
+#   E1 lab    an Ubuntu host with sshd and a sudo user          (transport, preflight)
+#   node lab  a NexusInfra 0.4.0 control plane from the published images and two fresh Ubuntu hosts
+#             in which Install-NexusNode installs Docker and the agent (install, status)
+# and runs every test tagged Integration: among them the three "Klaar als" criteria of the MVP (one command
+# turns the hosts into healthy nodes, a second run changes nothing, a failing host does not stop the others).
+#
+# The report (every failed test with its reason and file:line) goes into the run's summary, like the unit tests.
+# NexusFleet's own run logs (logs/<RunId>/) and the lab containers' logs are kept as an artifact, so a failure
+# can be followed step by step. A skipped integration test fails the job here: in CI the labs are started first,
+# so a skip means a lab did not come up.
+#
+# Takes a few minutes (images, apt inside the hosts), so it runs on pull requests and pushes to dev and main, and
+# by hand; not on every push to a feature branch.
+
+name: Integration
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Integration (labs in Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Pester 5 and SecretManagement
+        run: ./tools/Install-NexusTooling.ps1 -Name Pester, SecretManagement
+
+      - name: Start the E1 lab
+        run: ./lab/E1-transport/Start-LabTarget.ps1 -PlainOnly | Format-Table -AutoSize
+
+      - name: Start the node lab
+        run: ./lab/node-lab/Start-NodeLab.ps1 | Format-List
+
+      - name: Run the integration tests
+        run: |
+          Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
+          ./tools/Invoke-NexusTests.ps1 -Suite Integration -CI | Out-Null
+
+      # Everything needed to follow a failure: NexusFleet's logs per run and host, and what the lab containers said.
+      - name: Collect the logs
+        if: always()
+        run: |
+          New-Item -Path ./TestResults/lab-logs -ItemType Directory -Force | Out-Null
+          foreach ($name in docker ps -a --format '{{.Names}}') {
+              docker logs $name *> "./TestResults/lab-logs/$name.log"
+          }
+          foreach ($port in 2231, 2232) {
+              ssh -i ./lab/node-lab/.keys/id_ed25519 -o UserKnownHostsFile=./lab/node-lab/.keys/known_hosts -o BatchMode=yes `
+                  -o StrictHostKeyChecking=accept-new -p $port fleet@127.0.0.1 'sudo -n docker logs nexusinfra-node-agent' *> "./TestResults/lab-logs/agent-on-$port.log"
+          }
+          if (Test-Path -Path ./logs) { Copy-Item -Path ./logs -Destination ./TestResults/nexusfleet-logs -Recurse }
+
+      - name: Keep the results and the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-results
+          path: TestResults/
+          if-no-files-found: ignore
+
+      - name: Remove the labs
+        if: always()
+        run: |
+          ./lab/node-lab/Start-NodeLab.ps1 -Remove
+          ./lab/E1-transport/Start-LabTarget.ps1 -Remove

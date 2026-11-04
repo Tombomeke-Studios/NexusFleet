@@ -16,7 +16,8 @@ Every secret here is a lab-only value, created by this script and kept in the gi
 Stops the lab and deletes its containers and volumes (the .keys folder stays; delete it by hand for new secrets).
 
 .PARAMETER Version
-The NexusInfra image tag. Default: 0.4.0-qa-community (the nexusfleet-baseline release).
+The NexusInfra image tag, for the control plane and the agents alike. Default: 0.4.0-community, the published
+images of the nexusfleet-baseline release (v0.4.0) on ghcr.io, so any machine and CI can pull them.
 
 .EXAMPLE
 ./lab/node-lab/Start-NodeLab.ps1
@@ -29,7 +30,7 @@ param(
     [switch]$Remove,
 
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
-    [string]$Version = '0.4.0-qa-community'
+    [string]$Version = '0.4.0-community'
 )
 
 $keyFolder = Join-Path -Path $PSScriptRoot -ChildPath '.keys'
@@ -69,6 +70,9 @@ if (-not (Test-Path -Path $envFile)) {
     )
     Set-Content -Path $envFile -Value $lines
 }
+# The version follows -Version on every start; the secrets stay.
+$lines = @(Get-Content -Path $envFile | Where-Object { $_ -notlike 'NEXUSINFRA_VERSION=*' }) + "NEXUSINFRA_VERSION=$Version"
+Set-Content -Path $envFile -Value $lines
 $settings = @{}
 foreach ($line in Get-Content -Path $envFile) {
     $key, $value = $line -split '=', 2
@@ -98,7 +102,19 @@ foreach ($attempt in 1..60) {
 if (-not $jwt) { throw "The lab panel at $baseUrl did not answer within 2 minutes; see: docker @compose logs orchestrator" }
 
 $tokenFile = Join-Path -Path $keyFolder -ChildPath 'api-token'
-if (-not (Test-Path -Path $tokenFile)) {
+# A kept token only counts when this panel still knows it: the panel's database lives in its container, so a
+# recreated lab has forgotten every token.
+$tokenValid = $false
+if (Test-Path -Path $tokenFile) {
+    try {
+        $null = Invoke-RestMethod -Uri "$baseUrl/me" -Headers @{ Authorization = "Bearer $(Get-Content -Path $tokenFile -Raw)" } -TimeoutSec 5
+        $tokenValid = $true
+    }
+    catch {
+        Write-Verbose "The kept API token is no longer valid; creating a new one."
+    }
+}
+if (-not $tokenValid) {
     $headers = @{ Authorization = "Bearer $jwt" }
     $body = @{ name = 'nexusfleet-lab'; scopes = @('write', 'admin') } | ConvertTo-Json
     $created = Invoke-RestMethod -Method Post -Uri "$baseUrl/me/tokens" -Headers $headers -Body $body -ContentType 'application/json'
@@ -111,6 +127,7 @@ $labConfig = @"
 @{
     Api    = @{ BaseUrl = '$baseUrl' }
     Broker = @{ Host = '172.29.50.10'; Port = 5672 }
+    Agent  = @{ Image = 'ghcr.io/tombomeke-studios/nexusinfra/node-agent:$Version' }
     Ssh    = @{ KnownHostsFile = '$($knownHosts.Replace('\', '/'))' }
     Health = @{ VerifyTimeoutSeconds = 120 }
 }
