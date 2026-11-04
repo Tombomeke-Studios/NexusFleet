@@ -9,8 +9,9 @@ function Invoke-NexusHostCommand {
     once (StrictHostKeyChecking=accept-new); a changed key is refused.
 
     A secret (for example the agent's INTERNAL_API_TOKEN) is sent on stdin as bytes, so it never appears on
-    a command line or in the process list of the host, and arrives without the CR/LF PowerShell would add
-    to a string. The remote command reads it, e.g. with: IFS= read -r token
+    a command line or in the process list of the host. Each secret is one line ending in LF only (never the
+    CR/LF PowerShell would add to a string), so the remote command reads them in order, e.g. with:
+    IFS= read -r token. A secret with a line break in it is refused.
 
     The command is run by the remote shell as given: never build it from untrusted text.
 
@@ -27,7 +28,7 @@ function Invoke-NexusHostCommand {
     The shell command to run on the host.
 
     .PARAMETER Secret
-    Optional secret to send on stdin.
+    Optional secrets to send on stdin, one line each, in this order.
 
     .PARAMETER KeyFile
     Optional private key file (otherwise ssh uses its defaults and the agent).
@@ -64,7 +65,7 @@ function Invoke-NexusHostCommand {
         [ValidateNotNullOrEmpty()]
         [string]$Command,
 
-        [securestring]$Secret,
+        [securestring[]]$Secret,
 
         [ValidateNotNullOrEmpty()]
         [string]$KeyFile,
@@ -91,8 +92,16 @@ function Invoke-NexusHostCommand {
 
     $inputBytes = $null
     if ($Secret) {
+        $lines = foreach ($item in $Secret) {
+            $plain = [System.Net.NetworkCredential]::new('', $item).Password
+            if ($plain -match '[
+]') {
+                throw 'A secret for Invoke-NexusHostCommand contains a line break; it would arrive as two lines.'
+            }
+            "$plain`n"
+        }
         # Bytes, not a string: a string piped to a native command gets CR/LF appended on Windows (E1).
-        $inputBytes = [System.Text.Encoding]::UTF8.GetBytes([System.Net.NetworkCredential]::new('', $Secret).Password)
+        $inputBytes = [System.Text.Encoding]::UTF8.GetBytes(-join $lines)
     }
 
     $raw = Invoke-NexusSshClient -ArgumentList $sshArgs -InputBytes $inputBytes

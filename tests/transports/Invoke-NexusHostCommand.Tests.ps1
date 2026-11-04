@@ -89,16 +89,34 @@ Describe 'Invoke-NexusHostCommand' {
     }
 
     Context 'secrets' {
-        It 'sends a secret on stdin as bytes, without a line ending, and never as an argument' {
+        It 'sends a secret on stdin as bytes, as one line ending in LF only, and never as an argument' {
             # Copy the bytes: the function clears its own array after the call.
             Mock -CommandName Invoke-NexusSshClient -MockWith { $seen.Args = $ArgumentList; $seen.Input = [byte[]]$InputBytes.Clone(); [pscustomobject]@{ Output = @(); ExitCode = 0 } }
             $secret = ConvertTo-SecureString -String 'S3cr3t-value' -AsPlainText -Force
 
             $null = Invoke-NexusHostCommand @target -Command 'IFS= read -r s' -Secret $secret
 
-            [System.Text.Encoding]::UTF8.GetString($seen.Input) | Should -BeExactly 'S3cr3t-value'
+            [System.Text.Encoding]::UTF8.GetString($seen.Input) | Should -BeExactly "S3cr3t-value`n"
             ($seen.Args -join ' ') | Should -Not -Match 'S3cr3t-value'
             $seen.Args | Should -Not -Contain '-n'
+        }
+
+        It 'sends several secrets as one line each, in order' {
+            Mock -CommandName Invoke-NexusSshClient -MockWith { $seen.Input = [byte[]]$InputBytes.Clone(); [pscustomobject]@{ Output = @(); ExitCode = 0 } }
+            $first = ConvertTo-SecureString -String 'amqp://u:p@broker:5672' -AsPlainText -Force
+            $second = ConvertTo-SecureString -String 'token-2' -AsPlainText -Force
+
+            $null = Invoke-NexusHostCommand @target -Command 'IFS= read -r a; IFS= read -r b' -Secret $first, $second
+
+            [System.Text.Encoding]::UTF8.GetString($seen.Input) | Should -BeExactly "amqp://u:p@broker:5672`ntoken-2`n"
+        }
+
+        It 'refuses a secret that contains a line break (it would split into two lines)' {
+            Mock -CommandName Invoke-NexusSshClient -MockWith { [pscustomobject]@{ Output = @(); ExitCode = 0 } }
+            $secret = ConvertTo-SecureString -String "two`nlines" -AsPlainText -Force
+
+            { Invoke-NexusHostCommand @target -Command 'true' -Secret $secret } | Should -Throw '*line break*'
+            Should -Invoke -CommandName Invoke-NexusSshClient -Times 0 -Exactly
         }
     }
 
