@@ -96,7 +96,7 @@ function Test-NexusHost {
         if (-not $PSBoundParameters.ContainsKey('ThrottleLimit')) {
             $ThrottleLimit = $config.Preflight.ThrottleLimit
         }
-        $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory
+        $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory -KeepRuns $config.Log.KeepRuns
         Write-NexusLog -Context $run -Message "Preflight of $($hosts.Count) host(s), $ThrottleLimit at a time"
 
         # Every host on its own, $ThrottleLimit at a time (see Invoke-NexusHostLoop); one result per host, always.

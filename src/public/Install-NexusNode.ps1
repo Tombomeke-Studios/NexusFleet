@@ -168,7 +168,7 @@ function Install-NexusNode {
         $plain = foreach ($secure in $session.Token, $RabbitMqUrl, $InternalApiToken) {
             if ($secure) { [System.Net.NetworkCredential]::new('', $secure).Password }
         }
-        $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory -Secret $plain
+        $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory -KeepRuns $config.Log.KeepRuns -Secret $plain
         $planCount = @($work | Where-Object PlanOnly).Count
         Write-NexusLog -Context $run -Message ("Install on $($hosts.Count) host(s), $ThrottleLimit at a time" +
             $(if ($planCount) { "; $planCount host(s) plan only" } else { '' }))

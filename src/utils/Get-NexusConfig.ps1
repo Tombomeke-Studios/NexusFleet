@@ -90,6 +90,7 @@ function Get-NexusConfig {
         @{ Key = 'Health.VerifyTimeoutSeconds'; Expect = 'a whole number 1-3600'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 3600 } }
         @{ Key = 'Health.PollIntervalSeconds'; Expect = 'a whole number 1-60'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 60 } }
         @{ Key = 'Log.Directory'; Expect = "a folder path or ''"; Test = { param($v) $v -is [string] } }
+        @{ Key = 'Log.KeepRuns'; Expect = 'a whole number 0-10000 (0 keeps every run)'; Test = { param($v) $v -is [int] -and $v -ge 0 -and $v -le 10000 } }
     )
 
     $problems = [System.Collections.Generic.List[string]]::new()

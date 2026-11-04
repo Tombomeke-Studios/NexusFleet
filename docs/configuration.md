@@ -118,3 +118,4 @@ The two thresholds mirror NexusInfra (v0.4.0) and must match the panel you use.
 | Key | Default | Rule | Meaning |
 |---|---|---|---|
 | `Directory` | `''` | a folder path, or `''` | The folder that holds one folder per run (`<RunId>/`). `''` means `logs/` in the folder you run NexusFleet from. A relative path is relative to that folder too; an absolute path (`C:/NexusFleet/logs`, `~/nexusfleet/logs`) keeps every run in one place. The folder is created when it does not exist. |
+| `KeepRuns` | `50` | 0-10000 | How many run folders to keep, the new run included. Starting a run removes the oldest beyond this number; only folders named like a RunId are touched. `0` keeps every run. A dry run (`-WhatIf`) removes nothing. |

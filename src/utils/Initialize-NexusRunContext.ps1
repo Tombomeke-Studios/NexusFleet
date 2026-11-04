@@ -13,6 +13,10 @@ function Initialize-NexusRunContext {
     The folder that holds one subfolder per run (config Log.Directory). Empty or not given: logs/ in the current
     folder. It is created when it does not exist yet.
 
+    .PARAMETER KeepRuns
+    How many run folders to keep in the log root, this run included (config Log.KeepRuns). Older ones are removed.
+    0 keeps every run. Under -WhatIf nothing is removed.
+
     .PARAMETER Secret
     Values that must never appear in a log, such as the API token. Empty values are ignored.
 
@@ -26,6 +30,9 @@ function Initialize-NexusRunContext {
         [AllowNull()]
         [AllowEmptyString()]
         [string]$LogRoot,
+
+        [ValidateRange(0, 10000)]
+        [int]$KeepRuns = 0,
 
         [AllowNull()]
         [AllowEmptyCollection()]
@@ -44,6 +51,22 @@ function Initialize-NexusRunContext {
 
     # -WhatIf:$false: a caller's -WhatIf must not stop the log folder from being created.
     New-Item -Path $logDirectory -ItemType Directory -Force -WhatIf:$false | Out-Null
+
+    # Keep only the newest runs. Only folders named like a RunId are looked at, so nothing else in the folder is ever
+    # removed. The names start with the time, so sorting by name sorts by age. A dry run removes nothing.
+    if ($KeepRuns -gt 0 -and -not $WhatIfPreference) {
+        $runFolders = Get-ChildItem -Path $LogRoot -Directory | Where-Object Name -Match '^\d{8}T\d{6}Z-[0-9a-f]{6}$' |
+            Sort-Object -Property Name -Descending
+        foreach ($folder in $runFolders | Select-Object -Skip $KeepRuns) {
+            try {
+                Remove-Item -LiteralPath $folder.FullName -Recurse -Force -ErrorAction Stop
+            }
+            catch {
+                # An old log that cannot be removed (a file still open) is no reason to stop a run.
+                Write-Warning -Message "NexusFleet could not remove the old log folder $($folder.FullName): $($_.Exception.Message)"
+            }
+        }
+    }
 
     [pscustomobject]@{
         PSTypeName   = 'NexusFleet.RunContext'

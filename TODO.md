@@ -59,7 +59,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 - [x] Never let a log write fail a host (#85)
 - [x] Make the log folder configurable (#86)
-- [ ] Keep only the newest runs in the log folder (#87)
+- [x] Keep only the newest runs in the log folder (#87)
 - [ ] Redact longer secrets first and the broker password on its own (#88)
 
 ### Phase 4e — READMEs · `feature/readme`
