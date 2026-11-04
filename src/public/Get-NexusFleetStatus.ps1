@@ -54,7 +54,8 @@ function Get-NexusFleetStatus {
     .OUTPUTS
     NexusFleet.NodeStatus
     Name, Ok, Health, Problem, InInventory, Registered, Maintenance, LastHeartbeat (UTC, empty when the node never sent
-    one), Location, Connection (direct or outbound), Linked (outbound: is the agent link up), AgentUrl, CpuPercent, RamUsedMb, RamTotalMb, and from the host: Address, Reachable, Docker,
+    one), Location, Connection (direct or outbound), Linked (outbound only: is the agent link up), AgentUrl,
+    CpuPercent, RamUsedMb, RamTotalMb, and from the host: Address, Reachable, Docker,
     AgentState (running, exited, ... or missing), AgentRestarts, UptimeSeconds, DiskFreeMB.
 
     .NOTES
