@@ -69,6 +69,7 @@ Describe 'Invoke-NexusApi' {
             @{ Status = 403; ErrorId = 'NexusApi.Forbidden'; Text = '*403*permission*' }
             @{ Status = 404; ErrorId = 'NexusApi.NotFound'; Text = '*404*not found*' }
             @{ Status = 409; ErrorId = 'NexusApi.Conflict'; Text = '*409*conflict*' }
+            @{ Status = 429; ErrorId = 'NexusApi.RateLimited'; Text = '*429*rate limit*' }
             @{ Status = 503; ErrorId = 'NexusApi.Unavailable'; Text = '*503*temporarily unavailable*' }
             @{ Status = 500; ErrorId = 'NexusApi.HttpError'; Text = '*500*unexpected answer from the panel*' }
             @{ Status = 400; ErrorId = 'NexusApi.HttpError'; Text = '*400*unexpected answer from the panel*' }
@@ -127,6 +128,24 @@ Describe 'Invoke-NexusApi' {
             }
 
             Invoke-NexusApi @https -Method GET -Path '/nodes' -RetryCount 1 | Should -Be 'ok'
+        }
+
+        It 'retries a GET after 429 (the gateway''s rate limit), so many hosts polling at once do not fail' {
+            Mock -CommandName Invoke-RestMethod -MockWith {
+                $state.Calls++
+                if ($state.Calls -eq 1) { throw (Get-TestHttpError -Status 429) }
+                'ok'
+            }
+
+            Invoke-NexusApi @https -Method GET -Path '/nodes' -RetryCount 1 | Should -Be 'ok'
+            Should -Invoke -CommandName Invoke-RestMethod -Times 2 -Exactly
+        }
+
+        It 'never retries a changing request (POST) after 429' {
+            Mock -CommandName Invoke-RestMethod -MockWith { throw (Get-TestHttpError -Status 429) }
+
+            { Invoke-NexusApi @https -Method POST -Path '/nodes' -Body @{ id = 'a' } -RetryCount 2 } | Should -Throw -ErrorId 'NexusApi.RateLimited*'
+            Should -Invoke -CommandName Invoke-RestMethod -Times 1 -Exactly
         }
 
         It 'gives up after RetryCount extra attempts and says the panel is unreachable' {
