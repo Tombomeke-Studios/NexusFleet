@@ -5,10 +5,10 @@ function Invoke-NexusApi {
 
     .DESCRIPTION
     Sends the API token as a bearer token (kept as a SecureString), with a time-out. Only GET requests are
-    retried, and only after a network error or 502/503/504: a POST that half succeeded must never be sent
-    twice. HTTP errors 401, 403, 404, 409 and 502-504 become errors with their own id (NexusApi.Unauthorized,
-    NexusApi.Forbidden, NexusApi.NotFound, NexusApi.Conflict, NexusApi.Unavailable), an explanation, and
-    NexusInfra's own message.
+    retried, and only after a network error, 429 (the gateway's rate limit) or 502/503/504: a POST that half
+    succeeded must never be sent twice. HTTP errors 401, 403, 404, 409, 429 and 502-504 become errors with their
+    own id (NexusApi.Unauthorized, NexusApi.Forbidden, NexusApi.NotFound, NexusApi.Conflict, NexusApi.RateLimited,
+    NexusApi.Unavailable), an explanation, and NexusInfra's own message.
     A panel that cannot be reached gives NexusApi.Unreachable.
 
     The token is only sent over plain http:// to the own machine (localhost, 127.0.0.1, ::1). For any other
@@ -129,7 +129,9 @@ function Invoke-NexusApi {
                 $caught.Exception -is [System.Net.Http.HttpRequestException] -or
                 $caught.Exception -is [System.Threading.Tasks.TaskCanceledException] -or
                 $caught.Exception -is [System.TimeoutException])
-            $isTransient = $isNetworkError -or ($status -in 502, 503, 504)
+            # 429: the gateway's rate limit per token. Many hosts polling at once can reach it; a moment later it
+            # lets the request through again.
+            $isTransient = $isNetworkError -or ($status -in 429, 502, 503, 504)
 
             if ($isTransient -and $attempt -lt $maxAttempts) {
                 Write-Verbose "NexusInfra API: $Method $Path failed (attempt $attempt of $maxAttempts), retrying."
@@ -150,6 +152,7 @@ function Invoke-NexusApi {
                 '403' { 'NexusApi.Forbidden', 'PermissionDenied', 'the account or the token lacks permission (node routes need a platform administrator and a token with the write and admin scopes)' }
                 '404' { 'NexusApi.NotFound', 'ObjectNotFound', 'not found (NexusInfra also answers 404 when you have no access)' }
                 '409' { 'NexusApi.Conflict', 'ResourceExists', 'conflict with the current state (for example a node that still hosts a running deployment)' }
+                '429' { 'NexusApi.RateLimited', 'LimitsExceeded', "the panel's rate limit for this token was reached (lower -ThrottleLimit, or raise Health.PollIntervalSeconds)" }
                 { $_ -in '502', '503', '504' } { 'NexusApi.Unavailable', 'ResourceUnavailable', 'the panel is temporarily unavailable' }
                 'network' { 'NexusApi.Unreachable', 'ConnectionError', "cannot reach the panel at $BaseUrl after $attempt attempt(s): $($caught.Exception.Message)" }
                 'other' { 'NexusApi.RequestFailed', 'InvalidOperation', "the request could not be sent: $($caught.Exception.Message)" }
