@@ -35,6 +35,8 @@ $results | Where-Object { -not $_.Success } | Format-List Host, Step, Error
 | `Sudo` | "... cannot use sudo without a password" | Add `<user> ALL=(ALL) NOPASSWD:ALL` in `/etc/sudoers.d/` |
 | `DiskSpace` | "... MB free on /, at least ... MB needed" | Free up space, or lower `Preflight.MinDiskFreeMB` |
 | `Broker` | "broker ...:5672 is not reachable from the host" | `Broker.Host` must be the broker **as the host sees it**. Is 5672 published on the control plane, and open on the network? |
+| `AgentLink` | "the control plane does not support the agent link" | The host has `reach: outbound`, but `GET /config` of the connected NexusInfra lists no `agent-link` feature: it is older than the agent link. Upgrade it, or use `reach: direct` |
+| `AgentLink` | "agent link ...:443 is not reachable from the host" | The outbound agent dials the gateway there. Is `Agent.Link.Url` (or `Api.BaseUrl`) the control plane **as the host reaches it**? Is the gateway's port forwarded, and does the host's network let it out? |
 
 A changed host key is refused by ssh ("REMOTE HOST IDENTIFICATION HAS CHANGED"). If the host was really
 reinstalled, remove its old line from your `known_hosts` (`ssh-keygen -R <address>`); otherwise, find out why the key
