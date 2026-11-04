@@ -63,6 +63,18 @@ Describe 'Get-NexusConfig' {
         { Get-NexusConfig -Path $path } | Should -Throw -ExpectedMessage '*Agent.Port must be*1-65535*70000*'
     }
 
+    It 'refuses an env file path that is not an absolute Linux path (it goes into a shell command on the host)' {
+        $path = Write-TestConfig -Find "EnvFile         = '/etc/nexusinfra/agent.env'" -Replace "EnvFile         = 'agent.env; rm -rf /'"
+
+        { Get-NexusConfig -Path $path } | Should -Throw -ExpectedMessage '*Agent.EnvFile must be an absolute Linux path*'
+    }
+
+    It 'refuses a Docker package name that is not a package name' {
+        $path = Write-TestConfig -Find "Package               = 'docker.io'" -Replace "Package               = 'docker.io && curl x'"
+
+        { Get-NexusConfig -Path $path } | Should -Throw -ExpectedMessage '*Docker.Package must be a Debian package name*'
+    }
+
     It 'refuses a restart policy that does not survive a reboot' {
         $path = Write-TestConfig -Find "RestartPolicy   = 'unless-stopped'" -Replace "RestartPolicy   = 'no'"
 
