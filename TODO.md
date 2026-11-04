@@ -55,13 +55,6 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
 - [ ] Merge `dev → main`, tag `v1.0.0`
 
-### Phase 4c — Code quality · `feature/refactor-helpers`
-
-- [x] Build the ssh parameters of a host in one place (#79)
-- [x] Build the API parameters of a session in one place (#80)
-- [x] Parse key=value facts from a host in one place (#81)
-- [x] Run per-host work in one shared loop (#82)
-
 ## Phase 5 — Extras (only after `v1.0.0`, in this order)
 
 ### `feature/bulk-actions`
@@ -98,6 +91,13 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 ---
 
 ## Done
+
+### Phase 4c — Code quality (#83)
+
+- [x] Build the ssh parameters of a host in one place (#79)
+- [x] Build the API parameters of a session in one place (#80)
+- [x] Parse key=value facts from a host in one place (#81)
+- [x] Run per-host work in one shared loop (#82)
 
 ### Phase 4b — Quality before `v1.0.0` (#73, #74, #75, #77)
 
