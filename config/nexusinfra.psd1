@@ -74,6 +74,11 @@
         ThrottleLimit = 10
     }
 
+    Install   = @{
+        # How many hosts Install-NexusNode installs at the same time (each one downloads Docker and the agent image).
+        ThrottleLimit = 5
+    }
+
     Health    = @{
         # NexusInfra marks a node degraded after 3 s and offline after 10 s without a heartbeat.
         DegradedAfterSeconds = 3

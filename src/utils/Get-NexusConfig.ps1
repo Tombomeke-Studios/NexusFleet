@@ -84,6 +84,7 @@ function Get-NexusConfig {
         @{ Key = 'Preflight.MinDiskFreeMB'; Expect = 'a whole number 0-1000000'; Test = { param($v) $v -is [int] -and $v -ge 0 -and $v -le 1000000 } }
         @{ Key = 'Preflight.SupportedOs'; Expect = "a list of OS ids, e.g. @('ubuntu')"; Test = { param($v) @($v).Count -ge 1 -and @($v | Where-Object { $_ -isnot [string] -or $_ -notmatch '^[a-z0-9._-]+$' }).Count -eq 0 } }
         @{ Key = 'Preflight.ThrottleLimit'; Expect = 'a whole number 1-256'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 256 } }
+        @{ Key = 'Install.ThrottleLimit'; Expect = 'a whole number 1-256'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 256 } }
         @{ Key = 'Health.DegradedAfterSeconds'; Expect = 'a whole number 1-300'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 300 } }
         @{ Key = 'Health.OfflineAfterSeconds'; Expect = 'a whole number 1-300'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 300 } }
         @{ Key = 'Health.VerifyTimeoutSeconds'; Expect = 'a whole number 1-3600'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 3600 } }
