@@ -46,11 +46,12 @@ Describe 'Invoke-NexusHostInstall' {
             $result.PSObject.TypeNames | Should -Contain 'NexusFleet.InstallResult'
             $result.Success | Should -BeTrue
             $result.Changed | Should -BeTrue
-            $result.Steps.Step | Should -Be @('Docker', 'RegisterNode', 'AgentContainer', 'VerifyHealthy')
-            $result.Steps.Outcome | Should -Be @('Applied', 'Applied', 'Applied', 'Applied')
+            $result.Steps.Step | Should -Be @('Docker', 'RegisterNode', 'AgentContainer', 'VerifyHealthy', 'AgentReachable')
+            $result.Steps.Outcome | Should -Be @('Applied', 'Applied', 'Applied', 'Applied', 'AlreadyDone')
             $fake.Changes | Should -Be @('10.0.0.5 install docker', 'POST /nodes node-web01', '10.0.0.5 start agent')
             $fake.Heartbeating['node-web01'] | Should -BeTrue
             # VerifyHealthy Applied: its Test still saw offline (no heartbeat yet), its Apply polled until healthy.
+            # AgentReachable changes nothing: once NexusInfra reaches the agent, its Test is already in order.
         }
 
         It 'keeps the preflight checks in the result' {
@@ -67,7 +68,7 @@ Describe 'Invoke-NexusHostInstall' {
 
             $second.Success | Should -BeTrue
             $second.Changed | Should -BeFalse
-            $second.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone')
+            $second.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone')
             $fake.Changes | Should -BeNullOrEmpty
         }
 
@@ -79,7 +80,7 @@ Describe 'Invoke-NexusHostInstall' {
 
             $forced.Success | Should -BeTrue
             $forced.Changed | Should -BeTrue
-            $forced.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'Applied', 'Applied')
+            $forced.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'Applied', 'Applied', 'AlreadyDone')
             $fake.Changes | Should -Be @('10.0.0.5 start agent')
         }
 
@@ -88,7 +89,7 @@ Describe 'Invoke-NexusHostInstall' {
 
             $result = & $install
 
-            $result.Steps.Outcome | Should -Be @('AlreadyDone', 'Applied', 'Applied', 'Applied')
+            $result.Steps.Outcome | Should -Be @('AlreadyDone', 'Applied', 'Applied', 'Applied', 'AlreadyDone')
             $fake.Changes | Should -Not -Contain '10.0.0.5 install docker'
         }
     }
@@ -100,7 +101,7 @@ Describe 'Invoke-NexusHostInstall' {
             $result.Success | Should -BeTrue
             $result.PlanOnly | Should -BeTrue
             $result.Changed | Should -BeFalse
-            $result.Steps.Outcome | Should -Be @('WouldApply', 'WouldApply', 'WouldApply', 'WouldApply')
+            $result.Steps.Outcome | Should -Be @('WouldApply', 'WouldApply', 'WouldApply', 'WouldApply', 'WouldApply')
             $fake.Changes | Should -BeNullOrEmpty
             Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 0 -ParameterFilter { $Method -ne 'GET' }
         }
@@ -109,7 +110,7 @@ Describe 'Invoke-NexusHostInstall' {
             $null = & $install
             $fake.Changes.Clear()
 
-            (& $install -PlanOnly -NoSecrets).Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone')
+            (& $install -PlanOnly -NoSecrets).Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone')
         }
     }
 
@@ -122,7 +123,7 @@ Describe 'Invoke-NexusHostInstall' {
             $result.Success | Should -BeFalse
             $result.Step | Should -Be 'Docker'
             $result.Error | Should -Match 'Unable to locate package'
-            $result.Steps.Outcome | Should -Be @('Failed', 'NotRun', 'NotRun', 'NotRun')
+            $result.Steps.Outcome | Should -Be @('Failed', 'NotRun', 'NotRun', 'NotRun', 'NotRun')
             # The failed Apply is rolled back too: it may have half installed the package.
             $fake.Changes | Should -Be @('10.0.0.5 install docker', '10.0.0.5 remove docker')
         }
@@ -133,7 +134,7 @@ Describe 'Invoke-NexusHostInstall' {
             $result = & $install
 
             $result.Step | Should -Be 'RegisterNode'
-            $result.Steps.Rollback | Should -Be @('Done', 'Done', $null, $null)
+            $result.Steps.Rollback | Should -Be @('Done', 'Done', $null, $null, $null)
             $fake.Changes[-1] | Should -Be '10.0.0.5 remove docker'
             $fake.Hosts['10.0.0.5'].Docker | Should -BeFalse
             $fake.Nodes.Count | Should -Be 0
@@ -158,6 +159,19 @@ Describe 'Invoke-NexusHostInstall' {
             $result.Step | Should -Be 'VerifyHealthy'
             $result.Error | Should -Match 'did not become healthy within 6 s \(last health: offline\)'
             $result.Changed | Should -BeTrue
+            $fake.Hosts['10.0.0.5'].Agent | Should -BeFalse
+            $fake.Nodes.Count | Should -Be 0
+            $fake.Hosts['10.0.0.5'].Docker | Should -BeFalse
+        }
+
+        It 'AgentReachable fails (healthy, but NexusInfra cannot call the agent): everything this run did is undone' {
+            $fake.Unreachable.Add('node-web01')
+
+            $result = & $install
+
+            $result.Success | Should -BeFalse
+            $result.Step | Should -Be 'AgentReachable'
+            $result.Error | Should -Match 'cannot reach the agent of node-web01 at http://10\.0\.0\.5:9100'
             $fake.Hosts['10.0.0.5'].Agent | Should -BeFalse
             $fake.Nodes.Count | Should -Be 0
             $fake.Hosts['10.0.0.5'].Docker | Should -BeFalse

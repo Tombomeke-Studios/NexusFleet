@@ -52,6 +52,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Release workflow: a GitHub release with the module on a `v*` tag (#58)
 - [x] Lab VM guide and a demo script that measures the times (#59)
 - [x] Retry a 429 from the gateway (#99)
+- [x] Check that NexusInfra reaches the agent, not only hears it (#101)
 - [x] Demo guide over the internet without a VPN: public name, port forwarding, agentUrl per host (#103)
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs

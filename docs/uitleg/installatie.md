@@ -25,6 +25,7 @@ deze run veranderd heeft weer teruggedraaid. Een tweede keer draaien verandert n
 | `src/steps/RegisterNode.ps1` | Stap 20: `POST /nodes` |
 | `src/steps/AgentContainer.ps1` | Stap 30: de agent-container |
 | `src/steps/VerifyHealthy.ps1` | Stap 40: wachten op *healthy* |
+| `src/steps/AgentReachable.ps1` | Stap 50: kan NexusInfra de agent ook aanspreken? |
 | `tests/steps/*.Tests.ps1` | Elke stap apart: Test, Apply, Rollback |
 | `tests/core/FakeFleet.ps1` | Een nep-fleet: nep-servers en een nep-paneel die echt "veranderen" |
 | `tests/core/Invoke-NexusHostInstall.Tests.ps1` | De echte stappen en de echte runner tegen de nep-fleet |
@@ -64,7 +65,7 @@ Import-NexusInventory ./config/inventory.json | Install-NexusNode
    zegt `Apply`. Mislukt een stap, dan rolt de runner terug wat deze run deed, in omgekeerde volgorde.
 4. Het resultaat: `Success`, `Changed` (heeft deze run iets toegepast?), `Step`/`Error`, alle `Steps`, de preflight.
 
-**De vier stappen:**
+**De vijf stappen:**
 
 | Stap | Test ("al in orde?") | Apply | Rollback |
 |---|---|---|---|
@@ -72,6 +73,7 @@ Import-NexusInventory ./config/inventory.json | Install-NexusNode
 | RegisterNode | staat de node in `GET /nodes`, met dezelfde naam, locatie, agentUrl? | `POST /nodes` | `DELETE /nodes/:id`, alleen als het record vóór de run niet bestond |
 | AgentContainer | draait de container, met het juiste image, restart policy, poort, volume, socket, host-gateway, `NODE_ID`, `AGENT_URL`? | env-bestand schrijven (geheimen via stdin), container (opnieuw) maken | container en env-bestand weg, het backup-volume nooit |
 | VerifyHealthy | zegt `GET /nodes` `healthy`? (nooit "al in orde" als deze run de agent startte) | eerst `DegradedAfterSeconds` wachten als de agent net (opnieuw) startte, dan `GET /nodes` herhalen tot `healthy`, of opgeven na de time-out | niets |
+| AgentReachable | antwoordt `GET /nodes/<id>/disk`? Dan belde de orchestrator de agent met het `INTERNAL_API_TOKEN` | niets te wijzigen: nog één keer proberen, en anders falen met wat je moet nakijken | niets |
 
 De agent-stap stuurt de twee geheimen als twee regels over stdin; op de server leest bash ze en schrijft ze in een
 bestand dat alleen root kan lezen:
@@ -104,6 +106,13 @@ sudo -n docker run -d --name 'nexusinfra-node-agent' --restart 'unless-stopped' 
 - **Een oude heartbeat telt niet.** Na een nieuwe agent kan de node nog tot 3 s *healthy* lijken door de laatste
   heartbeat van de oude agent. Daarom onthoudt de agent-stap in `State.AgentStarted` dat hij een agent startte, en
   wacht VerifyHealthy dan eerst `DegradedAfterSeconds`. Zonder dat zou een fout wachtwoord als "geslaagd" gemeld zijn.
+- **Healthy is niet genoeg** (#101, K10). Healthy zegt alleen dat de heartbeats aankomen: de node belt de broker.
+  Deployen, bestanden, de console en backups gaan de andere kant op: de orchestrator belt de agent op zijn
+  `agentUrl`. Over het internet kan die richting dicht zitten (firewall, geen port forwarding, een adres dat alleen
+  in het eigen netwerk werkt), of het token klopt niet. Dan is de node *healthy* maar kan er niets op draaien.
+  `GET /nodes/<id>/disk` is de kleinste vraag waarbij NexusInfra zelf de agent belt: alleen lezen, en `502` als het
+  niet lukt. Een aparte stap in plaats van een extra check in VerifyHealthy: elke stap doet één ding, en de foutmelding
+  zegt meteen welke richting faalt.
 - **Toch nog een lab.** Het node-lab vond drie fouten die geen mock kon vinden: `Invoke-RestMethod` gaf de
   nodelijst als één object terug (#47), Ubuntu's Docker-pakket kan zonder systemd niet starten (K8), en de oude
   heartbeat die een nieuwe agent gezond deed lijken (K7).
@@ -165,3 +174,5 @@ Invoke-Pester -Path ./tests/public/Install-NexusNode.Integration.Tests.ps1 -TagF
 4. Waarom verwijdert de rollback van RegisterNode een node soms wel en soms niet?
 5. Welke fouten vond het node-lab die de tests met mocks niet vonden, en waarom konden mocks ze niet vinden?
 6. Waarom wacht VerifyHealthy eerst `DegradedAfterSeconds` als de agent net opnieuw gestart is?
+7. Een node is *healthy*, maar AgentReachable faalt. Welke verbinding werkt dan wel en welke niet, en wat kan de
+   oorzaak zijn?

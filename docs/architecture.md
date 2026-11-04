@@ -27,7 +27,7 @@ One responsibility per folder in `src/`. All functions below are internal (not e
 | `utils` | `Initialize-NexusRunContext`, `Write-NexusLog`, `Get-NexusConfig`, `Merge-NexusHashtable`, `Get-NexusSession`, `Get-NexusStoredToken`, `Save-NexusStoredToken`, `ConvertTo-NexusShellArgument` | Run context, logging, configuration, session, secrets, shell quoting |
 | `transports` | `Invoke-NexusHostCommand`, `Invoke-NexusSshClient` | Running a command on a host (native ssh) |
 | `api` | `Invoke-NexusApi` | The only caller of the NexusInfra REST API |
-| `steps` | `Docker` (10), `RegisterNode` (20), `AgentContainer` (30), `VerifyHealthy` (40) | One file per installation step, each calling `Register-NexusStep` |
+| `steps` | `Docker` (10), `RegisterNode` (20), `AgentContainer` (30), `VerifyHealthy` (40), `AgentReachable` (50) | One file per installation step, each calling `Register-NexusStep` |
 | `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus`, `Export-NexusFleetStatus` | The exported cmdlets |
 
 ## Contracts
@@ -94,7 +94,7 @@ Import-NexusInventory ──► Install-NexusNode (process: collect hosts)
                                    Invoke-NexusHostInstall
                                      Invoke-NexusHostPreflight ── not ready ──► result (nothing touched)
                                      Invoke-NexusStepSequence (Get-NexusStep)
-                                       Docker → RegisterNode → AgentContainer → VerifyHealthy
+                                       Docker → RegisterNode → AgentContainer → VerifyHealthy → AgentReachable
                                        failure ──► rollback of what this run applied, in reverse
                                      NexusFleet.InstallResult
                           one result per host, summary in run.log

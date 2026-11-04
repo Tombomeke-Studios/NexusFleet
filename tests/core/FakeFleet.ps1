@@ -14,6 +14,7 @@ function Get-FakeFleet {
         Nodes        = @{}
         Heartbeating = @{}
         NeverHealthy = $false
+        Unreachable  = [System.Collections.Generic.List[string]]::new()
         FailAt       = $null
         Changes      = [System.Collections.Generic.List[string]]::new()
     }
@@ -110,6 +111,14 @@ function Invoke-FakeApi {
     param([hashtable]$Fake, [string]$Method, [string]$Path, [object]$Body)
     switch ($Method) {
         'GET' {
+            # GET /nodes/<id>/disk: NexusInfra asks the agent itself. Unreachable lists agents it cannot call.
+            if ($Path -match '^/nodes/([^/]+)/disk$') {
+                $id = $Matches[1]
+                if (-not $Fake.Heartbeating[$id] -or $Fake.Unreachable -contains $id) {
+                    throw [System.InvalidOperationException]::new('NexusInfra API GET /nodes/x/disk failed 502. NexusInfra says: fetch failed')
+                }
+                return [pscustomobject]@{ measuredAt = '2026-11-04T10:00:00Z'; deployments = @() }
+            }
             return @($Fake.Nodes.Values | ForEach-Object {
                     $node = $_.Clone()
                     $beat = $Fake.Heartbeating[$node.id]

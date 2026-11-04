@@ -21,9 +21,9 @@ Describe 'Step VerifyHealthy' {
         Mock -ModuleName NexusFleet -CommandName Start-Sleep -MockWith { }
     }
 
-    It 'runs last (Order 40)' {
+    It 'runs after the agent is started (Order 40)' {
         $step.Order | Should -Be 40
-        (& $module { Get-NexusStep } | Select-Object -Last 1).Name | Should -Be 'VerifyHealthy'
+        (& $module { Get-NexusStep } | Where-Object Order -LT 40 | Select-Object -Last 1).Name | Should -Be 'AgentContainer'
     }
 
     Context 'Test' {

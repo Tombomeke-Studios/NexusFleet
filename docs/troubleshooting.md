@@ -52,6 +52,7 @@ changed.
 | `AgentContainer` | a pull error from `ghcr.io` | The host has no internet access, or `Agent.Image` is wrong |
 | `VerifyHealthy` | "did not become healthy within 60 s (last health: offline)" | The agent runs but sends no heartbeats. Usually a wrong broker URL or password, or the broker is not reachable. See `sudo docker logs nexusinfra-node-agent` on the host |
 | `VerifyHealthy` | "... (last health: not registered)" | The node record was not found. Is `Api.BaseUrl` the same panel the agents report to? |
+| `AgentReachable` | "NexusInfra cannot reach the agent of ... at http://...:9100" | The node is healthy (its heartbeats arrive), but the control plane cannot call the agent, so it could not run anything there. A firewall or security group closes port 9100, a port forward is missing, the `agentUrl` in the inventory is an address the control plane cannot reach, or ("answered 401") the `INTERNAL_API_TOKEN` differs from the control plane's `.env` |
 
 A failed step rolls back what this run did on that host, so the host is as it was. Fix the cause and run again.
 Steps that are already in order are skipped.

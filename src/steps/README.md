@@ -9,6 +9,7 @@ steps in the order of their `Order` number.
 | 20 | `RegisterNode.ps1` | NexusInfra has a node record with the host's name, location and agent URL (`POST /nodes`) | deletes the record, but only when this run created it |
 | 30 | `AgentContainer.ps1` | The agent runs with every setting, including the three that fail silently (restart policy, port, backups volume). Its secrets go to `/etc/nexusinfra/agent.env` (mode 600) over stdin | removes the container and the env file; never the backups volume |
 | 40 | `VerifyHealthy.ps1` | NexusInfra reports the node healthy. After a new agent started, it first waits until the old agent's last heartbeat no longer counts | nothing to undo |
+| 50 | `AgentReachable.ps1` | NexusInfra can call the agent: `GET /nodes/<id>/disk` makes the orchestrator call it with the `INTERNAL_API_TOKEN`. Healthy only proves that heartbeats arrive (node → broker); deploying goes the other way | nothing to undo |
 
 ## Writing a step
 

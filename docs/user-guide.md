@@ -176,6 +176,7 @@ Per host:
 | RegisterNode | is the node in NexusInfra, with the same name, location and agentUrl? | `POST /nodes` |
 | AgentContainer | does the agent run with every setting, including the restart policy, the port and the backups volume? | writes the env file (secrets over stdin, mode 600) and (re)creates the container |
 | VerifyHealthy | does NexusInfra report the node healthy? | waits until it does, or until `Health.VerifyTimeoutSeconds` |
+| AgentReachable | can NexusInfra call the agent (`GET /nodes/<id>/disk`)? | nothing to change: checks once more, and fails with what to look at |
 
 Each step reports one of these outcomes:
 - `AlreadyDone`: nothing was needed.
