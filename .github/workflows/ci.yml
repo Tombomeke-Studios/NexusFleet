@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install PSScriptAnalyzer
-        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+        run: ./tools/Install-NexusTooling.ps1 -Name PSScriptAnalyzer
 
       # Fails on any finding; each finding becomes an annotation and a row in the summary. Only PSScriptAnalyzer's
       # own internal errors are retried (see the script's help).
@@ -60,10 +60,7 @@ jobs:
       # PSScriptAnalyzer and SecretManagement are only mocked here (tests/tools, tests/utils), but Pester can only
       # mock a command that exists.
       - name: Install Pester 5, PSScriptAnalyzer and SecretManagement
-        run: |
-          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
-          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
-          Install-Module Microsoft.PowerShell.SecretManagement -RequiredVersion 1.1.2 -Scope CurrentUser -Force
+        run: ./tools/Install-NexusTooling.ps1
 
       - name: TEMP ssh diagnostics
         run: |
