@@ -1,0 +1,58 @@
+# Builds the module and publishes it as a GitHub release when a version tag (v1.0.0, ...) is pushed.
+# Tags go on main only, at a milestone (CLAUDE.md, section 2). Publishing to the PowerShell Gallery is a later extra.
+# Run by hand (workflow_dispatch) it only builds and keeps the zip as an artifact: a dry run of a release.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint and tests
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Build and release
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      # The tag and the manifest must agree, so a release can never ship another version than its name says.
+      - name: Check the version
+        if: github.ref_type == 'tag'
+        run: |
+          $version = (Import-PowerShellDataFile -Path ./NexusFleet.psd1).ModuleVersion
+          if ('${{ github.ref_name }}' -ne "v$version") {
+              throw "Tag ${{ github.ref_name }} does not match ModuleVersion $version in NexusFleet.psd1."
+          }
+
+      - name: Build the module
+        id: build
+        run: |
+          $build = ./tools/Build-NexusModule.ps1
+          $build | Format-List
+          "zip=$($build.Zip)" | Add-Content -Path $env:GITHUB_OUTPUT
+
+      - name: Keep the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: module
+          path: ${{ steps.build.outputs.zip }}
+
+      - name: Create the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create '${{ github.ref_name }}' '${{ steps.build.outputs.zip }}' --title 'NexusFleet ${{ github.ref_name }}' --generate-notes --verify-tag
