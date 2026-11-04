@@ -53,6 +53,39 @@ Describe 'Test-NexusHost' {
         }
     }
 
+    Context 'hosts with reach outbound' {
+        BeforeEach {
+            $linkConfig = $config.Clone()
+            $linkConfig.Api = @{ BaseUrl = 'https://nexus.example.com' }
+            $linkConfig.Agent = @{ Link = @{ Url = ''; Path = '/agent-link' } }
+            Mock -ModuleName NexusFleet -CommandName Get-NexusConfig -MockWith { $linkConfig }
+            $outbound = Get-TestHost -Number 1
+            $outbound | Add-Member -NotePropertyName Reach -NotePropertyValue 'outbound'
+        }
+
+        It 'passes the link URL of the connection, and says when the control plane lacks the agent link' {
+            Mock -ModuleName NexusFleet -CommandName Get-NexusSession -MockWith {
+                [pscustomobject]@{ BaseUrl = 'https://panel.example.com'; Features = @() }
+            }
+
+            $null = $outbound | Test-NexusHost -ThrottleLimit 1
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostPreflight -ParameterFilter {
+                $LinkUrl -eq 'wss://panel.example.com/agent-link' -and $LinkUnsupported
+            }
+        }
+
+        It 'uses Api.BaseUrl from the config when not connected, and cannot tell whether the link is supported' {
+            Mock -ModuleName NexusFleet -CommandName Get-NexusSession -MockWith { throw 'not connected' }
+
+            $null = $outbound | Test-NexusHost -ThrottleLimit 1
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostPreflight -ParameterFilter {
+                $LinkUrl -eq 'wss://nexus.example.com/agent-link' -and -not $LinkUnsupported
+            }
+        }
+    }
+
     It 'writes its log to the folder of Log.Directory, keeping Log.KeepRuns runs' {
         $withLog = $config.Clone()
         $withLog.Log = @{ Directory = (Join-Path -Path $TestDrive -ChildPath 'fleet-logs'); KeepRuns = 7 }
