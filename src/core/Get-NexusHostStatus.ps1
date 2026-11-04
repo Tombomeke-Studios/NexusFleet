@@ -57,14 +57,7 @@ function Get-NexusHostStatus {
         AgentImage     = $null
     }
 
-    $ssh = @{
-        HostName              = $HostInfo.Address
-        Port                  = $HostInfo.Port
-        UserName              = $HostInfo.User
-        ConnectTimeoutSeconds = $Config.Ssh.ConnectTimeoutSeconds
-    }
-    if ($HostInfo.KeyFile) { $ssh.KeyFile = $HostInfo.KeyFile }
-    if ($Config.Ssh.KnownHostsFile) { $ssh.KnownHostsFile = $Config.Ssh.KnownHostsFile }
+    $ssh = Get-NexusSshParameter -HostInfo $HostInfo -Config $Config
 
     try {
         # One connection for every fact, printed as key=value lines (as the preflight does). Nothing is changed:

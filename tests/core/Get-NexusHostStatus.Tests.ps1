@@ -4,7 +4,7 @@ param()
 
 BeforeAll {
     foreach ($file in 'core/ConvertTo-NexusCommandResult', 'transports/Invoke-NexusSshClient', 'transports/Invoke-NexusHostCommand',
-        'utils/ConvertTo-NexusShellArgument', 'utils/Initialize-NexusRunContext', 'utils/Write-NexusLog', 'core/Get-NexusHostStatus') {
+        'utils/ConvertTo-NexusShellArgument', 'utils/Initialize-NexusRunContext', 'utils/Write-NexusLog', 'utils/Get-NexusSshParameter', 'core/Get-NexusHostStatus') {
         . (Join-Path -Path $PSScriptRoot -ChildPath "../../src/$file.ps1")
     }
     $hostInfo = [pscustomobject]@{

@@ -50,14 +50,7 @@ function Invoke-NexusHostPreflight {
         }
     }
 
-    $ssh = @{
-        HostName              = $HostInfo.Address
-        Port                  = $HostInfo.Port
-        UserName              = $HostInfo.User
-        ConnectTimeoutSeconds = $Config.Ssh.ConnectTimeoutSeconds
-    }
-    if ($HostInfo.KeyFile) { $ssh.KeyFile = $HostInfo.KeyFile }
-    if ($Config.Ssh.KnownHostsFile) { $ssh.KnownHostsFile = $Config.Ssh.KnownHostsFile }
+    $ssh = Get-NexusSshParameter -HostInfo $HostInfo -Config $Config
 
     $unexpected = $null
     try {

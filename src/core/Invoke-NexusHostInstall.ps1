@@ -88,14 +88,7 @@ function Invoke-NexusHostInstall {
 
         # 2. The steps. Everything a step needs is in its context, so a step never reads a module variable
         # (those do not exist in a parallel runspace).
-        $ssh = @{
-            HostName              = $HostInfo.Address
-            Port                  = $HostInfo.Port
-            UserName              = $HostInfo.User
-            ConnectTimeoutSeconds = $Config.Ssh.ConnectTimeoutSeconds
-        }
-        if ($HostInfo.KeyFile) { $ssh.KeyFile = $HostInfo.KeyFile }
-        if ($Config.Ssh.KnownHostsFile) { $ssh.KnownHostsFile = $Config.Ssh.KnownHostsFile }
+        $ssh = Get-NexusSshParameter -HostInfo $HostInfo -Config $Config
 
         $context = @{
             HostInfo   = $HostInfo
