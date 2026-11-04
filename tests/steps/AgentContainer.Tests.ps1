@@ -80,6 +80,13 @@ Describe 'Step AgentContainer' {
             & $step.Test $context | Should -BeFalse
         }
 
+        It 'is not in order with Force, even when everything is right (to apply a changed secret)' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-InspectResult }
+            $context.Force = $true
+
+            & $step.Test $context | Should -BeFalse
+        }
+
         It 'logs what is wrong with an existing container' {
             Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-InspectResult -Replace @{ restart = 'restart=no' } -Drop 'port' }
             $context.RunContext = & $module { param($Root) Initialize-NexusRunContext -LogRoot $Root } $TestDrive
@@ -95,6 +102,10 @@ Describe 'Step AgentContainer' {
         BeforeEach {
             Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-TestCommandResult }
             & $step.Apply $context
+        }
+
+        It 'remembers that it started the agent, for VerifyHealthy' {
+            $context.State.AgentStarted | Should -BeTrue
         }
 
         It 'sends the two secrets on stdin, in order, and never in the command' {
