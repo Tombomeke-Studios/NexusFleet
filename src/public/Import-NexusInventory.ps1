@@ -15,7 +15,10 @@ function Import-NexusInventory {
       location  where the node is, shown in NexusInfra (required)
       role      a free label, e.g. "worker" (optional)
       keyFile   SSH private key for this host (optional; otherwise ssh's default keys and agent)
-      agentUrl  the address the orchestrator uses to reach this host's agent
+      reach     how the control plane reaches this host's agent: "direct" (default) calls the agent on its
+                agentUrl; "outbound" means the agent connects to the control plane itself, for a host behind NAT
+                (needs a NexusInfra with the agent link, see docs/agent-link.md)
+      agentUrl  the address the orchestrator uses to reach this host's agent, only for reach "direct"
                 (default http://<address>:<Agent.Port from the config>)
 
     Every problem in the file is reported in one error, each with the host it belongs to ("host 3 (node-vps01):
@@ -47,7 +50,7 @@ function Import-NexusInventory {
 
     .OUTPUTS
     NexusFleet.Host
-    Name, Address, Port, User, Location, Role, KeyFile, AgentUrl: one object per host, in the order of the file.
+    Name, Address, Port, User, Location, Role, KeyFile, Reach, AgentUrl (empty for an outbound host): one object per host, in the order of the file.
 
     .NOTES
     Error ids: NexusFleet.InventoryNotFound (no such file) and NexusFleet.InventoryInvalid (broken JSON, or every
@@ -94,7 +97,7 @@ function Import-NexusInventory {
 
         $defaults = if ($inventory.defaults -is [hashtable]) { $inventory.defaults } else { @{} }
         $entries = @($inventory.hosts)
-        $knownFields = 'name', 'address', 'port', 'user', 'location', 'role', 'keyFile', 'agentUrl'
+        $knownFields = 'name', 'address', 'port', 'user', 'location', 'role', 'keyFile', 'reach', 'agentUrl'
         $problems = [System.Collections.Generic.List[string]]::new()
         $hosts = [System.Collections.Generic.List[object]]::new()
 
@@ -117,6 +120,7 @@ function Import-NexusInventory {
                 $value[$field] = if ($entry.ContainsKey($field)) { $entry[$field] } else { $defaults[$field] }
             }
             if ($null -eq $value.port) { $value.port = 22 }
+            if ($null -eq $value.reach) { $value.reach = 'direct' }
 
             foreach ($required in 'name', 'address', 'user', 'location') {
                 if ([string]::IsNullOrWhiteSpace([string]$value[$required])) {
@@ -139,8 +143,17 @@ function Import-NexusInventory {
             if ($value.agentUrl -and $value.agentUrl -notmatch '^https?://\S+$') {
                 $problems.Add("${label}: agentUrl '$($value.agentUrl)' must be an http(s) URL")
             }
+            if ($value.reach -notin 'direct', 'outbound') {
+                $problems.Add("${label}: reach '$($value.reach)' must be direct or outbound")
+            }
+            if ($value.reach -eq 'outbound' -and $entry.ContainsKey('agentUrl')) {
+                $problems.Add("${label}: agentUrl is never used for a host with reach outbound (its agent connects to the control plane); remove it")
+            }
 
-            $agentUrl = if ($value.agentUrl) { $value.agentUrl } else { "http://$($value.address):$($config.Agent.Port)" }
+            # An outbound agent is never called on an address of its own, so it has no agent URL.
+            $agentUrl = if ($value.reach -eq 'outbound') { $null }
+            elseif ($value.agentUrl) { $value.agentUrl }
+            else { "http://$($value.address):$($config.Agent.Port)" }
             $hosts.Add([pscustomobject]@{
                     PSTypeName = 'NexusFleet.Host'
                     Name       = $value.name
@@ -150,6 +163,7 @@ function Import-NexusInventory {
                     Location   = $value.location
                     Role       = $value.role
                     KeyFile    = $value.keyFile
+                    Reach      = $value.reach
                     AgentUrl   = $agentUrl
                 })
         }
