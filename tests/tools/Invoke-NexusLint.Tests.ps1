@@ -69,6 +69,26 @@ Describe 'Invoke-NexusLint' {
         Should -Invoke -CommandName Invoke-ScriptAnalyzer -Times 1 -Exactly
     }
 
+    It 'writes a Markdown summary with a table of the findings when asked' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith { $fakeFinding }
+        $summary = Join-Path -Path $TestDrive -ChildPath 'summary.md'
+
+        try { & $lintScript -Path $TestDrive -SummaryPath $summary -WarningAction SilentlyContinue } catch { $null = $_ }
+
+        $text = Get-Content -Path $summary -Raw
+        $text | Should -Match '## :x: PSScriptAnalyzer: 1 finding\(s\)'
+        $text | Should -Match ([regex]::Escape("| ``Bad.ps1`` | 2 | PSAvoidUsingCmdletAliases | 'gci' is an alias of 'Get-ChildItem'. |"))
+    }
+
+    It 'writes a green summary when there are no findings' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith { }
+        $summary = Join-Path -Path $TestDrive -ChildPath 'clean.md'
+
+        & $lintScript -Path $TestDrive -SummaryPath $summary
+
+        Get-Content -Path $summary -Raw | Should -Match '## :white_check_mark: PSScriptAnalyzer: no findings'
+    }
+
     It 'writes a GitHub annotation per finding when asked' {
         Mock -CommandName Invoke-ScriptAnalyzer -MockWith { $fakeFinding }
 
