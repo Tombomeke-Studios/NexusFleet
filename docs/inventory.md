@@ -11,7 +11,8 @@ shows the format.
     { "name": "node-home01", "address": "192.168.1.20" },
     { "name": "node-home02", "address": "192.168.1.21", "role": "storage" },
     { "name": "node-vps01",  "address": "203.0.113.10", "port": 2222, "location": "vps",
-      "agentUrl": "http://10.8.0.10:9100" }
+      "agentUrl": "http://10.8.0.10:9100" },
+    { "name": "node-laptop01", "address": "127.0.0.1", "port": 2222, "location": "laptop", "reach": "outbound" }
   ]
 }
 ```
@@ -29,7 +30,8 @@ shows the format.
 | `location` | yes | text | Shown in NexusInfra (for example `home`, `vps`, `office`). |
 | `role` | no | text | A free label for your own grouping. |
 | `keyFile` | no | a path | The SSH private key for this host. Without it, ssh uses its default keys and the ssh agent. |
-| `agentUrl` | no, default `http://<address>:<Agent.Port>` | http(s) URL | The address **the orchestrator** uses to reach this host's agent. Set it when the orchestrator reaches the host on another address than you do, for example over a VPN or a private network. |
+| `reach` | no, default `direct` | `direct` or `outbound` | How the control plane reaches this host's agent. `direct`: the orchestrator calls the agent on `agentUrl`, so the host needs an address the control plane can reach and port 9100 open. `outbound`: the agent connects to the control plane itself over the agent link, so the host needs **no open port** at all; use it for a host behind NAT (a laptop on Wi-Fi, a home server, 4G). Needs a NexusInfra with the agent link; see [agent-link.md](agent-link.md). |
+| `agentUrl` | no, default `http://<address>:<Agent.Port>`; not allowed with `reach: outbound` | http(s) URL | The address **the orchestrator** uses to reach this host's agent. Set it when the orchestrator reaches the host on another address than you do, for example over a private network. |
 
 ## Checks
 
