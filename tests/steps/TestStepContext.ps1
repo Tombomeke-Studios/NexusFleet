@@ -5,13 +5,17 @@
 param()
 
 function Get-TestStepContext {
-    param([object]$Module, [switch]$WithoutSecrets)
+    # -Outbound: a host with reach outbound, whose agent connects to the control plane (docs/agent-link.md).
+    param([object]$Module, [switch]$WithoutSecrets, [switch]$Outbound)
     $hostInfo = [pscustomobject]@{
         PSTypeName = 'NexusFleet.Host'; Name = 'node-web01'; Address = '10.0.0.5'; Port = 22; User = 'fleet'
-        Location = 'home'; Role = $null; KeyFile = $null; AgentUrl = 'http://10.0.0.5:9100'
+        Location = 'home'; Role = $null; KeyFile = $null
+        Reach = if ($Outbound) { 'outbound' } else { 'direct' }
+        AgentUrl = if ($Outbound) { $null } else { 'http://10.0.0.5:9100' }
     }
     @{
         HostInfo   = $hostInfo
+        LinkUrl    = if ($Outbound) { 'wss://nexus.example.com/agent-link' } else { $null }
         Config     = & $Module { Get-NexusConfig }
         Ssh        = @{ HostName = '10.0.0.5'; Port = 22; UserName = 'fleet'; ConnectTimeoutSeconds = 5 }
         Api        = @{
