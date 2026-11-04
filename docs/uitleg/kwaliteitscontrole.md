@@ -2,7 +2,8 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: unit 3 (PSScriptAnalyzer-instellingen en exporttest, #3) en unit 5 (CI-workflow, #5)._
+_Stand: unit 3 (PSScriptAnalyzer-instellingen en exporttest, #3), unit 5 (CI-workflow, #5), en de kwaliteitsronde: de
+helptest en de tests over de tests (#66, #67). Het testrapport in de CI: zie `ci-cd.md`._
 
 ## 1. Wat het doet
 
@@ -99,6 +100,30 @@ Tijdens deze unit zijn beide kanten uitgeprobeerd. De gewone push gaf een groene
 Pester 5.7.1, geen meldingen). Een commit op een wegwerpbranch met een stijlfout en een bewust falende test gaf
 twee rode jobs, met de analyzer-meldingen als annotatie op `src/utils/Stijl.ps1` regel 2. Daarna is die
 branch verwijderd.
+
+### De helptest: help die bruikbaar is
+
+`tests/NexusFleet.Tests.ps1` controleert niet alleen dat elke cmdlet help heeft, maar ook dat die help iets zegt:
+een beschrijving van meer dan 300 tekens, elke parameter in minstens een korte zin, minstens twee voorbeelden die
+geldige PowerShell zijn (`[System.Management.Automation.Language.Parser]::ParseInput`), de cmdlet zelf gebruiken,
+alleen parameters gebruiken die bestaan, en een uitleg hebben. Daarbij `.INPUTS`, `.OUTPUTS`, `.NOTES` en `.LINK`
+naar de verwante cmdlets en de online documentatie, en dat `about_NexusFleet` meegeleverd wordt. De eerste keer vond
+die test in alle zes cmdlets ontbrekende delen, en een voorbeeld dat de cmdlet niet eens gebruikte.
+
+### Tests over de tests
+
+`tests/Quality.Tests.ps1` vindt gaten die anders een mens moet zien:
+
+- **Elke config-waarde heeft een controleregel.** Voor elke sleutel van `config/nexusinfra.psd1` schrijft de test een
+  config met een fout type (een hashtable) en een config zonder die sleutel, en verwacht een fout die de sleutel noemt.
+  Een nieuwe sleutel zonder regel faalt hier dus vanzelf.
+- **Elk fout-id wordt getest.** De test zoekt in `src/` elke tekst `'NexusFleet.X'` of `'NexusApi.X'` die geen
+  type-naam is, en eist dat een test hem noemt. Zo kwam `NexusApi.HttpError` (een onverwachte status als 500) boven,
+  dat nergens getest werd.
+
+De dekking wees nog zes ongeteste gedragingen aan (de sleutel en `known_hosts` bij installatie en status, een foute
+gebruikersnaam of `agentUrl` in de inventaris, een ontbrekend SecretManagement bij `-Save`, een andere fout dan 403 bij
+`Connect-NexusInfra`, een antwoord van het paneel dat geen JSON is); die hebben nu elk een test.
 
 ## 4. Waarom zo
 
@@ -296,3 +321,5 @@ Of op GitHub: tabblad **Actions** van de repository.
 8. Waarom staat `PSUseCorrectCasing` uit, en hoe is bewezen dat dat de oorzaak was?
 9. Waarom probeert het lintscript alleen `RULE_ERROR`-fouten opnieuw, en niet de meldingen over je code?
 10. Waarom ziet een mock-body geen `$script:`-variabelen van het testbestand, en waarom is de teller een hashtable?
+11. Hoe vindt `tests/Quality.Tests.ps1` een config-sleutel waarvoor geen controleregel bestaat?
+12. Waarom is "de cmdlet heeft help" niet genoeg, en wat controleert de helptest nog meer?
