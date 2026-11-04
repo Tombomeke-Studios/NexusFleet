@@ -10,7 +10,8 @@ function Initialize-NexusRunContext {
     run is logged too.
 
     .PARAMETER LogRoot
-    The folder that holds one subfolder per run. Default: logs/ in the current folder.
+    The folder that holds one subfolder per run (config Log.Directory). Empty or not given: logs/ in the current
+    folder. It is created when it does not exist yet.
 
     .PARAMETER Secret
     Values that must never appear in a log, such as the API token. Empty values are ignored.
@@ -22,14 +23,20 @@ function Initialize-NexusRunContext {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        [ValidateNotNullOrEmpty()]
-        [string]$LogRoot = (Join-Path -Path (Get-Location).Path -ChildPath 'logs'),
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$LogRoot,
 
         [AllowNull()]
         [AllowEmptyCollection()]
         [AllowEmptyString()]
         [string[]]$Secret = @()
     )
+
+    # Empty (the default of Log.Directory) means logs/ in the current folder.
+    if ([string]::IsNullOrWhiteSpace($LogRoot)) {
+        $LogRoot = Join-Path -Path (Get-Location).Path -ChildPath 'logs'
+    }
 
     # Sortable by time, and unique even when two runs start in the same second.
     $runId = '{0}-{1}' -f [datetime]::UtcNow.ToString('yyyyMMddTHHmmssZ'), [guid]::NewGuid().ToString('N').Substring(0, 6)

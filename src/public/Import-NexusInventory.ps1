@@ -80,7 +80,7 @@ function Import-NexusInventory {
                     [System.IO.FileNotFoundException]::new("Inventory file not found: '$Path'."), 'NexusFleet.InventoryNotFound', 'ObjectNotFound', $Path))
         }
         $config = Get-NexusConfig
-        $run = Initialize-NexusRunContext
+        $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory
 
         try {
             $inventory = Get-Content -Path $Path -Raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop

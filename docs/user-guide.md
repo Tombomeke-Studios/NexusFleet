@@ -217,7 +217,8 @@ JSON holds `generatedAt` and every field of every node. CSV has one row per node
 
 ## Logs
 
-Every run writes to `logs/<RunId>/` in the current folder: `run.log` for the run, and one file per host. One line per
+Every run writes to `logs/<RunId>/` in the current folder, or under `Log.Directory` when you set that in your config
+(see [configuration](configuration.md#log-the-run-logs)): `run.log` for the run, and one file per host. One line per
 event, with secrets replaced by `***`:
 
 ```text

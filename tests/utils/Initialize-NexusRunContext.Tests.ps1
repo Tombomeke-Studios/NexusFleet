@@ -33,6 +33,27 @@ Describe 'Initialize-NexusRunContext' {
         $first.RunId | Should -Not -Be $second.RunId
     }
 
+    It 'uses logs/ in the current folder when the log root is empty or not given (the default of Log.Directory)' {
+        Push-Location -Path $TestDrive
+        try {
+            $empty = Initialize-NexusRunContext -LogRoot ''
+            $none = Initialize-NexusRunContext -LogRoot $null
+        }
+        finally {
+            Pop-Location
+        }
+
+        Split-Path -Path $empty.LogDirectory -Parent | Should -Be (Join-Path -Path $TestDrive -ChildPath 'logs')
+        Split-Path -Path $none.LogDirectory -Parent | Should -Be (Join-Path -Path $TestDrive -ChildPath 'logs')
+    }
+
+    It 'creates a log root that does not exist yet, also several folders deep' {
+        $root = Join-Path -Path $TestDrive -ChildPath 'nexusfleet/runs'
+
+        $context = Initialize-NexusRunContext -LogRoot $root
+
+        Test-Path -Path $context.LogDirectory -PathType Container | Should -BeTrue
+    }
     It 'drops empty secrets, which would otherwise match everywhere' {
         $context = Initialize-NexusRunContext -LogRoot $TestDrive -Secret 'token-1', '', $null
 

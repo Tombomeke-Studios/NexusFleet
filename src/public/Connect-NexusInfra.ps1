@@ -94,7 +94,7 @@ function Connect-NexusInfra {
     }
 
     # The plain text is only used so the log can redact it.
-    $run = Initialize-NexusRunContext -Secret ([System.Net.NetworkCredential]::new('', $Token).Password)
+    $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory -Secret ([System.Net.NetworkCredential]::new('', $Token).Password)
     Write-NexusLog -Context $run -Message "Connecting to $BaseUrl"
 
     $api = @{

@@ -101,7 +101,7 @@ function Get-NexusFleetStatus {
         if (-not $PSBoundParameters.ContainsKey('ThrottleLimit')) {
             $ThrottleLimit = $config.Preflight.ThrottleLimit
         }
-        $run = Initialize-NexusRunContext -Secret ([System.Net.NetworkCredential]::new('', $session.Token).Password)
+        $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory -Secret ([System.Net.NetworkCredential]::new('', $session.Token).Password)
         Write-NexusLog -Context $run -Message "Fleet status: NexusInfra and $($hosts.Count) host(s)"
 
         # 1. NexusInfra's view. A failure here is reported, not fatal: the hosts can still be looked at.

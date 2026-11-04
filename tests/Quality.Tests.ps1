@@ -2,6 +2,7 @@
 #   - every value in config/nexusinfra.psd1 has a validation rule: a wrong type and a missing value are refused,
 #     with the key named in the message (so a new config key without a rule fails here)
 #   - every error id that src/ can raise (NexusFleet.* and NexusApi.*) is asserted by at least one test
+#   - every cmdlet that starts a run passes the log settings of the config
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '',
     Justification = 'Pester: variables set in BeforeAll/BeforeDiscovery are used in It blocks; the analyzer does not look across script blocks.')]
 param()
@@ -25,6 +26,20 @@ BeforeDiscovery {
             Get-Content | Where-Object { $_ -notmatch 'PSTypeName' } |
             ForEach-Object { [regex]::Matches($_, "'(Nexus(Fleet|Api)\.[A-Za-z]+)'") | ForEach-Object { $_.Groups[1].Value } } |
             Sort-Object -Unique | ForEach-Object { @{ Id = $_ } })
+
+    # Every call of Initialize-NexusRunContext in a public cmdlet, read from the code (AST), not run.
+    $runCalls = foreach ($file in Get-ChildItem -Path (Join-Path -Path $root -ChildPath 'src/public') -Filter '*.ps1') {
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$null, [ref]$null)
+        $isRunCall = {
+            param($node)
+            $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq 'Initialize-NexusRunContext'
+        }
+        foreach ($call in $ast.FindAll($isRunCall, $true)) {
+            $parameters = $call.CommandElements | Where-Object { $_ -is [System.Management.Automation.Language.CommandParameterAst] }
+            @{ File = $file.Name; Line = $call.Extent.StartLineNumber; Parameters = @($parameters.ParameterName) }
+        }
+    }
+    $runCalls = @($runCalls)
 }
 
 BeforeAll {
@@ -128,6 +143,16 @@ Describe 'Every link in the documentation works' {
                 Get-HeadingAnchor -Path $document | Should -Contain $link.Groups[2].Value.TrimStart('#') -Because "the help links to $($link.Value)"
             }
         }
+    }
+}
+
+Describe 'Every run uses the log settings of the config' {
+    It 'there is a run context call in every cmdlet that logs (the AST search works)' -ForEach @{ Count = $runCalls.Count } {
+        $Count | Should -BeGreaterOrEqual 5
+    }
+
+    It '<File>:<Line> passes -LogRoot from the config' -ForEach $runCalls {
+        $Parameters | Should -Contain 'LogRoot' -Because 'Log.Directory decides where the logs go'
     }
 }
 
