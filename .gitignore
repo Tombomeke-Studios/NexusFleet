@@ -20,3 +20,6 @@ lab/**/.keys/
 
 # Module builds (tools/Build-NexusModule.ps1).
 out/
+
+# Demo results (lab/demo/Invoke-NexusDemo.ps1).
+lab/demo/results/
