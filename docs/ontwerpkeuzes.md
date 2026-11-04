@@ -150,7 +150,19 @@ Format per keuze:
   ontbrekende `write`-scope vangt `Invoke-NexusApi` op bij de eerste wijzigende oproep (`403` → duidelijke
   fout). Mogelijke kleine NexusInfra-wijziging voor later: de scopes van het huidige token in `GET /me`
   teruggeven (`fleet-support:`, alleen na overleg met Tom).
-- **Nog te doen:** live bevestigen tegen een draaiende controlekant (lab E0, #14).
+- **Live bevestigd (2026-11-04, #21)** tegen het node-lab (`lab/node-lab/`, NexusInfra `0.4.0-qa-community`), met
+  een token per combinatie van scopes van het lab-account (rol `owner`). Gemeten HTTP-statussen:
+
+  | Scopes | `GET /nodes` | `GET /users` | `POST /nodes` | `PATCH /nodes/:id/maintenance` | `DELETE /nodes/:id` |
+  |---|---|---|---|---|---|
+  | geen | 200 | 403 | 403 | 403 | 403 |
+  | `write` | 200 | 403 | 403 | 403 | 403 |
+  | `admin` | 200 | 200 | 403 | 403 | 403 |
+  | `write` + `admin` | 200 | 200 | 201 | 200 | 204 |
+
+  Dat is precies wat de broncode zei: de drie wijzigende node-routes vragen `write` **en** `admin`, en `GET /users`
+  test de `admin`-scope zonder iets te wijzigen. `Connect-NexusInfra` en `Install-NexusNode` werken met zo'n token
+  end-to-end in het lab (`tests/public/Install-NexusNode.Integration.Tests.ps1`).
 
 ---
 
@@ -242,3 +254,52 @@ Format per keuze:
   `config/nexusinfra.local.psd1` nodig, met een waarschuwing bij elke oproep. Anders stopt `Invoke-NexusApi` met
   `NexusApi.UnencryptedNotAllowed`, vóór er iets verstuurd is.
 - **Gevolg:** veilig als standaard; de beveiligde verbinding (TLS, extra) maakt de uitzondering overbodig.
+
+---
+
+## Keuzes tijdens de MVP (fase 3)
+
+### K6 — De volgorde van de installatiestappen
+
+- **Vraag:** in welke volgorde gaan Docker, de agent, de registratie en de controle?
+- **Keuze (Claude Code, door Tom te bevestigen):** Docker (10) → RegisterNode (20) → AgentContainer (30) →
+  VerifyHealthy (40). De registratie komt vóór de agent: `POST /nodes` maakt het record aan of werkt het bij, en de
+  eerste heartbeat vindt de node dan al met de juiste naam en locatie. Andersom zou de heartbeat eerst een record
+  zonder naam maken, en zou de rollback van de registratie niet weten of dat record van deze run was.
+- **Gevolg:** de rollback van RegisterNode verwijdert het record alleen als het vóór de run niet bestond (de Test
+  onthoudt dat in de stapcontext).
+
+### K7 — De geheimen van de agent op de host
+
+- **Vraag:** hoe komen `RABBITMQ_URL` en `INTERNAL_API_TOKEN` in de agent zonder op een opdrachtregel te staan?
+- **Opties:** `docker run -e NAAM=waarde` (staat in `ps` op de host) · een env-bestand · Docker secrets (vraagt
+  Swarm).
+- **Keuze:** beide geheimen gaan over stdin van één `ssh`-oproep (één regel per geheim, het transport kan nu
+  meerdere geheimen sturen) en worden op de host weggeschreven in `/etc/nexusinfra/agent.env` (map `700`, bestand
+  `600`, eigenaar root). `docker run --env-file` leest ze daar. De Test van de stap leest van de omgeving alleen
+  `NODE_ID` en `AGENT_URL`, zodat de geheimen de host nooit verlaten.
+- **Beperking:** wie op de host `docker inspect` mag doen (root), ziet de waarden wel. Een gewijzigd geheim wordt
+  niet opgemerkt door de Test (die kent de geheimen niet in een dry run); opgenomen in de backlog.
+
+### K8 — Docker installeren
+
+- **Keuze:** het pakket `docker.io` uit Ubuntu zelf, met `apt-get` zonder vragen (`DEBIAN_FRONTEND=noninteractive`)
+  en een wachttijd voor het apt-slot (`DPkg::Lock::Timeout`, voor unattended-upgrades op een verse VM). Geen extra
+  apt-repository of sleutel die vertrouwd moet worden. Pakketnaam en wachttijd staan in de config.
+- **Gevonden in het node-lab:** het Ubuntu-pakket heeft geen init-script, dus op een host zonder systemd (een
+  container, WSL) startte de daemon niet (`docker: unrecognized service`). Daar start de stap `dockerd` nu zelf op de
+  achtergrond; een echte VM gebruikt altijd `systemctl enable --now docker`. De rollback van die mislukte poging
+  verwijderde Docker netjes weer.
+
+### K9 — Het node-lab (in plaats van, en vóór, de echte VM's)
+
+- **Vraag:** hoe bewijs je `Install-NexusNode` end-to-end voordat de lab-VM's (#14) klaar zijn?
+- **Keuze:** `lab/node-lab/`: een NexusInfra-controlekant uit de gepubliceerde images (RabbitMQ, orchestrator,
+  gateway, control-room) en twee verse Ubuntu-"hosts" als *privileged* containers, op vaste adressen in één
+  Docker-netwerk. `Start-NodeLab.ps1` maakt sleutels en lab-geheimen, een API-token (`write` + `admin`), een
+  config-override en een inventaris. De integratietest doorloopt daar de drie criteria van "Klaar als".
+- **Beperking:** Docker in Docker is geen VM (geen systemd, gedeelde kernel). De echte bevestiging blijft de demo op
+  de lab-VM's (#14, fase 4).
+- **Gevonden met het lab, niet met mocks:** `Invoke-RestMethod` geeft een JSON-lijst terug als één object, zodat
+  `Where-Object` op `GET /nodes` nooit een node vond (#47); en het ontbrekende init-script van K8.
+
