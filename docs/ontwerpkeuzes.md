@@ -311,3 +311,18 @@ Format per keuze:
 - **Gevonden met het lab, niet met mocks:** `Invoke-RestMethod` geeft een JSON-lijst terug als één object, zodat
   `Where-Object` op `GET /nodes` nooit een node vond (#47); en het ontbrekende init-script van K8.
 
+
+### K10 — Controleren dat NexusInfra de agent bereikt (#101)
+
+- **Vraag:** is *healthy* genoeg om een installatie geslaagd te noemen?
+- **Gevonden:** nee. *Healthy* betekent dat de heartbeats aankomen, en die gaan van de node naar de broker. Deployen,
+  bestanden, de console en backups gaan de andere kant op: de orchestrator belt de agent op zijn `agentUrl`, met het
+  `INTERNAL_API_TOKEN` (gezien in de broncode van NexusInfra: `agentFetch` in `services/orchestrator/src/api.ts`).
+  Over het internet kan die richting dicht zitten (firewall, security group, geen port forwarding, een adres dat
+  alleen thuis werkt), of het token kan verschillen. De node is dan *healthy*, maar er kan niets op draaien.
+- **Keuze:** een aparte stap `AgentReachable` (50) die `GET /nodes/<id>/disk` vraagt. Bij die vraag belt NexusInfra
+  zelf de agent, met het token, en antwoordt `502` als het niet lukt. Ze bestaat al in 0.4.0, leest alleen, en is
+  alleen voor platformbeheerders: NexusInfra hoeft niet te veranderen.
+- **Verworpen:** `GET <agentUrl>/health` vanaf de beheermachine. Dat test de verkeerde richting: de beheermachine is
+  niet de orchestrator (een `agentUrl` in het thuisnetwerk werkt voor de orchestrator, niet vanaf school), en
+  `/health` vraagt geen token. Ook verworpen: een nieuw endpoint in NexusInfra, omdat er al een is.

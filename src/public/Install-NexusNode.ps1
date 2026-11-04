@@ -13,6 +13,7 @@ function Install-NexusNode {
       4. AgentContainer  starts the NexusInfra node agent with every option it needs, including the three that
                      fail silently when forgotten: the restart policy, the published port and the backups volume
       5. VerifyHealthy  waits until NexusInfra reports the node healthy (at most Health.VerifyTimeoutSeconds)
+      6. AgentReachable checks that NexusInfra can call the agent (GET /nodes/<id>/disk), not only hear it
 
     Each step first checks whether the host is already in order for it; only then does it change something. So a
     second run on a finished host changes nothing (Changed = $false), and a host that was half done is finished.

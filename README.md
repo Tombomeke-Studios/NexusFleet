@@ -67,6 +67,7 @@ flowchart LR
 | **RegisterNode** | is the node in NexusInfra, with the same name, location and agent URL? | `POST /nodes` |
 | **AgentContainer** | does the agent run with every setting, including the three that fail silently? | writes `/etc/nexusinfra/agent.env` (mode 600) and starts the agent |
 | **VerifyHealthy** | does NexusInfra report the node healthy? | waits until it does, or rolls back |
+| **AgentReachable** | can NexusInfra call the agent, not only hear its heartbeats? | fails with what to check, and rolls back |
 
 ## Quick start
 
@@ -198,7 +199,7 @@ NexusFleet/
 ├── NexusFleet.psd1 / .psm1   manifest (explicit exports) and loader
 ├── src/
 │   ├── core/                 the step runner, contracts and the per-host engines (preflight, install, status)
-│   ├── steps/                one file per installation step: Docker, RegisterNode, AgentContainer, VerifyHealthy
+│   ├── steps/                one file per installation step: Docker … AgentReachable
 │   ├── transports/           running a command on a host over ssh
 │   ├── api/                  the only caller of the NexusInfra REST API
 │   ├── utils/                config, logging, secrets, the shared per-host loop

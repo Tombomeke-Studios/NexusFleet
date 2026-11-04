@@ -81,7 +81,7 @@ Describe 'Install-NexusNode against the node lab' -Tag 'Integration' {
 
     It '-WhatIf plans every step on the fresh hosts and changes nothing' {
         foreach ($name in $labHosts.Name) {
-            ($plan | Where-Object Host -EQ $name).Steps.Outcome | Should -Be @('WouldApply', 'WouldApply', 'WouldApply', 'WouldApply')
+            ($plan | Where-Object Host -EQ $name).Steps.Outcome | Should -Be @('WouldApply', 'WouldApply', 'WouldApply', 'WouldApply', 'WouldApply')
         }
         $nodesAfterPlan.id | Should -Not -Contain $labHosts[0].Name
     }
@@ -90,7 +90,7 @@ Describe 'Install-NexusNode against the node lab' -Tag 'Integration' {
         foreach ($name in $labHosts.Name) {
             $result = $first | Where-Object Host -EQ $name
             $result.Success | Should -BeTrue -Because "$name should succeed: $($result.Error)"
-            $result.Steps.Outcome | Should -Be @('Applied', 'Applied', 'Applied', 'Applied')
+            $result.Steps.Outcome | Should -Be @('Applied', 'Applied', 'Applied', 'Applied', 'AlreadyDone')
             ($nodesAtEnd | Where-Object id -EQ $name).health | Should -Be 'healthy'
         }
     }
@@ -99,7 +99,7 @@ Describe 'Install-NexusNode against the node lab' -Tag 'Integration' {
         $second.Changed | Should -Not -Contain $true
         $second.Success | Should -Not -Contain $false
         foreach ($result in $second) {
-            $result.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone')
+            $result.Steps.Outcome | Should -Be @('AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone', 'AlreadyDone')
         }
     }
 
