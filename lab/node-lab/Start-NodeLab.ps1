@@ -107,7 +107,7 @@ $tokenFile = Join-Path -Path $keyFolder -ChildPath 'api-token'
 $tokenValid = $false
 if (Test-Path -Path $tokenFile) {
     try {
-        $null = Invoke-RestMethod -Uri "$baseUrl/me" -Headers @{ Authorization = "Bearer $(Get-Content -Path $tokenFile -Raw)" } -AllowUnencryptedAuthentication -TimeoutSec 5
+        $null = Invoke-RestMethod -Uri "$baseUrl/me" -Headers @{ Authorization = "Bearer $(Get-Content -Path $tokenFile -Raw)" } -TimeoutSec 5
         $tokenValid = $true
     }
     catch {
