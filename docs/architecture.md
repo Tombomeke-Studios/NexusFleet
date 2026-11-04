@@ -1,8 +1,8 @@
 # NexusFleet — Architecture
 
 How the module is built: its parts, the contracts between them and how data flows through a run.
-Sections marked _planned_ describe the design from the [proposal](projectvoorstel.md) and are filled in as
-the code lands. The working rules live in [CLAUDE.md](../CLAUDE.md).
+The design follows the [proposal](projectvoorstel.md). How to work on it is in [development.md](development.md),
+how it is tested in [testing.md](testing.md), and how to use it in the [user guide](user-guide.md).
 
 ## Overview
 
