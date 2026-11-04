@@ -58,7 +58,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 ### Phase 4c — Code quality · `feature/refactor-helpers`
 
 - [x] Build the ssh parameters of a host in one place (#79)
-- [ ] Build the API parameters of a session in one place (#80)
+- [x] Build the API parameters of a session in one place (#80)
 - [ ] Parse key=value facts from a host in one place (#81)
 - [ ] Run per-host work in one shared loop (#82)
 

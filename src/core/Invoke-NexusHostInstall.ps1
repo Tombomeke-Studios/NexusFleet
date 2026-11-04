@@ -94,13 +94,7 @@ function Invoke-NexusHostInstall {
             HostInfo   = $HostInfo
             Config     = $Config
             Ssh        = $ssh
-            Api        = @{
-                BaseUrl              = $Session.BaseUrl
-                Token                = $Session.Token
-                TimeoutSeconds       = $Session.TimeoutSeconds
-                RetryCount           = $Session.RetryCount
-                AllowUnencryptedHttp = [bool]$Session.AllowUnencryptedHttp
-            }
+            Api        = (Get-NexusApiParameter -Session $Session)
             Secrets    = $Secrets
             RunContext = $RunContext
             Force      = [bool]$Force

@@ -108,13 +108,7 @@ function Get-NexusFleetStatus {
         $nodes = @()
         $panelError = $null
         try {
-            $api = @{
-                BaseUrl              = $session.BaseUrl
-                Token                = $session.Token
-                TimeoutSeconds       = $session.TimeoutSeconds
-                RetryCount           = $session.RetryCount
-                AllowUnencryptedHttp = [bool]$session.AllowUnencryptedHttp
-            }
+            $api = Get-NexusApiParameter -Session $session
             $nodes = @(Invoke-NexusApi @api -Method GET -Path '/nodes')
         }
         catch {
