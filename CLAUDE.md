@@ -220,7 +220,7 @@ never committed.
 
 | Path | Contents |
 |---|---|
-| `README.md` | English user docs: what/why, planned MVP cmdlets, requirements, quick start (placeholder until the MVP), dev commands, layout. Update with every public cmdlet change |
+| `README.md` | The front page (English): banner, badges, why, a Mermaid diagram of the flow, the steps per host, a short quick start (details in `docs/user-guide.md`), cmdlets, the demo result, docs, dev commands and workflows, layout. Update with every public cmdlet change |
 | `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.6+ (LTS, decision K4), `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
 | `.gitignore` | Ignores `logs/`, local config (`config/*.local.*`, `config/inventory.json`), Pester output, OS files |
 | `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |

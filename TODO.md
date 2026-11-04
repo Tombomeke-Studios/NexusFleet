@@ -64,7 +64,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 ### Phase 4e — READMEs · `feature/readme`
 
-- [ ] Rewrite the main README (#89)
+- [x] Rewrite the main README (#89)
 - [ ] Expand the folder READMEs (#90)
 
 ## Phase 5 — Extras (only after `v1.0.0`, in this order)
