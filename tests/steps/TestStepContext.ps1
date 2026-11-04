@@ -10,7 +10,7 @@ function Get-TestStepContext {
     $hostInfo = [pscustomobject]@{
         PSTypeName = 'NexusFleet.Host'; Name = 'node-web01'; Address = '10.0.0.5'; Port = 22; User = 'fleet'
         Location = 'home'; Role = $null; KeyFile = $null
-        Reach = if ($Outbound) { 'outbound' } else { 'direct' }
+        Reach    = if ($Outbound) { 'outbound' } else { 'direct' }
         AgentUrl = if ($Outbound) { $null } else { 'http://10.0.0.5:9100' }
     }
     @{
