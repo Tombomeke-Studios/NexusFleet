@@ -49,6 +49,14 @@ Describe 'Write-NexusLog' {
         $line | Should -Match 'token \*\*\* sent, again \*\*\*$'
     }
 
+    It 'redacts a longer secret as a whole, also when a shorter secret is part of it' {
+        # The broker password is part of the broker URL; both are secrets, given short one first.
+        $both = Initialize-NexusRunContext -LogRoot $TestDrive -Secret 'Br0ker-pass', 'amqp://fleet:Br0ker-pass@broker:5672'
+
+        Write-NexusLog -Context $both -Message 'connecting to amqp://fleet:Br0ker-pass@broker:5672 failed'
+
+        Get-Content -Path (Join-Path -Path $both.LogDirectory -ChildPath 'run.log') | Should -Match 'connecting to \*\*\* failed$'
+    }
     It 'redacts NexusInfra API tokens (nxi_...) even when they were not registered' {
         Write-NexusLog -Context $context -Message 'Authorization: Bearer nxi_Ab-9_xYz0123'
 

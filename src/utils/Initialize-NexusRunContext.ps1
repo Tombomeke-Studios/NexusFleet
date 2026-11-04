@@ -72,7 +72,8 @@ function Initialize-NexusRunContext {
         PSTypeName   = 'NexusFleet.RunContext'
         RunId        = $runId
         LogDirectory = $logDirectory
-        # An empty string would "match" between every two characters, so it is dropped.
-        Secrets      = @($Secret | Where-Object { -not [string]::IsNullOrEmpty($_) })
+        # An empty string would "match" between every two characters, so it is dropped. Longest first: when one secret
+        # is part of another (the broker password in the broker URL), the longer one is then replaced as a whole.
+        Secrets      = @($Secret | Where-Object { -not [string]::IsNullOrEmpty($_) } | Sort-Object -Property Length -Descending)
     }
 }
