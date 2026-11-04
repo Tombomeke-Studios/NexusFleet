@@ -18,49 +18,85 @@ A NexusInfra community install the VMs can reach, for example on your own machin
 
   The agents then connect with `amqp://<user>:<password>@<control-plane-address>:5672`. With the 0.4.0 bundle, add
   `ports: ['<lab-address>:5672:5672']` to its `rabbitmq` service yourself.
-- **The orchestrator must reach the agents** on `http://<vm-address>:9100` (that is each VM's `agentUrl`).
+- **The orchestrator must reach the agents** on `http://<vm-address>:9100` (that is each VM's `agentUrl`); see
+  [over the internet](#over-the-internet-without-a-vpn).
 
 Note the `INTERNAL_API_TOKEN` from the control plane's `.env`: the agents need the same value.
 
 In the panel: sign in as the admin, create an API token with the scopes **write** and **admin** (`POST /me/tokens`,
 or the panel's API token page).
 
-## Machines on different networks
+## Over the internet, without a VPN
 
-For example: the control plane on a desktop at home (Docker Desktop), one VM in VirtualBox on that desktop, one on
-a laptop, one on Azure, and the demo shown from school. Four connections have to work:
+NexusFleet is built for hosts anywhere, so the demo does not use a VPN: every new node would first have to join it
+(see the proposal, "Hoe het werkt"). The orchestrator reaches each agent directly, and each agent reaches the broker
+directly. Four connections have to work:
 
 | From | To | Port | Over |
 |---|---|---|---|
-| the admin machine | each host | 22 | ssh |
+| the admin machine (NexusFleet) | each host | 22 | ssh, key |
 | the admin machine | the gateway | 9400 | HTTP, API token |
 | each host's agent | the broker | 5672 | AMQP, broker password |
 | the orchestrator | each host's agent | 9100 | HTTP, `INTERNAL_API_TOKEN` |
 
-The last row decides it: the orchestrator at home opens the connection to each agent. A laptop on the school
-network is behind that network's NAT, so nothing at home can reach it, and port forwarding at home does not
-change that. Publishing 5672 and 9100 on the internet would also send the broker password and the
-`INTERNAL_API_TOKEN` unencrypted.
+The last row is the one people forget: deploying, files, the console and backups are calls from the orchestrator
+**to** the agent. A node whose heartbeats arrive is *healthy* even when that direction is closed. NexusFleet's
+last step, `AgentReachable`, checks exactly this direction, so a node that NexusInfra cannot control is reported as
+failed, with the reason.
 
-**Use an overlay network instead**, such as [Tailscale](https://tailscale.com/kb/1017/install) (free for personal
-use). Install it on the desktop, on each VM, and on the laptop you run NexusFleet from. Every machine then gets a
-fixed address (`100.x.y.z`) that works from any network, school included, and the traffic between them is
-encrypted. No port forwarding is needed. Use those addresses everywhere:
+### The control plane: a public name and port forwarding
 
-| Setting | Value |
-|---|---|
-| The installer's broker question (`BROKER_BIND`) | the desktop's Tailscale address |
-| `Broker.Host` in `config/nexusinfra.local.psd1` | the desktop's Tailscale address |
-| `Api.BaseUrl` | `http://<desktop's Tailscale address>:9400`, with `AllowUnencryptedHttp = $true` (Tailscale encrypts it) |
-| `address` of each host in the inventory | the VM's Tailscale address |
-| `agentUrl` (default `http://<address>:9100`) | follows from the address |
+For example the control plane on a desktop at home (Docker Desktop, home address `192.168.0.6`):
 
-Then check:
-- Docker Desktop publishes the broker on that address: `Test-NexusHost` checks the broker from each VM (`Broker`).
-  If the check fails, set `BROKER_BIND=0.0.0.0` and allow port 5672 in Windows Firewall only from `100.64.0.0/10`.
-- On Azure, open no ports in the network security group for 9100 or 5672: Tailscale needs none.
-- Port forwarding the panel is only needed to show it to someone outside the overlay. Then only behind TLS
-  (NexusInfra `docs/deployment.md`).
+1. **DNS at your domain's provider:** an `A` record, for example `nexus.<your-domain>`, pointing to the public address
+   of the home connection. If that address changes, the record has to follow (ask the provider about dynamic DNS).
+2. **Port forwarding on the home router** to the desktop:
+
+   | Outside | To | For |
+   |---|---|---|
+   | 5672 | `192.168.0.6:5672` | the broker: the agents |
+   | 9400 | `192.168.0.6:9400` | the gateway: NexusFleet and the panel's API |
+
+   And in Windows Firewall an inbound rule for those two ports.
+3. **The NexusInfra installer:** answer its broker question with the desktop's own address (`192.168.0.6`): that is
+   where the router forwards to. It writes `BROKER_BIND` and prints the broker URL with that address; the agents
+   come in from outside, so theirs has the public name: `amqp://nexusinfra:<RABBITMQ_PASS>@nexus.<your-domain>:5672`.
+4. **NexusFleet's `config/nexusinfra.local.psd1`:**
+
+   ```powershell
+   @{
+       Api    = @{ BaseUrl = 'http://nexus.<your-domain>:9400'; AllowUnencryptedHttp = $true }
+       Broker = @{ Host = 'nexus.<your-domain>' }
+   }
+   ```
+
+`AllowUnencryptedHttp` sends the API token unencrypted, with a warning every run. For anything beyond the demo, put
+TLS in front of the gateway (NexusInfra `docs/deployment.md`, reverse proxy) and use `https://`. A Cloudflare
+Tunnel is another way to publish the panel and the gateway over `https://` without opening 9400, but not the
+broker: AMQP is not HTTP.
+
+### The hosts
+
+| Host | `address` (ssh) | `agentUrl` (the orchestrator calls it) | Open |
+|---|---|---|---|
+| a cloud VM (Azure, or any VPS) | its public address | default: `http://<public address>:9100` | in the network security group: 22, and 9100 only from the home address |
+| a VM at home, next to the control plane (VirtualBox, bridged) | `nexus.<your-domain>`, `port` 2222 (router: 2222 → the VM's 22) | `http://<the VM's home address>:9100`: the orchestrator is on the same network | nothing for 9100 |
+| a VM on a laptop at school | its address on the laptop | none that works | nothing can be opened: the school's network is in between |
+
+The laptop VM cannot become a working node from school: the orchestrator at home cannot open a connection to it, and
+no port forwarding at home changes that. A real server has a public address or a port forward; a laptop on someone
+else's network has neither. In the demo it shows criterion 3 honestly: it fails at `AgentReachable` with the reason,
+and the other hosts are not stopped by it. Run NexusFleet itself from the laptop.
+
+Two things to check before the demo:
+- **The broker from each host:** `Test-NexusHost` checks it from the host itself (`Broker`).
+- **The VM at home and the public name:** that VM reaches the broker through `nexus.<your-domain>`, so through the
+  router from the inside. Not every router allows that (*NAT loopback*). If its `Broker` check fails, add
+  `192.168.0.6 nexus.<your-domain>` to its `/etc/hosts`.
+
+**Security in the MVP:** the broker password and the `INTERNAL_API_TOKEN` travel unencrypted. The security group on
+the cloud VM (9100 only from home) and a broker user of its own limit that for the demo. Closing it properly is the
+extra "secured connection": Caddy as the only entry with an IP allowlist, TLS and `amqps://`, a broker user per node.
 
 ## 2. Each VM
 
