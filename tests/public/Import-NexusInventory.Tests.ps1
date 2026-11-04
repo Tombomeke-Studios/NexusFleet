@@ -132,11 +132,11 @@ Describe 'Import-NexusInventory' {
         }
 
         It 'names a host without a usable name by its position' {
-            $path = Write-TestInventory @{ hosts = @(
-                    @{ name = 'node-a'; address = '10.0.0.5'; user = 'fleet'; location = 'home' }
-                    @{ address = '10.0.0.6'; user = 'fleet'; location = 'home' }
-                ) 
-            }
+            $hosts = @(
+                @{ name = 'node-a'; address = '10.0.0.5'; user = 'fleet'; location = 'home' }
+                @{ address = '10.0.0.6'; user = 'fleet'; location = 'home' }
+            )
+            $path = Write-TestInventory @{ hosts = $hosts }
 
             { Import-NexusInventory -Path $path } | Should -Throw -ExpectedMessage '*host 2: name is missing*'
         }
