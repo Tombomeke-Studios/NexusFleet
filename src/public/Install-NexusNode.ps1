@@ -173,49 +173,17 @@ function Install-NexusNode {
         Write-NexusLog -Context $run -Message ("Install on $($hosts.Count) host(s), $ThrottleLimit at a time" +
             $(if ($planCount) { "; $planCount host(s) plan only" } else { '' }))
 
-        # Progress bar, updated for every finished host (also while the parallel loop is still running).
-        $done = 0
-        $showProgress = {
-            process {
-                $done++
-                Write-Progress -Activity 'NexusFleet install' -Status "$done of $($hosts.Count) hosts done" `
-                    -PercentComplete ([math]::Floor(100 * $done / [math]::Max(1, $hosts.Count)))
-                $_
-            }
+        # Every host on its own, $ThrottleLimit at a time (see Invoke-NexusHostLoop); one result per host, always.
+        # Importing the module in a runspace also registers the steps there.
+        $loop = @{
+            InputObject     = @($work | ForEach-Object { @{ HostInfo = $_.HostInfo; PlanOnly = $_.PlanOnly } })
+            FunctionName    = 'Invoke-NexusHostInstall'
+            Parameter       = @{ Config = $config; Session = $session; Secrets = $secrets; Force = [bool]$Force; RunContext = $run }
+            FailureFunction = 'ConvertTo-NexusInstallFailure'
+            ThrottleLimit   = $ThrottleLimit
+            Activity        = 'NexusFleet install'
         }
-
-        if ($ThrottleLimit -eq 1) {
-            # One after the other, in this runspace.
-            $results = foreach ($item in $work) {
-                try {
-                    Invoke-NexusHostInstall -HostInfo $item.HostInfo -Config $config -Session $session -Secrets $secrets `
-                        -PlanOnly:$item.PlanOnly -Force:$Force -RunContext $run
-                }
-                catch {
-                    ConvertTo-NexusInstallFailure -HostInfo $item.HostInfo -Message $_.Exception.Message -PlanOnly:$item.PlanOnly
-                }
-            }
-            $results = $results | & $showProgress
-        }
-        else {
-            # Each runspace starts empty: import the module by path (that also registers the steps there) and run the
-            # internal per-host function in the module's scope. Everything else comes in with $using:.
-            $manifest = Join-Path -Path $PSScriptRoot -ChildPath '../../NexusFleet.psd1'
-            $results = $work | ForEach-Object -ThrottleLimit $ThrottleLimit -Parallel {
-                $module = Import-Module -Name $using:manifest -PassThru
-                & $module {
-                    param($Item, $Config, $Session, $Secrets, $Run, $Force)
-                    try {
-                        Invoke-NexusHostInstall -HostInfo $Item.HostInfo -Config $Config -Session $Session -Secrets $Secrets `
-                            -PlanOnly:$Item.PlanOnly -Force:$Force -RunContext $Run
-                    }
-                    catch {
-                        ConvertTo-NexusInstallFailure -HostInfo $Item.HostInfo -Message $_.Exception.Message -PlanOnly:$Item.PlanOnly
-                    }
-                } $_ $using:config $using:session $using:secrets $using:run ([bool]$using:Force)
-            } | & $showProgress
-        }
-        Write-Progress -Activity 'NexusFleet install' -Completed
+        $results = @(Invoke-NexusHostLoop @loop)
 
         $succeeded = @($results | Where-Object Success).Count
         $changed = @($results | Where-Object Changed).Count

@@ -57,14 +57,7 @@ function Get-NexusHostStatus {
         AgentImage     = $null
     }
 
-    $ssh = @{
-        HostName              = $HostInfo.Address
-        Port                  = $HostInfo.Port
-        UserName              = $HostInfo.User
-        ConnectTimeoutSeconds = $Config.Ssh.ConnectTimeoutSeconds
-    }
-    if ($HostInfo.KeyFile) { $ssh.KeyFile = $HostInfo.KeyFile }
-    if ($Config.Ssh.KnownHostsFile) { $ssh.KnownHostsFile = $Config.Ssh.KnownHostsFile }
+    $ssh = Get-NexusSshParameter -HostInfo $HostInfo -Config $Config
 
     try {
         # One connection for every fact, printed as key=value lines (as the preflight does). Nothing is changed:
@@ -84,11 +77,7 @@ if a=$(sudo -n docker inspect --format '{{.State.Status}}|{{.State.StartedAt}}|{
             $status.Error = "cannot reach $($HostInfo.Address):$($HostInfo.Port) over ssh: $($answer.StdErr)"
         }
         else {
-            $facts = @{}
-            foreach ($line in $answer.StdOut -split "`n") {
-                $key, $value = $line -split '=', 2
-                if ($key) { $facts[$key.Trim()] = "$value".Trim() }
-            }
+            $facts = ConvertFrom-NexusFactLine -Text $answer.StdOut
             $status.Reachable = $true
             # A fact that is not a number (an old df, an empty line) stays $null instead of failing the whole status.
             $number = 0

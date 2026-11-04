@@ -34,20 +34,15 @@ Import-NexusInventory ./config/inventory.json | Test-NexusHost
 
 1. `process` verzamelt de servers uit de pijplijn in een lijst. Er gebeurt nog niets: het parallelle werk kan pas
    beginnen als alle servers bekend zijn.
-2. `end` leest de configuratie, start een run (RunId, logmap) en kiest:
+2. `end` leest de configuratie, start een run (RunId, logmap) en geeft alle servers aan de gedeelde lus
+   `Invoke-NexusHostLoop`, met `Invoke-NexusHostPreflight` als werk per server en `ConvertTo-NexusPreflightFailure` voor
+   een server waarbij iets misgaat. De lus kiest:
    - **`-ThrottleLimit 1`:** een gewone `foreach`, in volgorde, in de eigen runspace;
-   - **anders:** `ForEach-Object -Parallel -ThrottleLimit N`. In elke runspace wordt de module ingeladen
-     (`Import-Module $using:manifest -PassThru`), en de interne functie draait in de scope van de module:
+   - **anders:** `ForEach-Object -Parallel -ThrottleLimit N`, met de module ingeladen in elke runspace.
 
-     ```powershell
-     & $module {
-         param($HostInfo, $Config, $Run)
-         try { Invoke-NexusHostPreflight -HostInfo $HostInfo -Config $Config -RunContext $Run }
-         catch { ConvertTo-NexusPreflightFailure -HostInfo $HostInfo -Message $_.Exception.Message }
-     } $_ $using:config $using:run
-     ```
-3. Elk resultaat gaat door `$showProgress`, dat de voortgangsbalk bijwerkt. Daarna een samenvatting in `run.log`, en
-   de resultaten gaan de pijplijn in.
+   Hoe die lus werkt, staat in [gedeelde-hulpfuncties.md](gedeelde-hulpfuncties.md).
+3. De lus werkt de voortgangsbalk bij en geeft één resultaat per server. Daarna een samenvatting in `run.log`, en de
+   resultaten gaan de pijplijn in.
 
 **`Invoke-NexusHostPreflight`** (één server):
 
@@ -97,8 +92,6 @@ Import-NexusInventory ./config/inventory.json | Test-NexusHost
 - **`& $module { }`** (een scriptblok in de scope van een module):
   https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_operators#call-operator-
 - **`Write-Progress`:** https://learn.microsoft.com/powershell/module/microsoft.powershell.utility/write-progress
-- **Een scriptblok met een `process`-blok als filter** (`$results | & $showProgress`):
-  https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_script_blocks
 - **Bash:** `/dev/tcp/host/poort` (een TCP-verbinding testen), `sudo -n` (niet om een wachtwoord vragen), `df -Pm`.
 
 ## 6. Zelf proberen

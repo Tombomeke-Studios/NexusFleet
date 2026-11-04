@@ -7,6 +7,7 @@
 - **Helpers for steps:** `Invoke-NexusStepCommand` (a command on the step's host), `Invoke-NexusStepApi`.
 - **Per-host engines**, the work for one host that the public cmdlets run in parallel; each never throws:
   `Invoke-NexusHostPreflight`, `Invoke-NexusHostInstall`, `Get-NexusHostStatus`, plus
-  `ConvertTo-NexusPreflightFailure`, `ConvertTo-NexusInstallFailure` and `ConvertTo-NexusNodeStatus`.
+  `ConvertTo-NexusPreflightFailure`, `ConvertTo-NexusInstallFailure`, `ConvertTo-NexusHostStatusFailure` and
+  `ConvertTo-NexusNodeStatus`.
 
 See docs/architecture.md.

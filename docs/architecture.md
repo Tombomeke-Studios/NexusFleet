@@ -90,7 +90,7 @@ Import-NexusInventory ──► Install-NexusNode (process: collect hosts)
                                per host ShouldProcess  ──► PlanOnly yes/no   (-WhatIf / -Confirm, decided here)
                                secrets (parameters or SecretManagement), only when something is installed
                                Initialize-NexusRunContext (all secrets redacted)
-                               ForEach-Object -Parallel -ThrottleLimit N ──► per host, in its runspace:
+                               Invoke-NexusHostLoop -ThrottleLimit N ──► per host, in its runspace:
                                    Invoke-NexusHostInstall
                                      Invoke-NexusHostPreflight ── not ready ──► result (nothing touched)
                                      Invoke-NexusStepSequence (Get-NexusStep)
@@ -108,7 +108,7 @@ Import-NexusInventory ──► Install-NexusNode (process: collect hosts)
 ```
 Import-NexusInventory ──► Get-NexusFleetStatus (process: collect hosts; none is fine)
                           end: GET /nodes once (failure → warning, Health 'unknown', hosts still checked)
-                               ForEach-Object -Parallel ──► Get-NexusHostStatus per host (one ssh call, never throws)
+                               Invoke-NexusHostLoop ──► Get-NexusHostStatus per host (one ssh call, never throws)
                                ConvertTo-NexusNodeStatus per node: inventory order first, then nodes only NexusInfra knows
                           NexusFleet.NodeStatus: Ok + Problem in plain words, NexusInfra fields, host fields
                           ──► Export-NexusFleetStatus -Path x.json | x.csv
@@ -131,15 +131,24 @@ after network errors or 502-504, with a doubling delay. Errors get ids: `NexusAp
 ## Results, errors and rollback
 
 One result object per host: `NexusFleet.StepRunResult` (see Step above). Rollback runs in reverse order and only
-for what the run itself changed. The parallel cmdlets (phase 3) will catch per host, so one failing host never
-stops the others.
+for what the run itself changed. The per-host engines never throw, and the host loop (below) catches anything that
+still escapes, so one failing host never stops the others.
 
 ## Parallelism
 
-Used by `Test-NexusHost` (phase 3). `ForEach-Object -Parallel` with `-ThrottleLimit` from a parameter;
-the work for one host lives in its own function, tested directly. Inside a runspace the module is imported by path
-and internal functions are called in the module's scope (`& $module { ... }`); module variables do not carry over,
-so a run context object is passed with `$using:`.
+`Test-NexusHost`, `Install-NexusNode` and `Get-NexusFleetStatus` share one loop, `Invoke-NexusHostLoop`:
+
+- Its input is one hashtable of parameters per host. The shared parameters (config, run context, session) are added
+  to it, and a per-host function (`Invoke-NexusHostPreflight`, `Invoke-NexusHostInstall`, `Get-NexusHostStatus`) is
+  called with the result. That function is tested directly, with mocks.
+- `-ThrottleLimit 1` runs the hosts one after the other in the caller's runspace, where mocks work (E3).
+- Otherwise `ForEach-Object -Parallel`. Inside a runspace the module is imported by path and the internal function
+  is called in the module's scope (`& $module { ... }`). Module variables do not carry over, so everything comes in
+  as parameters.
+- When the function throws, or the module cannot be loaded in a runspace, the runspace returns a marker. Back in the
+  caller's runspace a failure function (`ConvertTo-NexusPreflightFailure`, `ConvertTo-NexusInstallFailure`,
+  `ConvertTo-NexusHostStatusFailure`) turns it into a normal failed result: one result per host, always.
+- A progress bar moves with every finished host.
 
 ## Logging
 

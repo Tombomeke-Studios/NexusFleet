@@ -50,14 +50,7 @@ function Invoke-NexusHostPreflight {
         }
     }
 
-    $ssh = @{
-        HostName              = $HostInfo.Address
-        Port                  = $HostInfo.Port
-        UserName              = $HostInfo.User
-        ConnectTimeoutSeconds = $Config.Ssh.ConnectTimeoutSeconds
-    }
-    if ($HostInfo.KeyFile) { $ssh.KeyFile = $HostInfo.KeyFile }
-    if ($Config.Ssh.KnownHostsFile) { $ssh.KnownHostsFile = $Config.Ssh.KnownHostsFile }
+    $ssh = Get-NexusSshParameter -HostInfo $HostInfo -Config $Config
 
     $unexpected = $null
     try {
@@ -87,11 +80,7 @@ if timeout 3 bash -c '</dev/tcp/{BrokerHost}/{BrokerPort}' 2>/dev/null; then ech
             $script = $script.Replace('{BrokerHost}', $Config.Broker.Host).Replace('{BrokerPort}', "$($Config.Broker.Port)")
             $answer = Invoke-NexusHostCommand @ssh -Command $script
 
-            $facts = @{}
-            foreach ($line in $answer.StdOut -split "`n") {
-                $key, $value = $line -split '=', 2
-                if ($key) { $facts[$key.Trim()] = "$value".Trim() }
-            }
+            $facts = ConvertFrom-NexusFactLine -Text $answer.StdOut
 
             $supported = @($Config.Preflight.SupportedOs)
             if ($facts.os -in $supported) {
