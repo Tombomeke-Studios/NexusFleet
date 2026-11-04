@@ -31,6 +31,9 @@ function Invoke-NexusHostInstall {
     .PARAMETER PlanOnly
     Only check and report what would be done.
 
+    .PARAMETER Force
+    Recreate the agent container even when it looks in order (in the context as Force), e.g. after a secret changed.
+
     .PARAMETER RunContext
     Optional run context: the preflight and every step are then logged in the host's log.
 
@@ -54,6 +57,8 @@ function Invoke-NexusHostInstall {
         [hashtable]$Secrets,
 
         [switch]$PlanOnly,
+
+        [switch]$Force,
 
         [PSTypeName('NexusFleet.RunContext')]
         [pscustomobject]$RunContext
@@ -105,6 +110,7 @@ function Invoke-NexusHostInstall {
             }
             Secrets    = $Secrets
             RunContext = $RunContext
+            Force      = [bool]$Force
             # Steps remember things here between their Test and their Rollback (e.g. "the node existed already").
             State      = @{}
         }

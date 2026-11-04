@@ -1,4 +1,5 @@
-# Runs PSScriptAnalyzer and the Pester unit tests on every push and pull request.
+# Runs PSScriptAnalyzer and the Pester unit tests on every push and pull request, and keeps the test results
+# and the code coverage as an artifact.
 # Lint and tests are separate jobs: each runs in its own process, so PSScriptAnalyzer
 # can never load a Pester assembly that blocks Pester 5 (see CLAUDE.md, section 4).
 
@@ -7,6 +8,8 @@ name: CI
 on:
   push:
   pull_request:
+  # The release workflow runs these same checks before it builds anything.
+  workflow_call:
 
 permissions:
   contents: read
@@ -49,13 +52,45 @@ jobs:
           Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
           Install-Module Microsoft.PowerShell.SecretManagement -RequiredVersion 1.1.2 -Scope CurrentUser -Force
 
+      # Test results (NUnit XML) and code coverage of src/ (JaCoCo) are kept as an artifact, and the totals go
+      # into the job summary. The profiler-based coverage (no breakpoints) keeps the run fast.
       - name: Run Pester (without Integration tests)
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
           Import-Module Pester -RequiredVersion 5.7.1
+          New-Item -Path ./TestResults -ItemType Directory -Force | Out-Null
           $config = New-PesterConfiguration
           $config.Run.Path = './tests'
-          $config.Run.Exit = $true
+          $config.Run.PassThru = $true
           $config.Filter.ExcludeTag = 'Integration'
           $config.Output.Verbosity = 'Detailed'
-          Invoke-Pester -Configuration $config
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputFormat = 'NUnitXml'
+          $config.TestResult.OutputPath = './TestResults/pester.xml'
+          $config.CodeCoverage.Enabled = $true
+          $config.CodeCoverage.Path = './src'
+          $config.CodeCoverage.UseBreakpoints = $false
+          $config.CodeCoverage.OutputFormat = 'JaCoCo'
+          $config.CodeCoverage.OutputPath = './TestResults/coverage.xml'
+          $result = Invoke-Pester -Configuration $config
+
+          $summary = @(
+              '### Pester'
+              ''
+              '| Passed | Failed | Skipped | Not run | Coverage of src/ |'
+              '|---|---|---|---|---|'
+              ('| {0} | {1} | {2} | {3} | {4:n1} % |' -f $result.PassedCount, $result.FailedCount, $result.SkippedCount,
+                  $result.NotRunCount, $result.CodeCoverage.CoveragePercent)
+          )
+          $summary | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          if ($result.FailedCount -gt 0 -or $result.Result -ne 'Passed') {
+              throw "Pester: $($result.FailedCount) test(s) failed."
+          }
+
+      - name: Keep test results and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+          if-no-files-found: ignore

@@ -39,6 +39,14 @@ Describe 'Step VerifyHealthy' {
             & $step.Test $context | Should -BeFalse
         }
 
+        It 'is not in order right after this run (re)started the agent, even when the node still looks healthy' {
+            # The old agent's last heartbeat keeps the node healthy for up to DegradedAfterSeconds.
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { Get-TestNode -Health 'healthy' }
+            $context.State.AgentStarted = $true
+
+            & $step.Test $context | Should -BeFalse
+        }
+
         It 'is not in order when the node is not registered' {
             Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { @() }
 
@@ -55,6 +63,16 @@ Describe 'Step VerifyHealthy' {
 
             Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 3 -Exactly
             Should -Invoke -ModuleName NexusFleet -CommandName Start-Sleep -Times 2 -Exactly -ParameterFilter { $Seconds -eq 2 }
+        }
+
+        It 'after a (re)started agent, waits DegradedAfterSeconds before the first check, so an old heartbeat cannot count' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { Get-TestNode -Health 'healthy' }
+            $context.State.AgentStarted = $true
+            $context.Config.Health.DegradedAfterSeconds = 3
+
+            & $step.Apply $context
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Start-Sleep -Times 1 -Exactly -ParameterFilter { $Seconds -eq 3 }
         }
 
         It 'gives up after VerifyTimeoutSeconds / PollIntervalSeconds checks, with the last health and a hint' {

@@ -6,8 +6,8 @@ A PowerShell 7 module that turns Linux hosts into [NexusInfra](https://github.co
 nodes and manages them as a fleet: read an inventory, check every host, install Docker and the node agent,
 register the node, wait until it is healthy, and roll back when something fails.
 
-> **Status: phase 3, building the MVP cmdlets.** Available: all MVP cmdlets. Progress is tracked in
-> [TODO.md](TODO.md). This README grows as the cmdlets land.
+> **Status: phase 4, finishing the MVP.** All MVP cmdlets are available and proven end to end in the
+> [node lab](lab/node-lab/); the demo on real lab VMs follows. Progress is tracked in [TODO.md](TODO.md).
 
 ## Why
 
@@ -16,16 +16,16 @@ right variables, register the node and check that it sends heartbeats. Three of 
 fail silently when forgotten. That is tedious for one host, error-prone for ten and unworkable for a hundred.
 NexusFleet turns it into one repeatable, idempotent PowerShell pipeline with a result per host.
 
-## Planned cmdlets (MVP)
+## Cmdlets (MVP)
 
 | Cmdlet | What it does |
 |---|---|
-| `Connect-NexusInfra` | Connect to the NexusInfra panel with an API token, check its rights, optionally store it (available) |
-| `Import-NexusInventory` | Read and validate a JSON list of target hosts (available) |
-| `Test-NexusHost` | Check every host in parallel: reachable, SSH login, OS, sudo, disk space, Docker, broker (available) |
-| `Install-NexusNode` | Turn hosts into healthy nodes in parallel: Docker, register, agent, verify; idempotent, rollback on failure (available) |
-| `Get-NexusFleetStatus` | The status of every node: NexusInfra's view merged with what ssh sees on the host (available) |
-| `Export-NexusFleetStatus` | Write that status to JSON or CSV (available) |
+| `Connect-NexusInfra` | Connect to the NexusInfra panel with an API token, check its rights, optionally store it |
+| `Import-NexusInventory` | Read and validate a JSON list of target hosts |
+| `Test-NexusHost` | Check every host in parallel: reachable, SSH login, OS, sudo, disk space, Docker, broker |
+| `Install-NexusNode` | Turn hosts into healthy nodes in parallel: Docker, register, agent, verify; idempotent, rollback on failure |
+| `Get-NexusFleetStatus` | The status of every node: NexusInfra's view merged with what ssh sees on the host |
+| `Export-NexusFleetStatus` | Write that status to JSON or CSV |
 
 Every changing cmdlet supports `-WhatIf` (dry run), and every run writes a readable log without secrets
 (`logs/<RunId>/`, one file per host and `run.log`).
@@ -35,16 +35,20 @@ Every changing cmdlet supports `-WhatIf` (dry run), and every run writes a reada
 **Control machine** (where you run NexusFleet)
 
 - PowerShell 7.6 or later (`pwsh`, the current LTS) on Windows, Linux or macOS
-- An OpenSSH client (`ssh`) — the transport is confirmed by experiment E1 in phase 1
-- A NexusInfra control plane you can reach, and an API token for it, created by a platform administrator
-  with the scopes `write` and `admin`
+- An OpenSSH client (`ssh`), with a key the target hosts accept
+- A NexusInfra control plane you can reach (v0.4.0 or later), and an API token for it, created by a platform
+  administrator with the scopes `write` and `admin`
+- NexusInfra's broker URL (`amqp://user:password@host:5672`) and `INTERNAL_API_TOKEN`, for the agents
 - To store the token: [SecretManagement](https://learn.microsoft.com/powershell/utility-modules/secretmanagement/overview)
   and a vault (see Quick start)
 
 **Target hosts**
 
-- A fresh Ubuntu machine, reachable over SSH
-- A user that logs in with an SSH key and may use `sudo`
+- Ubuntu (tested on 24.04), reachable over SSH, with at least 2 GB free on `/` and internet access for `apt` and
+  `ghcr.io`; Docker is installed by NexusFleet when it is missing
+- A user that logs in with an SSH key and may use `sudo` without a password
+- The broker reachable from the host, and the host's port 9100 reachable from the orchestrator
+- Step by step, with commands: [lab/demo/README.md](lab/demo/README.md)
 
 **For development**
 
@@ -157,7 +161,8 @@ Per host: the preflight, then four steps, each only when its check says it is ne
 `docker.io`), **RegisterNode** (`POST /nodes`), **AgentContainer** (with the restart policy, the port, the backups
 volume, the Docker socket and the host-gateway mapping; the secrets in `/etc/nexusinfra/agent.env`, mode 600) and
 **VerifyHealthy** (until NexusInfra reports the node healthy). A failing step rolls back what that run changed on
-that host. Run it again and every host reports `Changed = False`. `$result.Steps` shows each step.
+that host. Run it again and every host reports `Changed = False`. `$result.Steps` shows each step. After changing
+the broker password or `INTERNAL_API_TOKEN`, run it with `-Force`: that recreates the agent with the new secrets.
 
 **See how the fleet is doing.** NexusInfra's view (health, last heartbeat, maintenance, CPU, RAM) merged with what
 the host itself says over ssh (reachable, Docker, the agent container, uptime, free disk):
@@ -211,6 +216,31 @@ Invoke-Pester -Path ./tests -ExcludeTagFilter Integration -Output Detailed
 
 CI runs both on every push and pull request ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
+**The demo** runs the whole flow on an inventory, times every phase and checks the three "Klaar als" criteria of
+the MVP: `./lab/demo/Invoke-NexusDemo.ps1 -InventoryPath ./config/inventory.json` (see
+[lab/demo/README.md](lab/demo/README.md), also for preparing lab VMs). In the node lab:
+
+```text
+Phase                          Seconds
+-----                          -------
+Preflight (Test-NexusHost)         2.7
+Plan (Install-NexusNode -WhatIf)   2.6
+Install (Install-NexusNode)       14.9
+Second run (Install-NexusNode)     2.6
+Status (Get-NexusFleetStatus)      2.7
+
+Criterion                                         Holds Detail
+---------                                         ----- ------
+1. one command turns the hosts into healthy nodes  True 2 of 3 host(s) installed; healthy now: node-lab1, node-lab2
+2. a second run changes nothing                    True changed in the second run:
+3. one failing host does not stop the others       True failed on their own: node-lab-broken (Reachable)
+```
+
+**Releases.** Pushing a tag `v<ModuleVersion>` on `main` runs the checks, builds the module with
+`./tools/Build-NexusModule.ps1` (only the module files, in `out/`) and publishes a GitHub release with the zip
+([.github/workflows/release.yml](.github/workflows/release.yml)). CI keeps the test results and the code coverage
+of every run as an artifact.
+
 **The node lab** proves the installation end to end on this machine, with only Docker: a NexusInfra control plane
 (published images) and two fresh Ubuntu hosts in containers ([lab/node-lab/](lab/node-lab/)).
 
@@ -235,6 +265,7 @@ Branches: `feature/<topic>` → `dev` (default, always green) → `main` (milest
 | `src/utils/` | Logging, configuration, session and secret helpers |
 | `config/` | NexusInfra-specific values and an example inventory |
 | `tests/` | Pester tests, mirroring `src/` |
+| `tools/` | Lint and build scripts, the same locally and in CI |
 | `lab/` | Experiments of phase 1 and the node lab (not part of the module) |
 | `docs/` | Proposal, architecture, design decisions, explanations (Dutch course documents) |
 

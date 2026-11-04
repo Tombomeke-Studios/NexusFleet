@@ -3,6 +3,11 @@
 # volume. Test checks each of them on the running container, so a container made by hand without them is fixed.
 Register-NexusStep -Name 'AgentContainer' -Order 30 -Description 'Node agent container running with the right settings' -Test {
     param($Context)
+    # The Test never sees the secrets, so a changed RABBITMQ_URL or INTERNAL_API_TOKEN looks "in order".
+    # Install-NexusNode -Force recreates the container to apply it.
+    if ($Context.Force) {
+        return $false
+    }
     $agent = $Context.Config.Agent
     $hostInfo = $Context.HostInfo
     $name = ConvertTo-NexusShellArgument -Value $agent.ContainerName
@@ -91,6 +96,8 @@ sudo -n docker run -d --name $name \
     --add-host=$(& $q $agent.HostGateway) \
     $image >/dev/null
 "@
+    # For VerifyHealthy: a new agent started in this run, so the node's health must come from its heartbeats.
+    $Context.State.AgentStarted = $true
     $null = Invoke-NexusStepCommand -Context $Context -Purpose 'start the agent container' -Command $script `
         -Secret $Context.Secrets.RabbitMqUrl, $Context.Secrets.InternalApiToken
 } -Rollback {

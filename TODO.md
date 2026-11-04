@@ -42,12 +42,15 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 ## Phase 4 — MVP finished · `feature/mvp-hardening`
 
-- [ ] Comment-based help with examples on every public function (`Get-Help -Full` reads well)
-- [ ] PSScriptAnalyzer: zero warnings
+- [x] Comment-based help with examples on every public function (`Get-Help -Full` reads well) (#53)
+- [x] PSScriptAnalyzer: zero warnings (#54)
 - [ ] Re-enable `PSUseCorrectCasing` once PSScriptAnalyzer#2205 is fixed (#12)
-- [ ] Agent step: notice a changed agent secret (`-Force`, or a hash label) (#48)
-- [ ] Scale test: generated inventories of 50 and 100 mocked hosts, a few offline/failing — correct result per host, no crash
-- [ ] README: requirements, quick start, the demo, example output
+- [x] Agent step: notice a changed agent secret (`Install-NexusNode -Force`) (#48)
+- [x] Scale test: generated inventories of 50 and 100 mocked hosts, a few offline/failing — correct result per host, no crash (#55)
+- [x] README: requirements, quick start, the demo, example output (#56)
+- [x] CI: publish test results and code coverage (#57)
+- [x] Release workflow: a GitHub release with the module on a `v*` tag (#58)
+- [x] Lab VM guide and a demo script that measures the times (#59)
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
 - [ ] Merge `dev → main`, tag `v1.0.0`

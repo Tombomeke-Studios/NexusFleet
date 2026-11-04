@@ -8,6 +8,7 @@ Each experiment has its own folder. Results and decisions: [docs/ontwerpkeuzes.m
 | E2 — concurrency (`-Parallel`, ThreadJob, Start-Job) | `E2-concurrency/` | `./lab/E2-concurrency/Measure-Concurrency.ps1 \| Format-Table` |
 | E3 — Pester mocks and `-Parallel` | `E3-mocks-parallel/` | `Invoke-Pester -Path ./lab/E3-mocks-parallel -Output Detailed` |
 | E4 — API token scopes | `E4-token-scopes/` | source analysis, see its README; confirmed live in the node lab |
+| Demo — the phase 4 demo with measurements, and what the lab VMs need | `demo/` | `./lab/demo/Invoke-NexusDemo.ps1 -InventoryPath ./config/inventory.json` (see `demo/README.md`) |
 | Node lab — `Install-NexusNode` end to end | `node-lab/` | `./lab/node-lab/Start-NodeLab.ps1`, then `Invoke-Pester -Path ./tests -TagFilter Integration` |
 
 E1 needs Docker (the lab targets are containers) and the Posh-SSH module
