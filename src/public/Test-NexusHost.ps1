@@ -99,47 +99,16 @@ function Test-NexusHost {
         $run = Initialize-NexusRunContext
         Write-NexusLog -Context $run -Message "Preflight of $($hosts.Count) host(s), $ThrottleLimit at a time"
 
-        # Progress bar, updated for every finished host (also while the parallel loop is still running).
-        $done = 0
-        $showProgress = {
-            process {
-                $done++
-                Write-Progress -Activity 'NexusFleet preflight' -Status "$done of $($hosts.Count) hosts checked" `
-                    -PercentComplete ([math]::Floor(100 * $done / [math]::Max(1, $hosts.Count)))
-                $_
-            }
+        # Every host on its own, $ThrottleLimit at a time (see Invoke-NexusHostLoop); one result per host, always.
+        $loop = @{
+            InputObject     = @($hosts | ForEach-Object { @{ HostInfo = $_ } })
+            FunctionName    = 'Invoke-NexusHostPreflight'
+            Parameter       = @{ Config = $config; RunContext = $run }
+            FailureFunction = 'ConvertTo-NexusPreflightFailure'
+            ThrottleLimit   = $ThrottleLimit
+            Activity        = 'NexusFleet preflight'
         }
-
-        if ($ThrottleLimit -eq 1) {
-            # One after the other, in this runspace.
-            $results = foreach ($hostInfo in $hosts) {
-                try {
-                    Invoke-NexusHostPreflight -HostInfo $hostInfo -Config $config -RunContext $run
-                }
-                catch {
-                    ConvertTo-NexusPreflightFailure -HostInfo $hostInfo -Message $_.Exception.Message
-                }
-            }
-            $results = $results | & $showProgress
-        }
-        else {
-            # Each runspace starts empty: import the module by path and run the internal per-host function in the
-            # module's scope (& $module { }). Config and run context come in with $using:.
-            $manifest = Join-Path -Path $PSScriptRoot -ChildPath '../../NexusFleet.psd1'
-            $results = $hosts | ForEach-Object -ThrottleLimit $ThrottleLimit -Parallel {
-                $module = Import-Module -Name $using:manifest -PassThru
-                & $module {
-                    param($HostInfo, $Config, $Run)
-                    try {
-                        Invoke-NexusHostPreflight -HostInfo $HostInfo -Config $Config -RunContext $Run
-                    }
-                    catch {
-                        ConvertTo-NexusPreflightFailure -HostInfo $HostInfo -Message $_.Exception.Message
-                    }
-                } $_ $using:config $using:run
-            } | & $showProgress
-        }
-        Write-Progress -Activity 'NexusFleet preflight' -Completed
+        $results = @(Invoke-NexusHostLoop @loop)
 
         $ready = @($results | Where-Object Success).Count
         Write-NexusLog -Context $run -Message "Preflight done: $ready of $($hosts.Count) host(s) ready"
