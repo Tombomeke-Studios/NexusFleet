@@ -8,9 +8,15 @@ runs against the node lab (`../node-lab/`), which needs only Docker.
 A NexusInfra community install the VMs can reach, for example on your own machine or a separate VM
 (`deploy/community` in the NexusInfra repository, at least v0.4.0). Two things differ from a single-machine install:
 
-- **The broker must be reachable from the VMs.** In the community `docker-compose.yml` RabbitMQ is not published.
-  Publish `5672` (only on the lab network) and replace `guest/guest` with your own user and password in `.env`
-  (`RABBITMQ_USER`, `RABBITMQ_PASS`). The agents connect with `amqp://<user>:<password>@<control-plane-address>:5672`.
+- **The broker must be reachable from the VMs.** Since NexusInfra's `fleet-support` changes (on its `dev` branch,
+  in the next release; see [docs/nexusinfra-wijzigingen.md](../../docs/nexusinfra-wijzigingen.md)):
+  - set `BROKER_BIND` in the control plane's `.env` to its address on the lab network, then `docker compose up -d`;
+  - the installer (`deploy/install.sh` or `install.ps1`) writes a broker user and password (`RABBITMQ_USER`,
+    `RABBITMQ_PASS`). With a hand-written `.env`, set both before the first start. RabbitMQ refuses `guest` from
+    another machine.
+
+  The agents then connect with `amqp://<user>:<password>@<control-plane-address>:5672`. With the 0.4.0 bundle, add
+  `ports: ['<lab-address>:5672:5672']` to its `rabbitmq` service yourself.
 - **The orchestrator must reach the agents** on `http://<vm-address>:9100` (that is each VM's `agentUrl`).
 
 Note the `INTERNAL_API_TOKEN` from the control plane's `.env`: the agents need the same value.

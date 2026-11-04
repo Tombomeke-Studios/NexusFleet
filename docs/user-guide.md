@@ -56,8 +56,10 @@ inventory.json ─► Import-NexusInventory ─► Test-NexusHost ─► Install
 
 **A NexusInfra control plane** (v0.4.0 or later) that the hosts can reach:
 
-- The **broker** (RabbitMQ, port 5672) must be reachable **from the hosts**. NexusInfra's community install does not
-  publish it by default; publish it on your lab network, with your own user and password (not `guest/guest`).
+- The **broker** (RabbitMQ, port 5672) must be reachable **from the hosts**. NexusInfra's bundles publish it on
+  `127.0.0.1` only: set `BROKER_BIND` in the control plane's `.env` to its address on the network the hosts share.
+  The broker needs a user of its own (`RABBITMQ_USER`/`RABBITMQ_PASS`; NexusInfra's installer generates them),
+  because RabbitMQ refuses `guest` from another machine. Before these NexusInfra changes, publish the port by hand.
 - The **orchestrator** must reach each host's agent on port 9100.
 - You need its `INTERNAL_API_TOKEN` (from its `.env`) and the broker URL `amqp://user:password@host:5672`.
 - An **API token** of a platform administrator, with the scopes `write` and `admin`.
