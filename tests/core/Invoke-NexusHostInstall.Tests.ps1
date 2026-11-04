@@ -185,7 +185,7 @@ Describe 'Invoke-NexusHostInstall' {
 
             $result.Success | Should -BeFalse
             $result.Step | Should -Be 'Docker'
-            $result.Error | Should -Match 'ssh to 10.0.0.5 failed'
+            $result.Error | Should -Match 'ssh to node-web01 \(10\.0\.0\.5\) failed'
         }
 
         It 'turns an unexpected error into a failed result' {

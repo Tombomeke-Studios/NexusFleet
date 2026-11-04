@@ -154,7 +154,7 @@ Describe 'Install-NexusNode' {
             $results | Should -HaveCount 60
             @($results.Host | Sort-Object -Unique) | Should -HaveCount 60
             @($results | Where-Object { -not $_.Success }).Host | Sort-Object | Should -Be @($broken | Sort-Object)
-            ($results | Where-Object Host -EQ 'node-030').Error | Should -Match 'ssh to 10.1.0.30 failed'
+            ($results | Where-Object Host -EQ 'node-030').Error | Should -Match 'ssh to node-030 \(10\.1\.0\.30\) failed'
             ($results | Where-Object Host -EQ 'node-020').Step | Should -Be 'RegisterNode'
             $fake.Heartbeating.Count | Should -Be 56
         }

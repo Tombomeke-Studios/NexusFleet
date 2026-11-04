@@ -49,6 +49,8 @@ function Invoke-NexusStepCommand {
     )
 
     $ssh = $Context.Ssh
+    # The inventory name says more than an address (several lab hosts share 127.0.0.1).
+    $where = if ($Context.HostInfo) { "$($Context.HostInfo.Name) ($($ssh.HostName))" } else { $ssh.HostName }
     $result = if ($Secret) {
         Invoke-NexusHostCommand @ssh -Command $Command -Secret $Secret
     }
@@ -57,12 +59,12 @@ function Invoke-NexusStepCommand {
     }
 
     if ($result.TransportFailed) {
-        throw "ssh to $($ssh.HostName) failed while trying to $Purpose`: $($result.StdErr)"
+        throw "ssh to $where failed while trying to $Purpose`: $($result.StdErr)"
     }
     if (-not $result.Succeeded -and -not $AllowFailure) {
         # The last lines of stderr usually say what went wrong (apt and docker print a lot before that).
         $reason = ($result.StdErr -split "`n" | Select-Object -Last 3) -join ' '
-        throw "Could not $Purpose on $($ssh.HostName) (exit $($result.ExitCode)): $reason"
+        throw "Could not $Purpose on $where (exit $($result.ExitCode)): $reason"
     }
     $result
 }

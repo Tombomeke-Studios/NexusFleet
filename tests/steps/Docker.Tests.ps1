@@ -40,7 +40,7 @@ Describe 'Step Docker' {
         It 'throws when the host cannot be reached (nothing is known then)' {
             Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-TestCommandResult -ExitCode 255 -StdErr 'Connection timed out' }
 
-            { & $step.Test $context } | Should -Throw '*ssh to 10.0.0.5 failed*'
+            { & $step.Test $context } | Should -Throw '*ssh to node-web01 (10.0.0.5) failed*'
         }
     }
 
@@ -56,10 +56,20 @@ Describe 'Step Docker' {
             }
         }
 
+        It 'starts the daemon directly on a host without systemd (a container, WSL)' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-TestCommandResult -ExitCode 0 }
+
+            & $step.Apply $context
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -ParameterFilter {
+                $Command -match 'if \[ -d /run/systemd/system \]' -and $Command -match "nohup dockerd"
+            }
+        }
+
         It 'fails with apt''s reason when the installation fails' {
             Mock -ModuleName NexusFleet -CommandName Invoke-NexusHostCommand -MockWith { Get-TestCommandResult -ExitCode 100 -StdErr 'E: Unable to locate package docker.io' }
 
-            { & $step.Apply $context } | Should -Throw '*Could not install Docker on 10.0.0.5 (exit 100): E: Unable to locate package docker.io*'
+            { & $step.Apply $context } | Should -Throw '*Could not install Docker on node-web01 (10.0.0.5) (exit 100): E: Unable to locate package docker.io*'
         }
     }
 

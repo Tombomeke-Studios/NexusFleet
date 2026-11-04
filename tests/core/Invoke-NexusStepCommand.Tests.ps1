@@ -48,6 +48,13 @@ Describe 'Invoke-NexusStepCommand' {
             Should -Throw '*ssh to 10.0.0.5 failed while trying to check Docker: Connection timed out*'
     }
 
+    It 'names the host by its inventory name when the context has one' {
+        Mock -CommandName Invoke-NexusHostCommand -MockWith { ConvertTo-NexusCommandResult -HostName $HostName -ExitCode 1 -StdErr 'nope' }
+        $named = @{ Ssh = $context.Ssh; HostInfo = [pscustomobject]@{ Name = 'node-web01' } }
+
+        { Invoke-NexusStepCommand -Context $named -Purpose 'start' -Command 'x' } | Should -Throw 'Could not start on node-web01 (10.0.0.5) (exit 1): nope'
+    }
+
     It 'passes secrets on to the transport' {
         Mock -CommandName Invoke-NexusHostCommand -MockWith { ConvertTo-NexusCommandResult -HostName $HostName -ExitCode 0 }
         $secret = ConvertTo-SecureString -String 'S3cr3t' -AsPlainText -Force

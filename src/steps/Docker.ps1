@@ -11,12 +11,14 @@ Register-NexusStep -Name 'Docker' -Order 10 -Description 'Docker Engine installe
     $lockTimeout = $Context.Config.Docker.AptLockTimeoutSeconds
     # Ubuntu's own package: no extra apt repository or key to trust. DEBIAN_FRONTEND keeps apt from asking
     # questions; the lock time-out waits for unattended-upgrades, which often runs on a fresh VM.
-    # Hosts without systemd (containers in the lab) start the daemon with 'service'.
+    # Hosts without systemd (a container, WSL) have no service manager for Docker: Ubuntu's package ships no init
+    # script, so the daemon is started in the background directly. A real VM always takes the systemctl line.
     $script = @"
 set -e
 sudo -n env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=$lockTimeout update -q
 sudo -n env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=$lockTimeout install -y -q $package
-if [ -d /run/systemd/system ]; then sudo -n systemctl enable --now docker; else sudo -n service docker start; fi
+if [ -d /run/systemd/system ]; then sudo -n systemctl enable --now docker
+elif ! sudo -n docker info >/dev/null 2>&1; then sudo -n sh -c 'nohup dockerd >/var/log/dockerd.log 2>&1 &'; fi
 for i in 1 2 3 4 5 6 7 8 9 10; do sudo -n docker info >/dev/null 2>&1 && exit 0; sleep 1; done
 echo 'Docker was installed but the daemon does not answer' >&2; exit 1
 "@
