@@ -69,6 +69,17 @@ Describe 'Write-NexusLog' {
         Test-Path -Path (Join-Path -Path $context.LogDirectory -ChildPath 'fe80__1.log') | Should -BeTrue
     }
 
+    It 'warns instead of failing when the log file cannot be written, so logging never fails the work' {
+        # A folder with the name of the log file: writing to it fails on every OS.
+        $null = New-Item -Path (Join-Path -Path $context.LogDirectory -ChildPath 'web01.log') -ItemType Directory
+
+        # Called directly: an error, even a non-terminating one, would fail the test through -ErrorAction Stop.
+        Write-NexusLog -Context $context -HostName 'web01' -Message 'installed' -ErrorAction Stop -WarningVariable warned -WarningAction SilentlyContinue
+
+        $warned | Should -HaveCount 1
+        $warned[0] | Should -BeLike '*could not write to the log*web01.log*'
+    }
+
     It 'still writes under -WhatIf, because a dry run is logged too' {
         $WhatIfPreference = $true
         Write-NexusLog -Context $context -Message 'dry run'
