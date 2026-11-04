@@ -61,8 +61,9 @@ Tom's review (2026-11-04): good tests, a CI/CD pipeline that shows which test fa
 documentation, good comments and help pages.
 
 ### `feature/ci-reporting`
-- [ ] CI: test report with every failed test, its reason and location (#62)
-- [ ] CI: run the unit tests on Windows and Linux (#63)
+- [x] CI: test report with every failed test, its reason and location (#62)
+- [x] CI: run the unit tests on Windows and Linux (#63)
+- [x] Fix: ssh's reason was empty on Windows OpenSSH 9.5 (found by the Windows job) (#72)
 
 ### `feature/ci-integration`
 - [ ] Node lab: default to the public NexusInfra 0.4.0-community images (#65)

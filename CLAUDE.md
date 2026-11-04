@@ -202,14 +202,14 @@ Allowed — the two tools are built for each other — but they never happen fro
 |---|---|
 | Load the module | `Import-Module ./NexusFleet.psd1 -Force` |
 | Check the manifest | `Test-ModuleManifest ./NexusFleet.psd1` |
-| Unit tests | `Invoke-Pester -Path ./tests -ExcludeTagFilter Integration -Output Detailed` |
-| Integration tests (lab VMs) | `Invoke-Pester -Path ./tests -TagFilter Integration` |
+| Unit tests | `./tools/Invoke-NexusTests.ps1` (as CI; report in `TestResults/report-Unit.md`) or `Invoke-Pester -Path ./tests -ExcludeTagFilter Integration -Output Detailed` |
+| Integration tests (labs) | `./tools/Invoke-NexusTests.ps1 -Suite Integration` (start the labs first) |
 | Lint | `./tools/Invoke-NexusLint.ps1` (same as CI; retries only PSScriptAnalyzer's own `RULE_ERROR`s) |
 | Build the shipped module | `./tools/Build-NexusModule.ps1` (→ `out/`) |
 | Node lab / demo | `./lab/node-lab/Start-NodeLab.ps1` · `./lab/demo/Invoke-NexusDemo.ps1 -InventoryPath <file>` |
 | Help for a cmdlet | `Get-Help Install-NexusNode -Full` |
 | Dry run | any changing cmdlet with `-WhatIf` |
-| Install tooling | `Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -SkipPublisherCheck; Install-Module PSScriptAnalyzer -Scope CurrentUser` |
+| Install tooling | `./tools/Install-NexusTooling.ps1` (pinned versions, retries) |
 | Load Pester 5 (not 6, not the built-in 3.4) | `Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99` |
 
 ## 7. Codebase map — where is what
@@ -238,8 +238,8 @@ description as files land. `logs/` is created at runtime, never committed.
 | `docs/` | `projectvoorstel.md`; `architecture.md` (English, sections marked _planned_ until filled); `ontwerpkeuzes.md` (Dutch; E1–E4 for Tom, K1–K3 = choices made during the scaffold); `nexusinfra-wijzigingen.md` (Dutch, table of `fleet-support:` commits, empty so far); `leerlogboek.md` (Tom's; holds draft notes (facts only) written by Claude Code at Tom's explicit request on 2026-11-02, for Tom to rewrite — only add to it when Tom asks) |
 | `docs/uitleg/` | Explanations per topic, written by Claude Code as study material (section 2c) + `README.md` index |
 | `logs/` | Run logs, created at runtime, git-ignored |
-| `tools/` | Dev tooling, not part of the module. `Invoke-NexusLint.ps1`: lint with the repo settings, findings as warnings or GitHub annotations, retries only `RULE_ERROR*`. `Build-NexusModule.ps1`: copies only the module files (manifest, loader, README, `src/**/*.ps1`, default config) to `out/NexusFleet/`, checks in a separate `pwsh` that it loads and exports the manifest's list, zips `out/NexusFleet-<version>.zip`. Tested in `tests/tools/` |
-| `.github/workflows/ci.yml` | On every push and PR, and reusable (`workflow_call`): two jobs on `ubuntu-latest` — `lint` (`tools/Invoke-NexusLint.ps1 -GitHubAnnotations`, PSScriptAnalyzer 1.25.0) and `test` (Pester 5.7.1, `Integration` excluded, NUnit results + JaCoCo coverage of `src/` as artifact `test-results`, totals in the job summary). Versions pinned; read-only token |
+| `tools/` | Dev tooling, not part of the module. `Invoke-NexusLint.ps1`: lint with the repo settings, findings as warnings or GitHub annotations (+ `-SummaryPath` Markdown), retries only `RULE_ERROR*`. `Invoke-NexusTests.ps1`: the test run of CI and of your machine (`-Suite Unit|Integration`, `-CI`), NUnit + JaCoCo + `report-<suite>.md` in `TestResults/`, throws on a failure. `Write-NexusTestReport.ps1`: Pester result → Markdown (totals, each failure with reason and file:line, per file, slowest, coverage per file) + `::error` annotations (returned, printed by the caller). `Install-NexusTooling.ps1`: the pinned tool versions, with retries. `Build-NexusModule.ps1`: copies only the module files (manifest, loader, README, `src/**/*.ps1`, default config) to `out/NexusFleet/`, checks in a separate `pwsh` that it loads and exports the manifest's list, zips `out/NexusFleet-<version>.zip`. Tested in `tests/tools/` |
+| `.github/workflows/ci.yml` | On every push and PR, and reusable (`workflow_call`): `lint` (ubuntu, `tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath`) and `test` as a matrix on `ubuntu-latest` + `windows-latest` (`fail-fast: false`; `tools/Invoke-NexusTests.ps1 -Suite Unit -CI`: report in the job summary, an annotation per failure, artifacts `test-results-<os>`). Versions pinned; read-only token |
 | `.github/workflows/release.yml` | On a tag `v*` (main only, milestones): the CI checks, tag must equal `v<ModuleVersion>`, `tools/Build-NexusModule.ps1`, `gh release create` with the zip. `workflow_dispatch` = dry run (build + artifact, no release) |
 
 ## 8. Conventions & gotchas
