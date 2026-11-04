@@ -1,6 +1,7 @@
 # NexusFleet
 
 [![CI](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/ci.yml)
+[![Integration](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/integration.yml/badge.svg?branch=dev)](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/integration.yml)
 
 A PowerShell 7 module that turns Linux hosts into [NexusInfra](https://github.com/Tombomeke-Studios/NexusInfra)
 nodes and manages them as a fleet: read an inventory, check every host, install Docker and the node agent,

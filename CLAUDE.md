@@ -159,8 +159,9 @@ Allowed — the two tools are built for each other — but they never happen fro
   Shared step-test context: `tests/steps/TestStepContext.ps1`. Helper files are not `*.Tests.ps1`.
 - **Local HTTP tests** (tag `LocalHttp`) use a real `HttpListener` on a free loopback port, no external hosts;
   they run with the unit tests and in CI, because they catch what mocks of `Invoke-RestMethod` cannot.
-- **Integration tests** carry the `Integration` tag, are excluded by default, and run by hand against
-  the lab VMs. Put a test there only when the real thing is the only proof.
+- **Integration tests** carry the `Integration` tag, are excluded from the unit run, and run against the labs:
+  in CI by `integration.yml` (both labs in Docker), locally with `./tools/Invoke-NexusTests.ps1 -Suite Integration`,
+  and later against the lab VMs. Put a test there only when the real thing is the only proof.
 - **Every bug fix starts with the test that catches it.**
 - **A mock of an external program (`ssh`) does not see piped input** (`$input` is empty). Wrap the native call in a
   minimal function with an explicit parameter (`Invoke-NexusSshClient -InputBytes`), mock that, and cover the
@@ -240,6 +241,7 @@ description as files land. `logs/` is created at runtime, never committed.
 | `logs/` | Run logs, created at runtime, git-ignored |
 | `tools/` | Dev tooling, not part of the module. `Invoke-NexusLint.ps1`: lint with the repo settings, findings as warnings or GitHub annotations (+ `-SummaryPath` Markdown), retries only `RULE_ERROR*`. `Invoke-NexusTests.ps1`: the test run of CI and of your machine (`-Suite Unit|Integration`, `-CI`), NUnit + JaCoCo + `report-<suite>.md` in `TestResults/`, throws on a failure. `Write-NexusTestReport.ps1`: Pester result → Markdown (totals, each failure with reason and file:line, per file, slowest, coverage per file) + `::error` annotations (returned, printed by the caller). `Install-NexusTooling.ps1`: the pinned tool versions, with retries. `Build-NexusModule.ps1`: copies only the module files (manifest, loader, README, `src/**/*.ps1`, default config) to `out/NexusFleet/`, checks in a separate `pwsh` that it loads and exports the manifest's list, zips `out/NexusFleet-<version>.zip`. Tested in `tests/tools/` |
 | `.github/workflows/ci.yml` | On every push and PR, and reusable (`workflow_call`): `lint` (ubuntu, `tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath`) and `test` as a matrix on `ubuntu-latest` + `windows-latest` (`fail-fast: false`; `tools/Invoke-NexusTests.ps1 -Suite Unit -CI`: report in the job summary, an annotation per failure, artifacts `test-results-<os>`). Versions pinned; read-only token |
+| `.github/workflows/integration.yml` | On PRs and pushes to `dev`/`main` and by hand: starts the E1 lab (`-PlainOnly`) and the node lab on `ubuntu-latest`, runs `tools/Invoke-NexusTests.ps1 -Suite Integration -CI` (a skip fails the job), keeps NexusFleet's `logs/` and every container's log as artifact `integration-results`, always removes the labs |
 | `.github/workflows/release.yml` | On a tag `v*` (main only, milestones): the CI checks, tag must equal `v<ModuleVersion>`, `tools/Build-NexusModule.ps1`, `gh release create` with the zip. `workflow_dispatch` = dry run (build + artifact, no release) |
 
 ## 8. Conventions & gotchas
