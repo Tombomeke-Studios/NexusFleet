@@ -136,7 +136,7 @@ Describe 'Install-NexusNode' {
 
             $results | Should -HaveCount 3
             $results.PlanOnly | Should -Not -Contain $false
-            $results[0].Steps.Outcome | Should -Be @('WouldApply', 'WouldApply', 'WouldApply', 'WouldApply')
+            $results[0].Steps.Outcome | Should -Be @('WouldApply', 'WouldApply', 'WouldApply', 'WouldApply', 'WouldApply')
             $fake.Changes | Should -BeNullOrEmpty
             Should -Invoke -ModuleName NexusFleet -CommandName Get-NexusStoredToken -Times 0 -Exactly
             Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 0 -ParameterFilter { $Method -ne 'GET' }
