@@ -37,8 +37,10 @@ Invoke-NexusApi -BaseUrl $config.Api.BaseUrl -Token $token -Method POST -Path '/
    `-AllowUnencryptedHttp` gezet zijn (in de configuratie), en dan volgt een waarschuwing. Anders stopt de
    functie meteen met `NexusApi.UnencryptedNotAllowed`, nog vóór er iets verstuurd is.
 3. **Proberen, en eventueel opnieuw.** Een `for`-lus doet hoogstens `1 + RetryCount` pogingen voor `GET`, en
-   precies één voor alle andere methodes. Na een netwerkfout of 502/503/504 wacht de functie even (1 s, 2 s,
-   4 s: telkens het dubbele) en probeert opnieuw.
+   precies één voor alle andere methodes. Na een netwerkfout, 429 of 502/503/504 wacht de functie even (1 s,
+   2 s, 4 s: telkens het dubbele) en probeert opnieuw. 429 is de snelheidslimiet van de gateway: 50 verzoeken per
+   seconde per token (#99). Met honderd hosts die elk om de 2 s `GET /nodes` vragen, zit de vloot daar al op, en
+   even later laat de gateway het verzoek weer door.
 4. **Een fout begrijpelijk maken.** In de `catch` wordt de fout eerst in `$caught` bewaard. Daarna:
    - Is er een HTTP-status (`$caught.Exception.Response.StatusCode`)? Dan bepaalt de status de foutcode.
    - Geen status, en het is een `HttpRequestException`, `TaskCanceledException` of `TimeoutException`? Dan is
@@ -51,6 +53,7 @@ Invoke-NexusApi -BaseUrl $config.Api.BaseUrl -Token $token -Method POST -Path '/
    | 403 | `NexusApi.Forbidden` | te weinig rechten (node-routes: platformbeheerder + scopes `write` en `admin`) |
    | 404 | `NexusApi.NotFound` | niet gevonden (NexusInfra antwoordt ook 404 als je geen toegang hebt) |
    | 409 | `NexusApi.Conflict` | botst met de huidige toestand (bijv. node met een draaiende deployment) |
+   | 429 | `NexusApi.RateLimited` | snelheidslimiet van het panel bereikt (minder parallel, of trager peilen) |
    | 502–504 | `NexusApi.Unavailable` | panel tijdelijk niet beschikbaar |
    | geen | `NexusApi.Unreachable` | panel niet bereikbaar, met de reden |
 

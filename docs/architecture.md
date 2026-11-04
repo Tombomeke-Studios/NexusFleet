@@ -123,8 +123,8 @@ Import-NexusInventory ──► Get-NexusFleetStatus (process: collect hosts; no
 ## REST API
 
 `Invoke-NexusApi` sends the API token as a bearer token (SecureString) with a time-out; it retries only `GET`
-after network errors or 502-504, with a doubling delay. Errors get ids: `NexusApi.Unauthorized` (401),
-`Forbidden` (403), `NotFound` (404), `Conflict` (409), `Unavailable` (502-504), `Unreachable` (no answer),
+after network errors, 429 (the gateway's rate limit) or 502-504, with a doubling delay. Errors get ids: `NexusApi.Unauthorized` (401),
+`Forbidden` (403), `NotFound` (404), `Conflict` (409), `RateLimited` (429), `Unavailable` (502-504), `Unreachable` (no answer),
 `RequestFailed` (other), `UnencryptedNotAllowed` (token over `http://` to a non-loopback host without
 `Api.AllowUnencryptedHttp`).
 
