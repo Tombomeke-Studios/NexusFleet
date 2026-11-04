@@ -37,8 +37,8 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Parallel across hosts with `-ThrottleLimit`; one failing host never stops the rest (#36)
 
 ### `feature/status`
-- [ ] `Get-NexusFleetStatus` — merge `GET /nodes` with host data over SSH; offline hosts reported, never fatal (#50)
-- [ ] Export to JSON and CSV (#51)
+- [x] `Get-NexusFleetStatus` — merge `GET /nodes` with host data over SSH; offline hosts reported, never fatal (#50)
+- [x] Export to JSON and CSV (#51)
 
 ## Phase 4 — MVP finished · `feature/mvp-hardening`
 

@@ -23,12 +23,12 @@ One responsibility per folder in `src/`. All functions below are internal (not e
 
 | Folder | Functions | Responsibility |
 |---|---|---|
-| `core` | `ConvertTo-NexusCommandResult`, `Register-NexusStep`, `Get-NexusStep`, `Invoke-NexusStepSequence`, `Invoke-NexusStepCommand`, `Invoke-NexusStepApi`, `Invoke-NexusHostPreflight`, `Invoke-NexusHostInstall`, `ConvertTo-NexusPreflightFailure`, `ConvertTo-NexusInstallFailure` | The two contracts, the step runner, the helpers steps use, and the per-host engines |
+| `core` | `ConvertTo-NexusCommandResult`, `Register-NexusStep`, `Get-NexusStep`, `Invoke-NexusStepSequence`, `Invoke-NexusStepCommand`, `Invoke-NexusStepApi`, `Invoke-NexusHostPreflight`, `Invoke-NexusHostInstall`, `ConvertTo-NexusPreflightFailure`, `ConvertTo-NexusInstallFailure`, `Get-NexusHostStatus`, `ConvertTo-NexusNodeStatus` | The two contracts, the step runner, the helpers steps use, the per-host engines, and the status merge |
 | `utils` | `Initialize-NexusRunContext`, `Write-NexusLog`, `Get-NexusConfig`, `Merge-NexusHashtable`, `Get-NexusSession`, `Get-NexusStoredToken`, `Save-NexusStoredToken`, `ConvertTo-NexusShellArgument` | Run context, logging, configuration, session, secrets, shell quoting |
 | `transports` | `Invoke-NexusHostCommand`, `Invoke-NexusSshClient` | Running a command on a host (native ssh) |
 | `api` | `Invoke-NexusApi` | The only caller of the NexusInfra REST API |
 | `steps` | `Docker` (10), `RegisterNode` (20), `AgentContainer` (30), `VerifyHealthy` (40) | One file per installation step, each calling `Register-NexusStep` |
-| `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode` | The exported cmdlets |
+| `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus`, `Export-NexusFleetStatus` | The exported cmdlets |
 
 ## Contracts
 
@@ -102,6 +102,17 @@ Import-NexusInventory ──► Install-NexusNode (process: collect hosts)
 
 `NexusFleet.InstallResult`: `Host`, `Success`, `PlanOnly`, `Changed` (did this run apply anything), `Step`, `Error`,
 `Steps` (as in the step runner) and `Preflight` (the checks).
+
+## Data flow of `Get-NexusFleetStatus`
+
+```
+Import-NexusInventory ──► Get-NexusFleetStatus (process: collect hosts; none is fine)
+                          end: GET /nodes once (failure → warning, Health 'unknown', hosts still checked)
+                               ForEach-Object -Parallel ──► Get-NexusHostStatus per host (one ssh call, never throws)
+                               ConvertTo-NexusNodeStatus per node: inventory order first, then nodes only NexusInfra knows
+                          NexusFleet.NodeStatus: Ok + Problem in plain words, NexusInfra fields, host fields
+                          ──► Export-NexusFleetStatus -Path x.json | x.csv
+```
 
 ## Configuration
 

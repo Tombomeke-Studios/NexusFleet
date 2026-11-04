@@ -20,3 +20,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | Inventaris | [inventaris.md](inventaris.md) | `Import-NexusInventory`: JSON-formaat, defaults, controles, dubbels |
 | Preflight | [preflight.md](preflight.md) | `Test-NexusHost`: de checks, het parallelle patroon in de praktijk, drie soorten tests |
 | Installatie | [installatie.md](installatie.md) | `Install-NexusNode`: de vier stappen, geheimen naar de agent, `-WhatIf`, de nep-fleet, het node-lab |
+| Status | [status.md](status.md) | `Get-NexusFleetStatus` en `Export-NexusFleetStatus`: twee kanten van een node, nooit stoppen, export |
