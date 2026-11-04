@@ -121,7 +121,8 @@ Describe 'Install-NexusNode' {
             $null = $hosts | Install-NexusNode -ThrottleLimit 1 -RabbitMqUrl $secrets.RabbitMqUrl -InternalApiToken $secrets.InternalApiToken
 
             Should -Invoke -ModuleName NexusFleet -CommandName Initialize-NexusRunContext -Times 1 -Exactly -ParameterFilter {
-                $Secret -contains 'amqp://fleet:Br0ker-pass@broker:5672' -and $Secret -contains 'internal-T0ken' -and $Secret -contains 'nxi_fake'
+                $Secret -contains 'amqp://fleet:Br0ker-pass@broker:5672' -and $Secret -contains 'internal-T0ken' -and $Secret -contains 'nxi_fake' -and
+                $Secret -contains 'Br0ker-pass'
             }
             $logs = Get-ChildItem -Path $logDir -Filter '*.log' | Get-Content -Raw
             $logs | Should -Not -BeNullOrEmpty

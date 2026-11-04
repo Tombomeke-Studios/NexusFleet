@@ -164,9 +164,13 @@ function Install-NexusNode {
             $secrets = @{ RabbitMqUrl = $RabbitMqUrl; InternalApiToken = $InternalApiToken }
         }
 
-        # Every secret of this run is redacted from its logs.
+        # Every secret of this run is redacted from its logs: the three secrets, and the broker password on its own,
+        # because an error message can show it without the rest of the URL.
         $plain = foreach ($secure in $session.Token, $RabbitMqUrl, $InternalApiToken) {
             if ($secure) { [System.Net.NetworkCredential]::new('', $secure).Password }
+        }
+        if ($RabbitMqUrl) {
+            $plain = @($plain) + @(Get-NexusUrlPassword -Url ([System.Net.NetworkCredential]::new('', $RabbitMqUrl).Password))
         }
         $run = Initialize-NexusRunContext -LogRoot $config.Log.Directory -KeepRuns $config.Log.KeepRuns -Secret $plain
         $planCount = @($work | Where-Object PlanOnly).Count
