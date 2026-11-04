@@ -82,7 +82,7 @@ function Invoke-NexusHostCommand {
             '-o', 'BatchMode=yes',
             '-o', "ConnectTimeout=$ConnectTimeoutSeconds",
             '-o', 'StrictHostKeyChecking=accept-new',
-            '-o', 'LogLevel=ERROR',
+            '-o', 'LogLevel=INFO',
             '-p', "$Port"))
     if ($KeyFile) { $sshArgs.AddRange([string[]]@('-i', $KeyFile)) }
     if ($KnownHostsFile) { $sshArgs.AddRange([string[]]@('-o', "UserKnownHostsFile=$KnownHostsFile")) }
@@ -94,8 +94,7 @@ function Invoke-NexusHostCommand {
     if ($Secret) {
         $lines = foreach ($item in $Secret) {
             $plain = [System.Net.NetworkCredential]::new('', $item).Password
-            if ($plain -match '[
-]') {
+            if ($plain -match '[\r\n]') {
                 throw 'A secret for Invoke-NexusHostCommand contains a line break; it would arrive as two lines.'
             }
             "$plain`n"
@@ -111,7 +110,14 @@ function Invoke-NexusHostCommand {
 
     # stderr lines are ErrorRecord objects, stdout lines are strings.
     $stdOut = @($raw.Output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" })
-    $stdErr = @($raw.Output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" })
+    # LogLevel=INFO, not ERROR: Windows' own OpenSSH (9.5) reports a refused or failed connection only at INFO,
+    # so ERROR left the reason empty. The one INFO line that is not a problem, the notice that a new host key was
+    # added to known_hosts (accept-new), is dropped here.
+    $stdErr = @($raw.Output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" } |
+            Where-Object { $_ -notlike 'Warning: Permanently added *' })
+    if ($raw.ExitCode -eq 255 -and $stdErr.Count -eq 0) {
+        $stdErr = @('ssh exited with 255 without giving a reason')
+    }
 
     ConvertTo-NexusCommandResult -HostName $HostName -ExitCode $raw.ExitCode -StdOut $stdOut -StdErr $stdErr
 }
