@@ -36,21 +36,9 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] `Test-NexusHost` — per host: reachable (time-out), SSH auth, OS, sudo, disk space, Docker present, broker reachable; one result object per host (#35)
 - [x] Parallel across hosts with `-ThrottleLimit`; one failing host never stops the rest (#36)
 
-### `feature/install` — build as a vertical slice first
-- [x] Slice: `Install-NexusNode` with only the preflight + agent step, end to end on **one** VM (#38) — proven in the node lab; the real VM follows with the demo (#14)
-- [x] Step: Docker — test present, install if missing (idempotent) (#39)
-- [x] Step: agent container — with `--restart unless-stopped`, the port, the `nexusinfra-backups` volume, the Docker socket and the host-gateway mapping; secrets via stdin (#40)
-- [x] Step: register node — `POST /nodes` with id, name, location, `agentUrl` (#41)
-- [x] Step: verify — poll `GET /nodes` until *healthy* (thresholds 3 s / 10 s, configurable time-out) (#42)
-- [x] Rollback per step, tested with a failure in each step (#43)
-- [x] `-WhatIf` returns the plan per host and changes nothing (tested: no changing call is made) (#44)
-- [x] Second run changes nothing (idempotency test) (#45)
-- [x] Parallel across hosts; one failing host gets its own error and the rest finish (#46)
-- [x] Fix: `Invoke-NexusApi` returned a JSON list as one object (found in the node lab) (#47)
-
 ### `feature/status`
-- [ ] `Get-NexusFleetStatus` — merge `GET /nodes` with host data over SSH; offline hosts reported, never fatal
-- [ ] Export to JSON and CSV
+- [ ] `Get-NexusFleetStatus` — merge `GET /nodes` with host data over SSH; offline hosts reported, never fatal (#50)
+- [ ] Export to JSON and CSV (#51)
 
 ## Phase 4 — MVP finished · `feature/mvp-hardening`
 
@@ -100,6 +88,19 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 ---
 
 ## Done
+
+### Phase 3 — `feature/install` (#49)
+
+- [x] Slice: `Install-NexusNode` with only the preflight + agent step, end to end on **one** VM (#38) — proven in the node lab; the real VM follows with the demo (#14)
+- [x] Step: Docker — test present, install if missing (idempotent) (#39)
+- [x] Step: agent container — with `--restart unless-stopped`, the port, the `nexusinfra-backups` volume, the Docker socket and the host-gateway mapping; secrets via stdin (#40)
+- [x] Step: register node — `POST /nodes` with id, name, location, `agentUrl` (#41)
+- [x] Step: verify — poll `GET /nodes` until *healthy* (thresholds 3 s / 10 s, configurable time-out) (#42)
+- [x] Rollback per step, tested with a failure in each step (#43)
+- [x] `-WhatIf` returns the plan per host and changes nothing (tested: no changing call is made) (#44)
+- [x] Second run changes nothing (idempotency test) (#45)
+- [x] Parallel across hosts; one failing host gets its own error and the rest finish (#46)
+- [x] Fix: `Invoke-NexusApi` returned a JSON list as one object (found in the node lab) (#47)
 
 ### Phase 2 — Foundations · `feature/foundations`
 
