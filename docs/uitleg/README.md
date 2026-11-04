@@ -19,3 +19,4 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | Verbinden | [verbinden.md](verbinden.md) | `Connect-NexusInfra`, SecretManagement, de sessie, de help-test |
 | Inventaris | [inventaris.md](inventaris.md) | `Import-NexusInventory`: JSON-formaat, defaults, controles, dubbels |
 | Preflight | [preflight.md](preflight.md) | `Test-NexusHost`: de checks, het parallelle patroon in de praktijk, drie soorten tests |
+| Installatie | [installatie.md](installatie.md) | `Install-NexusNode`: de vier stappen, geheimen naar de agent, `-WhatIf`, de nep-fleet, het node-lab |
