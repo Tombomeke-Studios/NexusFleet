@@ -40,16 +40,15 @@ Import-NexusInventory ./config/inventory.json | Install-NexusNode
 
 ```mermaid
 flowchart LR
-    inv[/"inventory.json"/] --> imp["Import-NexusInventory<br/><sub>read and check</sub>"]
+    con["Connect-NexusInfra<br/><sub>token and rights</sub>"] --> imp["Import-NexusInventory<br/><sub>read and check</sub>"]
+    inv[/"inventory.json"/] --> imp
     imp --> test["Test-NexusHost<br/><sub>ready?</sub>"]
     test --> inst["Install-NexusNode<br/><sub>Docker · register · agent · healthy</sub>"]
     inst --> stat["Get-NexusFleetStatus<br/><sub>NexusInfra + the host itself</sub>"]
     stat --> exp[/"status.json / .csv"/]
-    con["Connect-NexusInfra"] -.-> inst
-    con -.-> stat
 ```
 
-| | |
+| Feature | What it means |
 |---|---|
 | **Idempotent** | Every step checks first whether it is still needed. A second run changes nothing. |
 | **Rollback** | When a step fails on a host, what that run changed on that host is undone. |
