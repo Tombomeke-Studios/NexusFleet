@@ -32,7 +32,7 @@ function Get-FakeHostInfo {
     [pscustomobject]@{
         PSTypeName = 'NexusFleet.Host'; Name = $Name; Address = $Address; Port = 22; User = 'fleet'
         Location = 'home'; Role = $null; KeyFile = $null
-        Reach = if ($Outbound) { 'outbound' } else { 'direct' }
+        Reach    = if ($Outbound) { 'outbound' } else { 'direct' }
         AgentUrl = if ($Outbound) { $null } else { "http://${Address}:9100" }
     }
 }
@@ -40,7 +40,7 @@ function Get-FakeHostInfo {
 function Get-FakeSession {
     [pscustomobject]@{
         PSTypeName = 'NexusFleet.Session'; BaseUrl = 'http://localhost:9400'
-        Token       = (ConvertTo-SecureString -String 'nxi_fake' -AsPlainText -Force)
+        Token = (ConvertTo-SecureString -String 'nxi_fake' -AsPlainText -Force)
         User = 'admin@example.com'; PlatformRole = 'owner'; TimeoutSeconds = 5; RetryCount = 0; AllowUnencryptedHttp = $false
         Features = @('agent-link'); ConnectedAt = [datetime]::UtcNow
     }
