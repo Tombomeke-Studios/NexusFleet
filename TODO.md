@@ -37,15 +37,15 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Parallel across hosts with `-ThrottleLimit`; one failing host never stops the rest (#36)
 
 ### `feature/install` — build as a vertical slice first
-- [ ] Slice: `Install-NexusNode` with only the preflight + agent step, end to end on **one** VM
-- [ ] Step: Docker — test present, install if missing (idempotent)
-- [ ] Step: agent container — with `--restart unless-stopped`, the port, the `nexusinfra-backups` volume, the Docker socket and the host-gateway mapping; secrets via stdin
-- [ ] Step: register node — `POST /nodes` with id, name, location, `agentUrl`
-- [ ] Step: verify — poll `GET /nodes` until *healthy* (thresholds 3 s / 10 s, configurable time-out)
-- [ ] Rollback per step, tested with a failure in each step
-- [ ] `-WhatIf` returns the plan per host and changes nothing (tested: no changing call is made)
-- [ ] Second run changes nothing (idempotency test)
-- [ ] Parallel across hosts; one failing host gets its own error and the rest finish
+- [ ] Slice: `Install-NexusNode` with only the preflight + agent step, end to end on **one** VM (#38)
+- [ ] Step: Docker — test present, install if missing (idempotent) (#39)
+- [ ] Step: agent container — with `--restart unless-stopped`, the port, the `nexusinfra-backups` volume, the Docker socket and the host-gateway mapping; secrets via stdin (#40)
+- [ ] Step: register node — `POST /nodes` with id, name, location, `agentUrl` (#41)
+- [ ] Step: verify — poll `GET /nodes` until *healthy* (thresholds 3 s / 10 s, configurable time-out) (#42)
+- [ ] Rollback per step, tested with a failure in each step (#43)
+- [ ] `-WhatIf` returns the plan per host and changes nothing (tested: no changing call is made) (#44)
+- [ ] Second run changes nothing (idempotency test) (#45)
+- [ ] Parallel across hosts; one failing host gets its own error and the rest finish (#46)
 
 ### `feature/status`
 - [ ] `Get-NexusFleetStatus` — merge `GET /nodes` with host data over SSH; offline hosts reported, never fatal
