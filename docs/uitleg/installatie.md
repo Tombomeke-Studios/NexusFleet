@@ -71,7 +71,7 @@ Import-NexusInventory ./config/inventory.json | Install-NexusNode
 | Docker | `command -v docker && sudo -n docker info` | `apt-get install docker.io`, daemon starten | pakket weer verwijderen |
 | RegisterNode | staat de node in `GET /nodes`, met dezelfde naam, locatie, agentUrl? | `POST /nodes` | `DELETE /nodes/:id`, alleen als het record vóór de run niet bestond |
 | AgentContainer | draait de container, met het juiste image, restart policy, poort, volume, socket, host-gateway, `NODE_ID`, `AGENT_URL`? | env-bestand schrijven (geheimen via stdin), container (opnieuw) maken | container en env-bestand weg, het backup-volume nooit |
-| VerifyHealthy | zegt `GET /nodes` `healthy`? | `GET /nodes` herhalen tot `healthy`, of opgeven na de time-out | niets |
+| VerifyHealthy | zegt `GET /nodes` `healthy`? (nooit "al in orde" als deze run de agent startte) | eerst `DegradedAfterSeconds` wachten als de agent net (opnieuw) startte, dan `GET /nodes` herhalen tot `healthy`, of opgeven na de time-out | niets |
 
 De agent-stap stuurt de twee geheimen als twee regels over stdin; op de server leest bash ze en schrijft ze in een
 bestand dat alleen root kan lezen:
@@ -99,8 +99,14 @@ sudo -n docker run -d --name 'nexusinfra-node-agent' --restart 'unless-stopped' 
 - **Een nep-fleet in de tests in plaats van losse mocks per oproep.** De nep-servers onthouden of Docker en de agent
   er staan, het nep-paneel onthoudt de nodes. Zo kunnen de tests de echte stappen twee keer draaien
   (idempotentie), een stap laten falen (rollback) en daarna kijken wat er "gebeurd" is.
-- **Toch nog een lab.** Het node-lab vond twee fouten die geen mock kon vinden: `Invoke-RestMethod` gaf de
-  nodelijst als één object terug (#47), en Ubuntu's Docker-pakket kan zonder systemd niet starten (K8).
+- **`-Force` voor een gewijzigd geheim** (#48, K7). De agent-Test leest de geheimen nooit terug van de server, dus
+  een nieuw broker-wachtwoord ziet hij niet. `-Force` maakt de container dan toch opnieuw.
+- **Een oude heartbeat telt niet.** Na een nieuwe agent kan de node nog tot 3 s *healthy* lijken door de laatste
+  heartbeat van de oude agent. Daarom onthoudt de agent-stap in `State.AgentStarted` dat hij een agent startte, en
+  wacht VerifyHealthy dan eerst `DegradedAfterSeconds`. Zonder dat zou een fout wachtwoord als "geslaagd" gemeld zijn.
+- **Toch nog een lab.** Het node-lab vond drie fouten die geen mock kon vinden: `Invoke-RestMethod` gaf de
+  nodelijst als één object terug (#47), Ubuntu's Docker-pakket kan zonder systemd niet starten (K8), en de oude
+  heartbeat die een nieuwe agent gezond deed lijken (K7).
 
 ## 5. PowerShell-concepten
 
@@ -157,4 +163,5 @@ Invoke-Pester -Path ./tests/public/Install-NexusNode.Integration.Tests.ps1 -TagF
 2. Waarom wordt `-WhatIf` per server beslist vóór de parallelle lus, en niet in de lus zelf?
 3. Hoe komen de twee geheimen op de server, en waarom niet met `docker run -e`?
 4. Waarom verwijdert de rollback van RegisterNode een node soms wel en soms niet?
-5. Welke twee fouten vond het node-lab die de tests met mocks niet vonden, en waarom konden mocks ze niet vinden?
+5. Welke fouten vond het node-lab die de tests met mocks niet vonden, en waarom konden mocks ze niet vinden?
+6. Waarom wacht VerifyHealthy eerst `DegradedAfterSeconds` als de agent net opnieuw gestart is?

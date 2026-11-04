@@ -279,7 +279,15 @@ Format per keuze:
   `600`, eigenaar root). `docker run --env-file` leest ze daar. De Test van de stap leest van de omgeving alleen
   `NODE_ID` en `AGENT_URL`, zodat de geheimen de host nooit verlaten.
 - **Beperking:** wie op de host `docker inspect` mag doen (root), ziet de waarden wel. Een gewijzigd geheim wordt
-  niet opgemerkt door de Test (die kent de geheimen niet in een dry run); opgenomen in de backlog.
+  niet opgemerkt door de Test (die leest de geheimen nooit terug, en kent ze niet in een dry run).
+- **Gevolg (#48):** `Install-NexusNode -Force` maakt de agent-container opnieuw, ook als hij in orde lijkt. Gekozen
+  boven een hash van de geheimen als label op de container: eenvoudiger, en er staat niets over de geheimen op de
+  host buiten het env-bestand. Mislukt zo'n vervanging (bijvoorbeeld een fout wachtwoord), dan verwijdert de rollback
+  de nieuwe container en is de oude al weg; een gewone run met de juiste geheimen herstelt de node.
+- **Gevonden in het node-lab:** na het opnieuw starten van de agent zei VerifyHealthy meteen "in orde": de laatste
+  heartbeat van de **oude** agent hield de node nog tot `DegradedAfterSeconds` *healthy*. Een nieuwe agent met een
+  fout geheim zou zo als geslaagd gemeld zijn. Nu onthoudt de agent-stap dat hij een agent startte, en dan is
+  VerifyHealthy nooit "al in orde" en wacht hij eerst `DegradedAfterSeconds` voor de eerste controle.
 
 ### K8 — Docker installeren
 
