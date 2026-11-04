@@ -55,18 +55,6 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
 - [ ] Merge `dev → main`, tag `v1.0.0`
 
-### Phase 4d — Logging · `feature/logging`
-
-- [x] Never let a log write fail a host (#85)
-- [x] Make the log folder configurable (#86)
-- [x] Keep only the newest runs in the log folder (#87)
-- [x] Redact longer secrets first and the broker password on its own (#88)
-
-### Phase 4e — READMEs · `feature/readme`
-
-- [x] Rewrite the main README (#89)
-- [ ] Expand the folder READMEs (#90)
-
 ## Phase 5 — Extras (only after `v1.0.0`, in this order)
 
 ### `feature/bulk-actions`
@@ -103,6 +91,18 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 ---
 
 ## Done
+
+### Phase 4e — READMEs (#92)
+
+- [x] Rewrite the main README (#89)
+- [x] Expand the folder READMEs (#90)
+
+### Phase 4d — Logging (#91)
+
+- [x] Never let a log write fail a host (#85)
+- [x] Make the log folder configurable (#86)
+- [x] Keep only the newest runs in the log folder (#87)
+- [x] Redact longer secrets first and the broker password on its own (#88)
 
 ### Phase 4c — Code quality (#83)
 

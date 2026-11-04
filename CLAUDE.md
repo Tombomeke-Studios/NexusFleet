@@ -215,7 +215,7 @@ Allowed — the two tools are built for each other — but they never happen fro
 
 ## 7. Codebase map — where is what
 
-Each `src/` folder has a `README.md` describing it (the loader only reads `*.ps1`). `logs/` is created at runtime,
+Every folder has a `README.md`: what it is for and one line per file (the loader only reads `*.ps1`; the build ships none of them except the root README). `logs/` is created at runtime,
 never committed.
 
 | Path | Contents |
