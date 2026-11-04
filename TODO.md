@@ -82,6 +82,10 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 ### `feature/publish`
 - [ ] Publish to the PowerShell Gallery from CI on a tag
 
+### `feature/guided-setup` — proposed, not yet agreed
+- [ ] **[Tom]** Propose the guided setup to the teacher as an extra; on a yes, add a changelog line to `docs/projectvoorstel.md`
+- [ ] `Start-NexusFleetSetup` — an interactive, guided setup in the normal terminal (no full-screen TUI) that only calls the existing cmdlets and explains every failed check (#93)
+
 ## Phase 6 — Delivery
 
 - [ ] **[Tom]** Final report (Dutch), with the measurements and the decisions from `docs/ontwerpkeuzes.md`
