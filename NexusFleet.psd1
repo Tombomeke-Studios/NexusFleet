@@ -20,6 +20,8 @@
         'Import-NexusInventory'
         'Test-NexusHost'
         'Install-NexusNode'
+        'Get-NexusFleetStatus'
+        'Export-NexusFleetStatus'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

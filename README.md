@@ -6,7 +6,7 @@ A PowerShell 7 module that turns Linux hosts into [NexusInfra](https://github.co
 nodes and manages them as a fleet: read an inventory, check every host, install Docker and the node agent,
 register the node, wait until it is healthy, and roll back when something fails.
 
-> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`. Progress is tracked in
+> **Status: phase 3, building the MVP cmdlets.** Available: all MVP cmdlets. Progress is tracked in
 > [TODO.md](TODO.md). This README grows as the cmdlets land.
 
 ## Why
@@ -24,9 +24,11 @@ NexusFleet turns it into one repeatable, idempotent PowerShell pipeline with a r
 | `Import-NexusInventory` | Read and validate a JSON list of target hosts (available) |
 | `Test-NexusHost` | Check every host in parallel: reachable, SSH login, OS, sudo, disk space, Docker, broker (available) |
 | `Install-NexusNode` | Turn hosts into healthy nodes in parallel: Docker, register, agent, verify; idempotent, rollback on failure (available) |
-| `Get-NexusFleetStatus` | Get and export the status of all nodes; offline hosts never break the run |
+| `Get-NexusFleetStatus` | The status of every node: NexusInfra's view merged with what ssh sees on the host (available) |
+| `Export-NexusFleetStatus` | Write that status to JSON or CSV (available) |
 
-Every changing cmdlet will support `-WhatIf` (dry run), and every run writes a readable log without secrets.
+Every changing cmdlet supports `-WhatIf` (dry run), and every run writes a readable log without secrets
+(`logs/<RunId>/`, one file per host and `run.log`).
 
 ## Requirements
 
@@ -157,7 +159,29 @@ volume, the Docker socket and the host-gateway mapping; the secrets in `/etc/nex
 **VerifyHealthy** (until NexusInfra reports the node healthy). A failing step rolls back what that run changed on
 that host. Run it again and every host reports `Changed = False`. `$result.Steps` shows each step.
 
-_`Get-NexusFleetStatus` follows with the MVP._
+**See how the fleet is doing.** NexusInfra's view (health, last heartbeat, maintenance, CPU, RAM) merged with what
+the host itself says over ssh (reachable, Docker, the agent container, uptime, free disk):
+
+```powershell
+Import-NexusInventory ./config/inventory.json | Get-NexusFleetStatus | Format-Table Name, Ok, Health, AgentState, Problem
+```
+
+```text
+Name        Ok    Health  AgentState Problem
+----        --    ------  ---------- -------
+node-home01 True  healthy running
+node-home02 False offline exited     NexusInfra reports it offline; the agent container is exited
+node-vps01  False offline            NexusInfra reports it offline; cannot reach 203.0.113.10:2222 over ssh: ...
+```
+
+Without an inventory, `Get-NexusFleetStatus` shows only NexusInfra's view. Nodes NexusInfra knows but the inventory
+does not are listed after the inventory. An unreachable host, or even an unreachable panel, is reported in the result
+and never stops the run. Export it:
+
+```powershell
+Import-NexusInventory ./config/inventory.json | Get-NexusFleetStatus | Export-NexusFleetStatus -Path ./status.csv
+Get-NexusFleetStatus | Export-NexusFleetStatus -Path ./status.json
+```
 
 ## Configuration
 
