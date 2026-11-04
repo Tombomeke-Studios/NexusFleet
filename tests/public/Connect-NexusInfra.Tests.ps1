@@ -34,6 +34,9 @@ Describe 'Connect-NexusInfra' {
             [pscustomobject]@{ id = 'user-1'; email = 'tom@example.com'; platformRole = 'owner' }
         }
         Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -ParameterFilter { $Path -eq '/users' } -MockWith { @() }
+        Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -ParameterFilter { $Path -eq '/config' } -MockWith {
+            [pscustomobject]@{ edition = 'community'; features = @('agent-link') }
+        }
         Mock -ModuleName NexusFleet -CommandName Save-NexusStoredToken -MockWith { }
         Mock -ModuleName NexusFleet -CommandName Get-NexusStoredToken -MockWith { $token }
         & $module { $script:NexusSession = $null }
@@ -60,6 +63,23 @@ Describe 'Connect-NexusInfra' {
         $session = & $module { Get-NexusSession }
         $session.Token | Should -Be $token
         $session.User | Should -Be 'tom@example.com'
+    }
+
+    It 'keeps the features the control plane lists in GET /config on the session' {
+        $null = Connect-NexusInfra -Token $token
+
+        (& $module { Get-NexusSession }).Features | Should -Be @('agent-link')
+    }
+
+    It 'keeps no features for a control plane that lists none (NexusInfra 0.4.0), or whose GET /config fails' -ForEach @(
+        @{ Answer = { [pscustomobject]@{ edition = 'community' } } }
+        @{ Answer = { throw 'unreachable' } }
+    ) {
+        Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -ParameterFilter { $Path -eq '/config' } -MockWith $Answer
+
+        $null = Connect-NexusInfra -Token $token
+
+        @((& $module { Get-NexusSession }).Features) | Should -HaveCount 0
     }
 
     It 'uses -BaseUrl instead of the configured address when given' {
