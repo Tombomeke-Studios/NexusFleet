@@ -78,7 +78,16 @@ function Invoke-NexusHostInstall {
 
     try {
         # 1. Is the host ready? Then nothing is touched yet.
-        $preflight = Invoke-NexusHostPreflight -HostInfo $HostInfo -Config $Config -RunContext $RunContext
+        # A host whose agent connects outbound needs the agent link (docs/agent-link.md): its URL, and a control
+        # plane that supports it.
+        $link = @{}
+        if ($HostInfo.Reach -eq 'outbound') {
+            $link.LinkUrl = Get-NexusAgentLinkUrl -Link $Config.Agent.Link -BaseUrl $Session.BaseUrl
+            if ('agent-link' -notin @($Session.Features)) {
+                $link.LinkUnsupported = $true
+            }
+        }
+        $preflight = Invoke-NexusHostPreflight -HostInfo $HostInfo -Config $Config -RunContext $RunContext @link
         $result.Preflight = $preflight
         if (-not $preflight.Success) {
             $result.Step = $preflight.Step
@@ -92,6 +101,7 @@ function Invoke-NexusHostInstall {
 
         $context = @{
             HostInfo   = $HostInfo
+            LinkUrl    = $link.LinkUrl
             Config     = $Config
             Ssh        = $ssh
             Api        = (Get-NexusApiParameter -Session $Session)

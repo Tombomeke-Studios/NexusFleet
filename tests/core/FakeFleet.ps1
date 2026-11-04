@@ -27,10 +27,13 @@ function Add-FakeHost {
 }
 
 function Get-FakeHostInfo {
-    param([string]$Name, [string]$Address)
+    # -Outbound: reach outbound, the agent connects to the control plane over the agent link (docs/agent-link.md).
+    param([string]$Name, [string]$Address, [switch]$Outbound)
     [pscustomobject]@{
         PSTypeName = 'NexusFleet.Host'; Name = $Name; Address = $Address; Port = 22; User = 'fleet'
-        Location = 'home'; Role = $null; KeyFile = $null; AgentUrl = "http://${Address}:9100"
+        Location = 'home'; Role = $null; KeyFile = $null
+        Reach = if ($Outbound) { 'outbound' } else { 'direct' }
+        AgentUrl = if ($Outbound) { $null } else { "http://${Address}:9100" }
     }
 }
 
@@ -39,7 +42,7 @@ function Get-FakeSession {
         PSTypeName = 'NexusFleet.Session'; BaseUrl = 'http://localhost:9400'
         Token       = (ConvertTo-SecureString -String 'nxi_fake' -AsPlainText -Force)
         User = 'admin@example.com'; PlatformRole = 'owner'; TimeoutSeconds = 5; RetryCount = 0; AllowUnencryptedHttp = $false
-        ConnectedAt = [datetime]::UtcNow
+        Features = @('agent-link'); ConnectedAt = [datetime]::UtcNow
     }
 }
 
@@ -83,16 +86,22 @@ function Invoke-FakeHostCommand {
         }
         'docker inspect' {
             if (-not $state.Agent) { return Get-FakeCommandResult -HostName $HostName -StdOut 'exists=no' }
-            return Get-FakeCommandResult -HostName $HostName -StdOut @(
-                'exists=yes', 'image=ghcr.io/tombomeke-studios/nexusinfra/node-agent:community', 'running=true', 'restart=unless-stopped',
-                'port=9100->9100/tcp', 'mount=/var/run/docker.sock:/var/run/docker.sock', 'mount=nexusinfra-backups:/var/lib/nexusinfra/backups',
-                'host=host.docker.internal:host-gateway', "env=NODE_ID=$($state.NodeId)", "env=AGENT_URL=http://${HostName}:9100")
+            # A direct agent publishes its port and knows its AGENT_URL; an outbound agent has only its link URL.
+            $reach = if ($state.LinkUrl) { @("env=AGENT_LINK_URL=$($state.LinkUrl)") } else { @('port=9100->9100/tcp', "env=AGENT_URL=http://${HostName}:9100") }
+            return Get-FakeCommandResult -HostName $HostName -StdOut (@(
+                    'exists=yes', 'image=ghcr.io/tombomeke-studios/nexusinfra/node-agent:community', 'running=true', 'restart=unless-stopped',
+                    'mount=/var/run/docker.sock:/var/run/docker.sock', 'mount=nexusinfra-backups:/var/lib/nexusinfra/backups',
+                    'host=host.docker.internal:host-gateway', "env=NODE_ID=$($state.NodeId)") + $reach)
         }
         'docker run' {
             $Fake.Changes.Add("$HostName start agent")
             if (& $fail 'AgentContainer') { return Get-FakeCommandResult -HostName $HostName -ExitCode 125 -StdErr 'docker: port is already allocated.' }
             $state.Agent = $true
             $state.NodeId = [regex]::Match($Command, "'NODE_ID' '([^']+)'").Groups[1].Value
+            $state.LinkUrl = [regex]::Match($Command, "'AGENT_LINK_URL' '([^']+)'").Groups[1].Value
+            # An outbound agent opens its link once it has a token minted for its node.
+            $node = $Fake.Nodes[$state.NodeId]
+            if ($state.LinkUrl -and $node -and $node.linkToken) { $node.linked = $true }
             # Like a real agent, the first heartbeat arrives a moment later: the next GET /nodes still says offline.
             if (-not $Fake.NeverHealthy) { $Fake.Heartbeating[$state.NodeId] = 'soon' }
             return Get-FakeCommandResult -HostName $HostName
@@ -101,6 +110,7 @@ function Invoke-FakeHostCommand {
             $Fake.Changes.Add("$HostName remove agent")
             $state.Agent = $false
             if ($state.NodeId) { $Fake.Heartbeating.Remove($state.NodeId) }
+            if ($state.NodeId -and $Fake.Nodes[$state.NodeId]) { $Fake.Nodes[$state.NodeId].linked = $false }
             return Get-FakeCommandResult -HostName $HostName
         }
     }
@@ -114,13 +124,16 @@ function Invoke-FakeApi {
             # GET /nodes/<id>/disk: NexusInfra asks the agent itself. Unreachable lists agents it cannot call.
             if ($Path -match '^/nodes/([^/]+)/disk$') {
                 $id = $Matches[1]
-                if (-not $Fake.Heartbeating[$id] -or $Fake.Unreachable -contains $id) {
+                $outboundWithoutLink = $Fake.Nodes[$id].connection -eq 'outbound' -and -not $Fake.Nodes[$id].linked
+                if (-not $Fake.Heartbeating[$id] -or $Fake.Unreachable -contains $id -or $outboundWithoutLink) {
                     throw [System.InvalidOperationException]::new('NexusInfra API GET /nodes/x/disk failed 502. NexusInfra says: fetch failed')
                 }
                 return [pscustomobject]@{ measuredAt = '2026-11-04T10:00:00Z'; deployments = @() }
             }
             return @($Fake.Nodes.Values | ForEach-Object {
                     $node = $_.Clone()
+                    # The API never shows a link token, only whether the link is up.
+                    $node.Remove('linkToken')
                     $beat = $Fake.Heartbeating[$node.id]
                     $node.health = if ($beat -eq $true) { 'healthy' } else { 'offline' }
                     if ($beat -eq 'soon') { $Fake.Heartbeating[$node.id] = $true }
@@ -128,11 +141,20 @@ function Invoke-FakeApi {
                 })
         }
         'POST' {
+            # POST /nodes/<id>/link-token: a new link token for that node; the old one (and its link) stop working.
+            if ($Path -match '^/nodes/([^/]+)/link-token$') {
+                $id = $Matches[1]
+                $Fake.Changes.Add("POST /nodes/$id/link-token")
+                $Fake.Nodes[$id].linkToken = "link-$id-$($Fake.Changes.Count)"
+                $Fake.Nodes[$id].linked = $false
+                return [pscustomobject]@{ token = $Fake.Nodes[$id].linkToken }
+            }
             $Fake.Changes.Add("POST /nodes $($Body.id)")
             if ($Fake.FailAt -eq 'RegisterNode' -or $Fake.FailAt -eq "RegisterNode@$($Body.id)") {
                 throw [System.InvalidOperationException]::new('NexusInfra answered 403 Forbidden.')
             }
-            $Fake.Nodes[$Body.id] = @{ id = $Body.id; name = $Body.name; location = $Body.location; agentUrl = $Body.agentUrl }
+            $connection = if ($Body.connection) { $Body.connection } else { 'direct' }
+            $Fake.Nodes[$Body.id] = @{ id = $Body.id; name = $Body.name; location = $Body.location; agentUrl = $Body.agentUrl; connection = $connection; linked = $false }
             return [pscustomobject]$Fake.Nodes[$Body.id]
         }
         'DELETE' {
