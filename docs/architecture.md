@@ -23,12 +23,12 @@ One responsibility per folder in `src/`. All functions below are internal (not e
 
 | Folder | Functions | Responsibility |
 |---|---|---|
-| `core` | `ConvertTo-NexusCommandResult`, `Register-NexusStep`, `Get-NexusStep`, `Invoke-NexusStepSequence` | The two contracts and the step runner |
-| `utils` | `Initialize-NexusRunContext`, `Write-NexusLog`, `Get-NexusConfig`, `Merge-NexusHashtable` | Run context, logging, configuration |
+| `core` | `ConvertTo-NexusCommandResult`, `Register-NexusStep`, `Get-NexusStep`, `Invoke-NexusStepSequence`, `Invoke-NexusStepCommand`, `Invoke-NexusStepApi`, `Invoke-NexusHostPreflight`, `Invoke-NexusHostInstall`, `ConvertTo-NexusPreflightFailure`, `ConvertTo-NexusInstallFailure` | The two contracts, the step runner, the helpers steps use, and the per-host engines |
+| `utils` | `Initialize-NexusRunContext`, `Write-NexusLog`, `Get-NexusConfig`, `Merge-NexusHashtable`, `Get-NexusSession`, `Get-NexusStoredToken`, `Save-NexusStoredToken`, `ConvertTo-NexusShellArgument` | Run context, logging, configuration, session, secrets, shell quoting |
 | `transports` | `Invoke-NexusHostCommand`, `Invoke-NexusSshClient` | Running a command on a host (native ssh) |
 | `api` | `Invoke-NexusApi` | The only caller of the NexusInfra REST API |
-| `steps` | _(phase 3)_ | One file per installation step, each calling `Register-NexusStep` |
-| `public` | _(phase 3)_ | The exported cmdlets |
+| `steps` | `Docker` (10), `RegisterNode` (20), `AgentContainer` (30), `VerifyHealthy` (40) | One file per installation step, each calling `Register-NexusStep` |
+| `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode` | The exported cmdlets |
 
 ## Contracts
 
@@ -60,16 +60,52 @@ transport is another file in `src/transports/` returning the same object.
 
 The SSH transport, `Invoke-NexusHostCommand`, calls native `ssh` (experiment E1) with `BatchMode=yes`,
 `ConnectTimeout`, `StrictHostKeyChecking=accept-new` and `LogLevel=ERROR`; stdin is closed (`-n`) unless a secret is
-sent, and a secret goes to stdin as bytes (no CR/LF, never on a command line). Host and user names are validated so
+sent, and secrets go to stdin as bytes, one line each ending in LF only (never on a command line). Host and user names are validated so
 an inventory value can never become an ssh option.
+
+### Step context
+
+`Invoke-NexusHostInstall` builds one context per host and passes it to every `Test`, `Apply` and `Rollback`. It holds
+everything a step needs, because module variables do not exist in a parallel runspace:
+
+| Key | Contents |
+|---|---|
+| `HostInfo` | The `NexusFleet.Host` from the inventory (name = node id, location, agentUrl) |
+| `Config` | The validated config |
+| `Ssh` | Arguments for `Invoke-NexusHostCommand` (address, port, user, key, known_hosts, time-out) |
+| `Api` | Arguments for `Invoke-NexusApi` (base URL, token, time-out, retries), from the session |
+| `Secrets` | `RabbitMqUrl` and `InternalApiToken` (SecureStrings); `$null` in a dry run |
+| `RunContext` | For logging |
+| `State` | A hashtable a step uses to remember something between its `Test` and its `Rollback` |
+
+Steps talk to the host with `Invoke-NexusStepCommand` (throws on an ssh failure, and on a failed command unless
+`-AllowFailure`) and to the panel with `Invoke-NexusStepApi`. Every value put into a remote command goes through
+`ConvertTo-NexusShellArgument`.
 
 ## Data flow of `Install-NexusNode`
 
-_Planned._ Inventory → preflight → steps per host → register → verify healthy → result per host.
+```
+Import-NexusInventory ──► Install-NexusNode (process: collect hosts)
+                          end: Get-NexusSession, Get-NexusConfig
+                               per host ShouldProcess  ──► PlanOnly yes/no   (-WhatIf / -Confirm, decided here)
+                               secrets (parameters or SecretManagement), only when something is installed
+                               Initialize-NexusRunContext (all secrets redacted)
+                               ForEach-Object -Parallel -ThrottleLimit N ──► per host, in its runspace:
+                                   Invoke-NexusHostInstall
+                                     Invoke-NexusHostPreflight ── not ready ──► result (nothing touched)
+                                     Invoke-NexusStepSequence (Get-NexusStep)
+                                       Docker → RegisterNode → AgentContainer → VerifyHealthy
+                                       failure ──► rollback of what this run applied, in reverse
+                                     NexusFleet.InstallResult
+                          one result per host, summary in run.log
+```
+
+`NexusFleet.InstallResult`: `Host`, `Success`, `PlanOnly`, `Changed` (did this run apply anything), `Step`, `Error`,
+`Steps` (as in the step runner) and `Preflight` (the checks).
 
 ## Configuration
 
-`config/nexusinfra.psd1` holds every NexusInfra-specific value (`Api`, `Agent`, `Health`). An optional, git-ignored
+`config/nexusinfra.psd1` holds every NexusInfra-specific value (`Api`, `Agent`, `Docker`, `Broker`, `Ssh`, `Preflight`, `Install`, `Health`). An optional, git-ignored
 `config/nexusinfra.local.psd1` overrides only what differs (deep merge; unknown keys give a warning).
 `Get-NexusConfig` validates every value against a list of rules and reports all problems in one error.
 
