@@ -72,6 +72,11 @@ function Get-NexusConfig {
         @{ Key = 'Agent.EnvNames.RabbitMqUrl'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
         @{ Key = 'Agent.EnvNames.InternalApiToken'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
         @{ Key = 'Agent.EnvNames.AgentUrl'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
+        @{ Key = 'Agent.EnvNames.LinkUrl'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
+        @{ Key = 'Agent.EnvNames.LinkToken'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
+        @{ Key = 'Agent.EnvNames.LinkInsecure'; Expect = 'an environment variable name'; Test = { param($v) $v -is [string] -and $v -match '^[A-Z_][A-Z0-9_]*$' } }
+        @{ Key = 'Agent.Link.Url'; Expect = "'' (derived from Api.BaseUrl) or a ws:// or wss:// URL"; Test = { param($v) $v -is [string] -and ($v -eq '' -or $v -match '^wss?://\S+$') } }
+        @{ Key = 'Agent.Link.Path'; Expect = 'a URL path starting with /'; Test = { param($v) $v -is [string] -and $v -match '^/\S*$' } }
         @{ Key = 'Agent.EnvFile'; Expect = 'an absolute Linux path to a file'; Test = { param($v) $v -is [string] -and $v -match '^(/[A-Za-z0-9._-]+)+$' } }
         @{ Key = 'Agent.SecretNames.RabbitMqUrl'; Expect = 'a secret name (letters, digits, . _ -)'; Test = { param($v) $v -is [string] -and $v -match '^[A-Za-z0-9._-]+$' } }
         @{ Key = 'Agent.SecretNames.InternalApiToken'; Expect = 'a secret name (letters, digits, . _ -)'; Test = { param($v) $v -is [string] -and $v -match '^[A-Za-z0-9._-]+$' } }
