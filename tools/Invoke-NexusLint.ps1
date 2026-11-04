@@ -18,6 +18,9 @@ How many times to run the analyzer when it keeps failing internally.
 .PARAMETER GitHubAnnotations
 Also write each finding as a GitHub Actions annotation (::error file=...,line=...::).
 
+.PARAMETER SummaryPath
+Also append a Markdown summary (no findings, or a table of them) to this file. CI passes $env:GITHUB_STEP_SUMMARY.
+
 .EXAMPLE
 ./tools/Invoke-NexusLint.ps1
 Lints the repository; no output and no error means clean.
@@ -34,7 +37,9 @@ param(
     [ValidateRange(1, 10)]
     [int]$MaxAttempts = 3,
 
-    [switch]$GitHubAnnotations
+    [switch]$GitHubAnnotations,
+
+    [string]$SummaryPath
 )
 
 $settingsPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'PSScriptAnalyzerSettings.psd1'
@@ -58,6 +63,22 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
 
 if ($ruleErrors) {
     throw "PSScriptAnalyzer kept failing internally after $MaxAttempts attempts."
+}
+
+if ($SummaryPath) {
+    $files = @(Get-ChildItem -Path $Path -Include '*.ps1', '*.psm1', '*.psd1' -Recurse -File).Count
+    $summary = if ($findings) {
+        @("## :x: PSScriptAnalyzer: $(@($findings).Count) finding(s) in $files files", '',
+            '| File | Line | Rule | Message |', '|---|---:|---|---|')
+        foreach ($finding in $findings) {
+            $file = [System.IO.Path]::GetRelativePath($Path, $finding.ScriptPath).Replace('\', '/')
+            "| ``$file`` | $($finding.Line) | $($finding.RuleName) | $($finding.Message.Replace('|', '\|')) |"
+        }
+    }
+    else {
+        "## :white_check_mark: PSScriptAnalyzer: no findings in $files files"
+    }
+    Add-Content -Path $SummaryPath -Value ($summary -join "`n") -Encoding utf8
 }
 
 if ($findings) {

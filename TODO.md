@@ -55,6 +55,30 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
 - [ ] Merge `dev → main`, tag `v1.0.0`
 
+## Phase 4b — Quality before `v1.0.0`
+
+Tom's review (2026-11-04): good tests, a CI/CD pipeline that shows which test failed and why, real English
+documentation, good comments and help pages.
+
+### `feature/ci-reporting`
+- [x] CI: test report with every failed test, its reason and location (#62)
+- [x] CI: run the unit tests on Windows and Linux (#63)
+- [x] Fix: ssh's reason was empty on Windows OpenSSH 9.5 (found by the Windows job) (#72)
+
+### `feature/ci-integration`
+- [ ] Node lab: default to the public NexusInfra 0.4.0-community images (#65)
+- [ ] CI: run the integration tests against the node lab in the pipeline (#64)
+
+### `feature/test-quality`
+- [ ] Help quality test: descriptions, parameters, examples that parse, inputs, outputs, links (#66)
+- [ ] Test review: close the gaps (every config rule, every error id, missed lines) (#67)
+
+### `feature/docs`
+- [ ] Help pages: INPUTS, OUTPUTS, NOTES and LINK on every public cmdlet (#69)
+- [ ] `about_NexusFleet` help topic (#68)
+- [ ] English project documentation: user guide, configuration, inventory, testing, development, troubleshooting (#70)
+- [ ] Code comments: review every file in `src/` (#71)
+
 ## Phase 5 — Extras (only after `v1.0.0`, in this order)
 
 ### `feature/bulk-actions`

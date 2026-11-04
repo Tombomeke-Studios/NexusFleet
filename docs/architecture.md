@@ -59,7 +59,7 @@ A transport runs one shell command on one host and returns a `NexusFleet.Command
 transport is another file in `src/transports/` returning the same object.
 
 The SSH transport, `Invoke-NexusHostCommand`, calls native `ssh` (experiment E1) with `BatchMode=yes`,
-`ConnectTimeout`, `StrictHostKeyChecking=accept-new` and `LogLevel=ERROR`; stdin is closed (`-n`) unless a secret is
+`ConnectTimeout`, `StrictHostKeyChecking=accept-new` and `LogLevel=INFO` (the only harmless INFO line, the known-hosts notice of a new host, is filtered out; Windows OpenSSH 9.5 reports a refused connection only at INFO); stdin is closed (`-n`) unless a secret is
 sent, and secrets go to stdin as bytes, one line each ending in LF only (never on a command line). Host and user names are validated so
 an inventory value can never become an ssh option.
 

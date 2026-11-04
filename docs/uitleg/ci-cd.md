@@ -2,8 +2,8 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: fase 4 (#55, #57, #58, #59): schaaltests, testresultaten en dekking in CI, het buildscript, de
-release-workflow en het demoscript._
+_Stand: fase 4 (#55, #57, #58, #59) en de kwaliteitsronde (#62, #63): het testrapport per test, Windows en Linux,
+het buildscript, de release-workflow en het demoscript._
 
 ## 1. Wat het doet
 
@@ -16,7 +16,10 @@ Het demoscript draait de hele flow op een inventaris en meet de tijden voor het 
 
 | Pad | Inhoud |
 |---|---|
-| `.github/workflows/ci.yml` | Lint en tests; nu met testresultaten (NUnit XML), dekking (JaCoCo) en een samenvatting |
+| `.github/workflows/ci.yml` | Lint en unit-tests op Linux én Windows; rapport in de samenvatting, annotaties, artifacts |
+| `tools/Invoke-NexusTests.ps1` | Eén testrun, lokaal en in CI hetzelfde: Pester 5, resultaten, dekking, rapport |
+| `tools/Write-NexusTestReport.ps1` | Maakt van een Pester-run een rapport: totalen, elke gefaalde test met reden en `bestand:regel`, per testbestand, traagste tests, dekking per bronbestand; plus een annotatie per fout |
+| `tools/Install-NexusTooling.ps1` | Installeert de vastgezette versies van Pester, PSScriptAnalyzer en SecretManagement, met herkansingen |
 | `.github/workflows/release.yml` | Bij een tag `v*`: dezelfde controles, versie nakijken, bouwen, release maken |
 | `tools/Build-NexusModule.ps1` | Bouwt `out/NexusFleet/` en `out/NexusFleet-<versie>.zip` met alleen wat de module nodig heeft |
 | `tests/tools/Build-NexusModule.Tests.ps1` | Bouwt echt in TestDrive en controleert de inhoud |
@@ -25,6 +28,24 @@ Het demoscript draait de hele flow op een inventaris en meet de tijden voor het 
 | `lab/demo/README.md` | Wat de lab-VM's nodig hebben, en hoe je de demo draait |
 
 ## 3. Hoe het werkt
+
+**Het testrapport.** Na de run geeft `Invoke-NexusTests.ps1` het Pester-resultaat (`-PassThru`) aan
+`Write-NexusTestReport.ps1`. Pester bewaart per gefaalde test de melding en, bij een mislukte `Should`, het bestand en de
+regel (`ErrorRecord.TargetObject.File` en `.Line`). Het rapport zet ze in een lijst:
+
+```text
+- **Test-NexusHost in parallel with the real ssh client.reports every closed port as not reachable, with ssh's reason**
+  at `tests/public/Test-NexusHost.LocalSsh.Tests.ps1:52`
+    Expected regular expression 'refused|connect' to match 'cannot reach 127.0.0.1:59671 over ssh: ', but it did not match.
+```
+
+Een testbestand waarvan de `BeforeAll` faalt, staat er één keer in, met de reden, in plaats van al zijn tests apart.
+Per fout maakt het ook een regel `::error file=...,line=...,title=...::melding`. GitHub leest die uit de uitvoer van de stap
+en toont de fout op die regel in de pull request. Het rapport komt in `$env:GITHUB_STEP_SUMMARY`, de pagina van de run.
+
+**Linux en Windows.** De testjob draait als matrix op `ubuntu-latest` en `windows-latest`, met `fail-fast: false`, zodat
+het ene systeem het resultaat van het andere nooit verbergt. De eerste Windows-run vond meteen een echte fout (#72): de
+OpenSSH van Windows meldt een geweigerde verbinding alleen op logniveau INFO, dus het transport gaf daar geen reden.
 
 **Dekking in CI.** Pester houdt bij welke regels in `src/` uitgevoerd werden:
 
@@ -108,8 +129,8 @@ Invoke-Pester -Path ./tests/public/Scale.Tests.ps1 -Output Detailed
 
 ## 7. Controlevragen
 
-1. Waarom hergebruikt de release-workflow `ci.yml` in plaats van de lint- en teststappen te kopiëren?
-2. Wat controleert `Build-NexusModule.ps1` voordat het de zip maakt, en waarom in een apart `pwsh`-proces?
-3. Waarom is 100 % dekking geen doel, en welke functie blijft bewust buiten de unit-tests?
-4. Wat gebeurt er als je de tag `v1.0.0` pusht terwijl de manifest nog `0.1.0` zegt?
-5. Waarom zitten er in de schaaltests opzettelijk onbereikbare en falende servers?
+1. Hoe weet het testrapport op welke regel een `Should` faalde, en waarom staat een kapotte `BeforeAll` er maar één keer in?
+2. Waarom draaien de tests op Windows én Linux, en welke fout vond Windows?
+3. Waarom hergebruikt de release-workflow `ci.yml` in plaats van de lint- en teststappen te kopiëren?
+4. Wat controleert `Build-NexusModule.ps1` voordat het de zip maakt, en waarom in een apart `pwsh`-proces?
+5. Waarom is 100 % dekking geen doel, en welke functie blijft bewust buiten de unit-tests?

@@ -23,7 +23,7 @@ Describe 'Invoke-NexusHostCommand' {
     }
 
     Context 'the ssh call' {
-        It 'never waits for input: BatchMode, a connect time-out, accept-new host keys, quiet log level' {
+        It 'never waits for input: BatchMode, a connect time-out, accept-new host keys, log level INFO' {
             Mock -CommandName Invoke-NexusSshClient -MockWith { $seen.Args = $ArgumentList; [pscustomobject]@{ Output = @(); ExitCode = 0 } }
 
             $null = Invoke-NexusHostCommand @target -Command 'uname -a' -ConnectTimeoutSeconds 7
@@ -32,7 +32,7 @@ Describe 'Invoke-NexusHostCommand' {
             $joined | Should -Match '-o BatchMode=yes'
             $joined | Should -Match '-o ConnectTimeout=7'
             $joined | Should -Match '-o StrictHostKeyChecking=accept-new'
-            $joined | Should -Match '-o LogLevel=ERROR'
+            $joined | Should -Match '-o LogLevel=INFO'
             $joined | Should -Match '-p 2222'
         }
 
@@ -64,6 +64,28 @@ Describe 'Invoke-NexusHostCommand' {
     }
 
     Context 'the result' {
+        It 'drops the known-hosts notice of a new host from stderr (it is not an error)' {
+            Mock -CommandName Invoke-NexusSshClient -MockWith {
+                [pscustomobject]@{ Output = @('ok', (Get-StdErrLine -Text "Warning: Permanently added '[10.0.0.5]:2222' (ED25519) to the list of known hosts."), (Get-StdErrLine -Text 'real problem')); ExitCode = 1 }
+            }
+
+            (Invoke-NexusHostCommand @target -Command 'x').StdErr | Should -Be 'real problem'
+        }
+
+        It 'keeps the reason of a refused connection as Windows OpenSSH 9.5 reports it (only at log level INFO)' {
+            Mock -CommandName Invoke-NexusSshClient -MockWith {
+                [pscustomobject]@{ Output = @((Get-StdErrLine -Text 'banner exchange: Connection to UNKNOWN port -1: Connection refused')); ExitCode = 255 }
+            }
+
+            (Invoke-NexusHostCommand @target -Command 'true').StdErr | Should -Be 'banner exchange: Connection to UNKNOWN port -1: Connection refused'
+        }
+
+        It 'says so when ssh fails without giving any reason' {
+            Mock -CommandName Invoke-NexusSshClient -MockWith { [pscustomobject]@{ Output = @(); ExitCode = 255 } }
+
+            (Invoke-NexusHostCommand @target -Command 'true').StdErr | Should -Be 'ssh exited with 255 without giving a reason'
+        }
+
         It 'separates stdout and stderr and returns the exit code' {
             Mock -CommandName Invoke-NexusSshClient -MockWith {
                 [pscustomobject]@{ Output = @('out 1', 'out 2', (Get-StdErrLine -Text 'err 1')); ExitCode = 3 }
