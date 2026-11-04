@@ -59,6 +59,15 @@ Describe 'Invoke-NexusHostCommand against the lab container' -Tag 'Integration' 
         $result.StdOut.Trim() | Should -Be 'S 3 c r 3 t - v a l u e'
     }
 
+    It 'delivers several secrets as separate lines' {
+        $first = ConvertTo-SecureString -String 'first-value' -AsPlainText -Force
+        $second = ConvertTo-SecureString -String 'second-value' -AsPlainText -Force
+
+        $result = Invoke-NexusHostCommand @lab -Command 'IFS= read -r a; IFS= read -r b; echo "$b|$a"' -Secret $first, $second
+
+        $result.StdOut | Should -Be 'second-value|first-value'
+    }
+
     It 'reports a key the host does not accept as a transport failure, without waiting for input' {
         $wrong = $lab.Clone()
         $wrong.KeyFile = Join-Path -Path $keyFolder -ChildPath 'wrong_ed25519'

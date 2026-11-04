@@ -2,8 +2,8 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: het stappencontract en de step runner (#27). De echte stappen (Docker, agent, registreren, verifiëren)
-komen in fase 3._
+_Stand: het stappencontract en de step runner (#27). De vier echte stappen en hoe `Install-NexusNode` ze gebruikt:
+zie `installatie.md`._
 
 ## 1. Wat het doet
 

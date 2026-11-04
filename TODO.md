@@ -19,7 +19,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] E2 — Concurrency: `ForEach-Object -Parallel` vs `Start-ThreadJob` vs `Start-Job` for 10 and 50 targets (simulated work) → time and memory (#17)
 - [x] E3 — Prove that Pester mocks do not reach into `-Parallel` runspaces, and that the per-host-function pattern solves it (#18)
 - [x] E4 — API token: which scopes (`write`, `admin`) are needed for `POST /nodes`, `PATCH /nodes/:id/maintenance` and `DELETE /nodes/:id` (#19)
-- [ ] Confirm E4 live against the lab control plane (#21)
+- [x] Confirm E4 live against the lab control plane (#21)
 - [ ] **[Tom]** Confirm the decisions of E1–E4 in `docs/ontwerpkeuzes.md` (Claude Code records measurements and a proposed choice) and write your own learnings in the leerlogboek (#20)
 - [ ] **[Tom]** `docs/leerlogboek.md` — create the file and the format you want to keep (per topic: verwachting, wat ik probeerde, wat ik leerde) (#9)
 
@@ -37,15 +37,16 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Parallel across hosts with `-ThrottleLimit`; one failing host never stops the rest (#36)
 
 ### `feature/install` — build as a vertical slice first
-- [ ] Slice: `Install-NexusNode` with only the preflight + agent step, end to end on **one** VM
-- [ ] Step: Docker — test present, install if missing (idempotent)
-- [ ] Step: agent container — with `--restart unless-stopped`, the port, the `nexusinfra-backups` volume, the Docker socket and the host-gateway mapping; secrets via stdin
-- [ ] Step: register node — `POST /nodes` with id, name, location, `agentUrl`
-- [ ] Step: verify — poll `GET /nodes` until *healthy* (thresholds 3 s / 10 s, configurable time-out)
-- [ ] Rollback per step, tested with a failure in each step
-- [ ] `-WhatIf` returns the plan per host and changes nothing (tested: no changing call is made)
-- [ ] Second run changes nothing (idempotency test)
-- [ ] Parallel across hosts; one failing host gets its own error and the rest finish
+- [x] Slice: `Install-NexusNode` with only the preflight + agent step, end to end on **one** VM (#38) — proven in the node lab; the real VM follows with the demo (#14)
+- [x] Step: Docker — test present, install if missing (idempotent) (#39)
+- [x] Step: agent container — with `--restart unless-stopped`, the port, the `nexusinfra-backups` volume, the Docker socket and the host-gateway mapping; secrets via stdin (#40)
+- [x] Step: register node — `POST /nodes` with id, name, location, `agentUrl` (#41)
+- [x] Step: verify — poll `GET /nodes` until *healthy* (thresholds 3 s / 10 s, configurable time-out) (#42)
+- [x] Rollback per step, tested with a failure in each step (#43)
+- [x] `-WhatIf` returns the plan per host and changes nothing (tested: no changing call is made) (#44)
+- [x] Second run changes nothing (idempotency test) (#45)
+- [x] Parallel across hosts; one failing host gets its own error and the rest finish (#46)
+- [x] Fix: `Invoke-NexusApi` returned a JSON list as one object (found in the node lab) (#47)
 
 ### `feature/status`
 - [ ] `Get-NexusFleetStatus` — merge `GET /nodes` with host data over SSH; offline hosts reported, never fatal
@@ -56,6 +57,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [ ] Comment-based help with examples on every public function (`Get-Help -Full` reads well)
 - [ ] PSScriptAnalyzer: zero warnings
 - [ ] Re-enable `PSUseCorrectCasing` once PSScriptAnalyzer#2205 is fixed (#12)
+- [ ] Agent step: notice a changed agent secret (`-Force`, or a hash label) (#48)
 - [ ] Scale test: generated inventories of 50 and 100 mocked hosts, a few offline/failing — correct result per host, no crash
 - [ ] README: requirements, quick start, the demo, example output
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline

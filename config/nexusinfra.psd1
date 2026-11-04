@@ -27,6 +27,8 @@
         BackupMountPath = '/var/lib/nexusinfra/backups'
         DockerSocket    = '/var/run/docker.sock'
         HostGateway     = 'host.docker.internal:host-gateway'
+        # On the host: the agent's environment, secrets included (mode 600, only root can read it).
+        EnvFile         = '/etc/nexusinfra/agent.env'
         # Names of the environment variables the agent reads.
         EnvNames        = @{
             NodeId           = 'NODE_ID'
@@ -34,6 +36,19 @@
             InternalApiToken = 'INTERNAL_API_TOKEN'
             AgentUrl         = 'AGENT_URL'
         }
+        # Names under which Install-NexusNode finds the agent's secrets with SecretManagement, when they are not
+        # passed as parameters. Store them with: Set-Secret -Name NexusFleet-RabbitMqUrl -Secret (Read-Host -AsSecureString)
+        SecretNames     = @{
+            RabbitMqUrl      = 'NexusFleet-RabbitMqUrl'
+            InternalApiToken = 'NexusFleet-InternalApiToken'
+        }
+    }
+
+    Docker    = @{
+        # Installed by Install-NexusNode when Docker is missing: Ubuntu's own package, no extra apt repository.
+        Package               = 'docker.io'
+        # How long apt waits for another apt (unattended-upgrades on a fresh VM) to finish.
+        AptLockTimeoutSeconds = 300
     }
 
     # The RabbitMQ broker as the nodes reach it (the agent connects to it). Only host and port: the full
@@ -57,6 +72,11 @@
         SupportedOs   = @('ubuntu')
         # How many hosts are checked at the same time.
         ThrottleLimit = 10
+    }
+
+    Install   = @{
+        # How many hosts Install-NexusNode installs at the same time (each one downloads Docker and the agent image).
+        ThrottleLimit = 5
     }
 
     Health    = @{

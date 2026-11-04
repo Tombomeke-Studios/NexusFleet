@@ -6,7 +6,7 @@ A PowerShell 7 module that turns Linux hosts into [NexusInfra](https://github.co
 nodes and manages them as a fleet: read an inventory, check every host, install Docker and the node agent,
 register the node, wait until it is healthy, and roll back when something fails.
 
-> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`. Progress is tracked in
+> **Status: phase 3, building the MVP cmdlets.** Available: `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`. Progress is tracked in
 > [TODO.md](TODO.md). This README grows as the cmdlets land.
 
 ## Why
@@ -23,7 +23,7 @@ NexusFleet turns it into one repeatable, idempotent PowerShell pipeline with a r
 | `Connect-NexusInfra` | Connect to the NexusInfra panel with an API token, check its rights, optionally store it (available) |
 | `Import-NexusInventory` | Read and validate a JSON list of target hosts (available) |
 | `Test-NexusHost` | Check every host in parallel: reachable, SSH login, OS, sudo, disk space, Docker, broker (available) |
-| `Install-NexusNode` | Turn a host into a healthy node, idempotent, with rollback on failure |
+| `Install-NexusNode` | Turn hosts into healthy nodes in parallel: Docker, register, agent, verify; idempotent, rollback on failure (available) |
 | `Get-NexusFleetStatus` | Get and export the status of all nodes; offline hosts never break the run |
 
 Every changing cmdlet will support `-WhatIf` (dry run), and every run writes a readable log without secrets.
@@ -128,7 +128,36 @@ node-vps01      False Reachable cannot reach 203.0.113.10:2222 over ssh: ... Con
 Hosts are checked in parallel (`-ThrottleLimit`, default 10); one failing host never stops the others.
 `$result.Checks` shows every check of a host.
 
-_The other cmdlets follow with the MVP._
+**Turn the hosts into nodes.** The agents need two of NexusInfra's secrets: the broker URL (with its password) and
+the `INTERNAL_API_TOKEN`. Store them once with SecretManagement (or pass `-RabbitMqUrl` / `-InternalApiToken`):
+
+```powershell
+Set-Secret -Name NexusFleet-RabbitMqUrl -Secret (Read-Host -AsSecureString 'RABBITMQ_URL')
+Set-Secret -Name NexusFleet-InternalApiToken -Secret (Read-Host -AsSecureString 'INTERNAL_API_TOKEN')
+```
+
+First the dry run, then the real one:
+
+```powershell
+Import-NexusInventory ./config/inventory.json | Install-NexusNode -WhatIf
+Import-NexusInventory ./config/inventory.json | Install-NexusNode | Format-Table Host, Success, Changed, Step, Error
+```
+
+```text
+Host        Success Changed Step      Error
+----        ------- ------- ----      -----
+node-home01    True    True
+node-home02    True    True
+node-vps01    False   False Reachable preflight failed, nothing was changed: cannot reach 203.0.113.10:2222 ...
+```
+
+Per host: the preflight, then four steps, each only when its check says it is needed: **Docker** (Ubuntu's
+`docker.io`), **RegisterNode** (`POST /nodes`), **AgentContainer** (with the restart policy, the port, the backups
+volume, the Docker socket and the host-gateway mapping; the secrets in `/etc/nexusinfra/agent.env`, mode 600) and
+**VerifyHealthy** (until NexusInfra reports the node healthy). A failing step rolls back what that run changed on
+that host. Run it again and every host reports `Changed = False`. `$result.Steps` shows each step.
+
+_`Get-NexusFleetStatus` follows with the MVP._
 
 ## Configuration
 
@@ -158,6 +187,15 @@ Invoke-Pester -Path ./tests -ExcludeTagFilter Integration -Output Detailed
 
 CI runs both on every push and pull request ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
+**The node lab** proves the installation end to end on this machine, with only Docker: a NexusInfra control plane
+(published images) and two fresh Ubuntu hosts in containers ([lab/node-lab/](lab/node-lab/)).
+
+```powershell
+./lab/node-lab/Start-NodeLab.ps1
+Invoke-Pester -Path ./tests -TagFilter Integration -Output Detailed
+./lab/node-lab/Start-NodeLab.ps1 -Remove
+```
+
 Branches: `feature/<topic>` → `dev` (default, always green) → `main` (milestones only, tagged).
 
 ## Repository layout
@@ -165,14 +203,15 @@ Branches: `feature/<topic>` → `dev` (default, always green) → `main` (milest
 | Path | Contents |
 |---|---|
 | `NexusFleet.psd1` / `NexusFleet.psm1` | Module manifest and loader |
-| `src/core/` | Contracts: a step (Test / Apply / Rollback) and a transport |
+| `src/core/` | Contracts (a step, a transport), the step runner and the per-host engines (preflight, install) |
 | `src/steps/` | One file per installation step |
 | `src/transports/` | Running commands on a host (SSH) |
 | `src/api/` | The only place that calls the NexusInfra REST API |
 | `src/public/` | The exported cmdlets |
-| `src/utils/` | Logging and configuration helpers |
+| `src/utils/` | Logging, configuration, session and secret helpers |
 | `config/` | NexusInfra-specific values and an example inventory |
 | `tests/` | Pester tests, mirroring `src/` |
+| `lab/` | Experiments of phase 1 and the node lab (not part of the module) |
 | `docs/` | Proposal, architecture, design decisions, explanations (Dutch course documents) |
 
 ## Documentation

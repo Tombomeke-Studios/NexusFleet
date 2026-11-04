@@ -30,6 +30,13 @@ Describe 'Get-NexusStoredToken' {
             Should -Throw -ErrorId 'NexusFleet.TokenNotStored*' -ExpectedMessage '*NexusFleet-ApiToken*Connect-NexusInfra*-Save*'
     }
 
+    It 'names another secret and how to store it, when asked (the agent''s secrets)' {
+        Mock -CommandName Get-Secret -MockWith { throw 'not found' }
+
+        { Get-NexusStoredToken -SecretName 'NexusFleet-RabbitMqUrl' -Label 'RABBITMQ_URL' -StoreHint 'Set-Secret -Name NexusFleet-RabbitMqUrl' } |
+            Should -Throw -ErrorId 'NexusFleet.TokenNotStored*' -ExpectedMessage "No RABBITMQ_URL stored under 'NexusFleet-RabbitMqUrl'. Store it with: Set-Secret -Name NexusFleet-RabbitMqUrl*"
+    }
+
     It 'refuses a stored secret that is not a SecureString' {
         Mock -CommandName Get-Secret -MockWith { 'plain text' }
 

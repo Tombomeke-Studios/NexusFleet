@@ -115,7 +115,10 @@ function Invoke-NexusApi {
 
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
         try {
-            return Invoke-RestMethod @request
+            # Invoke-RestMethod writes a JSON list as one object. Put in a variable and written out, the list
+            # is sent item by item, as every PowerShell command does with a list (found in the node lab).
+            $response = Invoke-RestMethod @request
+            return $response
         }
         catch {
             # Keep the error in its own variable: inside the switch below, $_ means the switch value.

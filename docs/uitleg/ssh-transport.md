@@ -2,7 +2,8 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: experiment E1 (#16) en de echte transportfunctie `Invoke-NexusHostCommand` (#26)._
+_Stand: experiment E1 (#16), de echte transportfunctie `Invoke-NexusHostCommand` (#26), en meerdere geheimen per
+oproep (voor de agent, #40)._
 
 ## 1. Wat het doet
 
@@ -92,9 +93,10 @@ $result.ExitCode; $result.StdOut; $result.Succeeded
    poort, en eventueel `-i` en `UserKnownHostsFile`.
 2. Zonder geheim komt er `-n` bij: stdin wordt gesloten, zodat een commando op de host dat iets wil lezen meteen
    "niets" krijgt in plaats van eeuwig te wachten.
-3. Met een geheim (`-Secret`, een `SecureString`) wordt het geheim omgezet naar bytes en via
-   `Invoke-NexusSshClient -InputBytes` naar stdin gestuurd. Daarna wordt de byte-array leeggemaakt
-   (`[array]::Clear`).
+3. Met geheimen (`-Secret`, één of meer `SecureString`s) wordt elk geheim één regel die eindigt op LF (nooit CR/LF),
+   en gaan alle regels samen als bytes via `Invoke-NexusSshClient -InputBytes` naar stdin. De host leest ze in
+   volgorde met `IFS= read -r`. Een geheim met een regeleinde erin wordt geweigerd: het zou als twee regels
+   aankomen. Daarna wordt de byte-array leeggemaakt (`[array]::Clear`).
 4. `Invoke-NexusSshClient` start `ssh` met `2>&1`. Daardoor komen foutregels (stderr) terug als
    `ErrorRecord`-objecten tussen de gewone tekstregels. `Invoke-NexusHostCommand` scheidt ze op type in `StdOut`
    en `StdErr`.
@@ -127,7 +129,8 @@ dan staat in de resultaten "hangs" in plaats van dat het experiment vastloopt.
   Pester-mock van een **extern programma** niet ziet wat er naar binnen gepijpt wordt (`$input` bleef leeg). Dus
   zit de echte aanroep in een minimale functie met een parameter `-InputBytes`; die kan Pester wel zien en
   controleren. Die minimale functie zelf wordt getest met de integratietest tegen de lab-container, met een echte
-  `ssh`: het geheim kwam daar exact aan (`S 3 c r 3 t - v a l u e`, zonder `` of `
+  `ssh`: het geheim kwam daar exact aan (`S 3 c r 3 t - v a l u e`, zonder `
+` of `
 `).
 - **Strenge controle op de hostnaam.** De hostnaam komt later uit een inventarisbestand. Een "hostnaam" als
   `-oProxyCommand=...` zou `ssh` als optie lezen en een willekeurig programma laten starten; `web01; rm -rf /` hoort

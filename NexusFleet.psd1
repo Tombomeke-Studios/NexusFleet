@@ -19,6 +19,7 @@
         'Connect-NexusInfra'
         'Import-NexusInventory'
         'Test-NexusHost'
+        'Install-NexusNode'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

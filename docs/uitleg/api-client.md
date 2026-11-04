@@ -2,7 +2,7 @@
 
 > Uitleg gegenereerd met Claude Code als studiemateriaal. Niet mijn leerlogboek.
 
-_Stand: `Invoke-NexusApi` (#25)._
+_Stand: `Invoke-NexusApi` (#25), en de fix voor lijsten (#47)._
 
 ## 1. Wat het doet
 
@@ -57,6 +57,18 @@ Invoke-NexusApi -BaseUrl $config.Api.BaseUrl -Token $token -Method POST -Path '/
    Als er een HTTP-antwoord was, komt de boodschap van NexusInfra erbij (`{ "error": "..." }`, die PowerShell
    in `ErrorDetails` bewaart). De fout wordt gegooid met `$PSCmdlet.ThrowTerminatingError(...)`, met de
    foutcode als `FullyQualifiedErrorId`, zodat een cmdlet erop kan reageren zonder de tekst te ontleden.
+
+**Een lijst als antwoord** (#47, gevonden in het node-lab). `Invoke-RestMethod` geeft een JSON-lijst
+(`[{...},{...}]`) terug als **één** object, de lijst zelf. `Where-Object id -EQ 'node-a'` op dat ene object vond dus
+nooit iets. Daarom komt het antwoord eerst in een variabele:
+
+```powershell
+$response = Invoke-RestMethod @request
+return $response
+```
+
+Een lijst in een variabele die je teruggeeft, stuurt PowerShell item per item door, zoals elk commando doet. De
+mocks in de unit-tests gaven al losse items terug; alleen de `LocalHttp`-test met een echte HTTP-server laat het zien.
 
 ## 4. Waarom zo
 
