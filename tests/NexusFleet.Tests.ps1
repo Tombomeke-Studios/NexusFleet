@@ -135,4 +135,91 @@ Describe 'Help of every exported cmdlet' {
             ($parameterHelp.description.Text -join '') | Should -Not -BeNullOrEmpty -Because "parameter -$parameter needs a .PARAMETER description"
         }
     }
+
+    # The parts above only say that help exists. These say that it is useful: what Get-Help -Full shows a user.
+    Context '<_>' -ForEach $exportedFunctions {
+        BeforeAll {
+            $name = $_
+            $help = Get-Help -Name $name -Full
+            $common = [System.Management.Automation.PSCmdlet]::CommonParameters + [System.Management.Automation.PSCmdlet]::OptionalCommonParameters
+            $parameters = @((Get-Command -Name $name).Parameters.Keys | Where-Object { $_ -notin $common })
+        }
+
+        It 'has a synopsis of one sentence and a description that explains, not only names' {
+            $help.Synopsis | Should -Match '\.$' -Because 'the synopsis is one full sentence'
+            ($help.description.Text -join "`n").Length | Should -BeGreaterThan 300 -Because 'the description says what it does, what it changes and what it needs'
+        }
+
+        It 'describes every parameter in at least a short sentence' {
+            foreach ($parameter in $parameters) {
+                $text = ($help.parameters.parameter | Where-Object { $_.name -eq $parameter }).description.Text -join ' '
+                $text.Length | Should -BeGreaterThan 25 -Because "-$parameter needs more than a label"
+            }
+        }
+
+        It 'has at least two examples; each one parses, calls the cmdlet and says what it does' {
+            $examples = @($help.examples.example)
+            $examples.Count | Should -BeGreaterOrEqual 2
+            foreach ($example in $examples) {
+                $code = "$($example.code)"
+                $parseErrors = $null
+                $null = [System.Management.Automation.Language.Parser]::ParseInput($code, [ref]$null, [ref]$parseErrors)
+                $parseErrors | Should -BeNullOrEmpty -Because "this example must be valid PowerShell: $code"
+                $code | Should -Match ([regex]::Escape($name)) -Because 'an example of a cmdlet uses that cmdlet'
+                ($example.remarks.Text -join '').Trim() | Should -Not -BeNullOrEmpty -Because "this example needs a line that explains it: $code"
+            }
+        }
+
+        It 'uses only parameters that exist in its examples' {
+            foreach ($example in @($help.examples.example)) {
+                $tokens = $null
+                $ast = [System.Management.Automation.Language.Parser]::ParseInput("$($example.code)", [ref]$tokens, [ref]$null)
+                $calls = $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -eq $name }, $true)
+                foreach ($call in $calls) {
+                    foreach ($used in $call.CommandElements | Where-Object { $_ -is [System.Management.Automation.Language.CommandParameterAst] }) {
+                        $known = (Get-Command -Name $name).Parameters.Keys + @((Get-Command -Name $name).Parameters.Values.Aliases)
+                        $used.ParameterName | Should -BeIn $known -Because "-$($used.ParameterName) in the example '$($example.code)' must exist"
+                    }
+                }
+            }
+        }
+
+        It 'names what it takes from the pipeline (INPUTS) and what it returns (OUTPUTS)' {
+            ($help.inputTypes.inputType.type.name -join '').Trim() | Should -Not -BeNullOrEmpty
+            ($help.returnValues.returnValue.type.name -join '').Trim() | Should -Not -BeNullOrEmpty
+        }
+
+        It 'has NOTES and LINKs: the related cmdlets and the online documentation' {
+            ($help.alertSet.alert.Text -join '').Trim() | Should -Not -BeNullOrEmpty
+            $links = @($help.relatedLinks.navigationLink)
+            @($links | Where-Object { $_.uri -match '^https://github\.com/Tombomeke-Studios/NexusFleet' }).Count | Should -BeGreaterThan 0 -Because 'one link goes to the online documentation'
+            @($links | Where-Object { $_.linkText -match '^about_NexusFleet$|-Nexus' }).Count | Should -BeGreaterThan 0 -Because 'the related cmdlets or about_NexusFleet are linked'
+        }
+    }
+}
+
+Describe 'about_NexusFleet' {
+    BeforeAll {
+        Import-Module -Name $script:manifestPath -Force
+    }
+
+    AfterAll {
+        Remove-Module -Name NexusFleet -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'is shipped with the module and shown by Get-Help' {
+        $topic = Join-Path -Path (Split-Path -Path $script:manifestPath -Parent) -ChildPath 'en-US/about_NexusFleet.help.txt'
+        Test-Path -Path $topic | Should -BeTrue
+        $text = Get-Help -Name about_NexusFleet | Out-String
+        # The topic's own text, not Get-Help's "could not find" message (which would also name it).
+        $text | Should -Match 'SHORT DESCRIPTION'
+        $text | Should -Match 'turns Linux hosts into NexusInfra nodes'
+    }
+
+    It 'mentions every exported cmdlet' {
+        $text = Get-Content -Path (Join-Path -Path (Split-Path -Path $script:manifestPath -Parent) -ChildPath 'en-US/about_NexusFleet.help.txt') -Raw -ErrorAction Stop
+        foreach ($name in $exportedFunctions) {
+            $text | Should -Match ([regex]::Escape($name))
+        }
+    }
 }
