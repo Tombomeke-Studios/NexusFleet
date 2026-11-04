@@ -1,7 +1,7 @@
 # Invoke-NexusApi against a real HTTP server on this machine (no external hosts). The mocked tests in
 # Invoke-NexusApi.Tests.ps1 check the logic; these check what Invoke-RestMethod really does. They found
-# three problems the mocks could not: the refusal to send a token over http://, the empty reason of a
-# network error, and PowerShell's text shown as a message from NexusInfra.
+# problems the mocks could not: the refusal to send a token over http://, the empty reason of a network
+# error, PowerShell's text shown as a message from NexusInfra, and a JSON list returned as one object.
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '',
     Justification = 'Pester: variables set in BeforeAll are used in It blocks; the analyzer does not look across script blocks.')]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingConvertToSecureStringWithPlainText', '',
@@ -30,6 +30,8 @@ BeforeAll {
             switch ($context.Request.Url.AbsolutePath) {
                 '/nodes' { $code = 403; $body = '{"error":"this API token does not have the admin scope"}' }
                 '/busy' { $code = 503; $body = '{"error":"starting up"}' }
+                '/list' { $code = 200; $body = '[{"id":"node-a","health":"healthy"},{"id":"node-b","health":"offline"}]' }
+                '/one' { $code = 200; $body = '[{"id":"node-a","health":"healthy"}]' }
                 default { $code = 200; $body = (@{ authorization = $context.Request.Headers['Authorization'] } | ConvertTo-Json -Compress) }
             }
             $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
@@ -55,6 +57,21 @@ Describe 'Invoke-NexusApi against a local HTTP server' -Tag 'LocalHttp' {
         $answer = Invoke-NexusApi @api -Method GET -Path '/me'
 
         $answer.authorization | Should -Be 'Bearer nxi_LocalHttpTestToken'
+    }
+
+    It 'returns a JSON list as separate objects, so Where-Object finds one of them' {
+        # Invoke-RestMethod itself writes a JSON array as one object; found in the node lab, mocks did not show it.
+        $nodes = @(Invoke-NexusApi @api -Method GET -Path '/list')
+
+        $nodes | Should -HaveCount 2
+        ($nodes | Where-Object id -EQ 'node-b').health | Should -Be 'offline'
+    }
+
+    It 'returns a list of one as that one object' {
+        $nodes = @(Invoke-NexusApi @api -Method GET -Path '/one')
+
+        $nodes | Should -HaveCount 1
+        $nodes[0].id | Should -Be 'node-a'
     }
 
     It 'turns a real 403 with a JSON body into NexusApi.Forbidden with NexusInfra''s message' {
