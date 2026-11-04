@@ -215,12 +215,12 @@ Allowed — the two tools are built for each other — but they never happen fro
 
 ## 7. Codebase map — where is what
 
-Each `src/` folder has a `README.md` describing it (the loader only reads `*.ps1`). `logs/` is created at runtime,
+Every folder has a `README.md`: what it is for and one line per file (the loader only reads `*.ps1`; the build ships none of them except the root README). `logs/` is created at runtime,
 never committed.
 
 | Path | Contents |
 |---|---|
-| `README.md` | English user docs: what/why, planned MVP cmdlets, requirements, quick start (placeholder until the MVP), dev commands, layout. Update with every public cmdlet change |
+| `README.md` | The front page (English): banner, badges, why, a Mermaid diagram of the flow, the steps per host, a short quick start (details in `docs/user-guide.md`), cmdlets, the demo result, docs, dev commands and workflows, layout. Update with every public cmdlet change |
 | `NexusFleet.psd1` | Manifest (hand-written, minimal): PowerShell 7.6+ (LTS, decision K4), `Core` only. `FunctionsToExport` is an **explicit list** of the public cmdlets — never `*`; still `@()` until the first cmdlet lands. Cmdlets/Variables/Aliases also `@()` |
 | `.gitignore` | Ignores `logs/`, local config (`config/*.local.*`, `config/inventory.json`), Pester output, OS files |
 | `.gitattributes` | `* text=auto`; `eol=lf` for `*.ps1`, `*.psm1`, `*.psd1`, `*.sh` (also in the working copy on Windows) |
