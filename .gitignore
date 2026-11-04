@@ -17,3 +17,6 @@ Thumbs.db
 
 # Lab-only SSH keys and known_hosts (experiment E1).
 lab/**/.keys/
+
+# Module builds (tools/Build-NexusModule.ps1).
+out/
