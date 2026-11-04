@@ -60,7 +60,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Build the ssh parameters of a host in one place (#79)
 - [x] Build the API parameters of a session in one place (#80)
 - [x] Parse key=value facts from a host in one place (#81)
-- [ ] Run per-host work in one shared loop (#82)
+- [x] Run per-host work in one shared loop (#82)
 
 ## Phase 5 — Extras (only after `v1.0.0`, in this order)
 

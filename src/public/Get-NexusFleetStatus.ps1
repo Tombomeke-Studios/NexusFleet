@@ -117,31 +117,16 @@ function Get-NexusFleetStatus {
             Write-NexusLog -Context $run -Level Warning -Message "GET /nodes failed: $panelError"
         }
 
-        # 2. The hosts, over ssh (same pattern as Test-NexusHost).
-        $done = 0
-        $showProgress = {
-            process {
-                $done++
-                Write-Progress -Activity 'NexusFleet status' -Status "$done of $($hosts.Count) hosts checked" `
-                    -PercentComplete ([math]::Floor(100 * $done / [math]::Max(1, $hosts.Count)))
-                $_
-            }
+        # 2. The hosts, over ssh, $ThrottleLimit at a time (see Invoke-NexusHostLoop); one status per host, always.
+        $loop = @{
+            InputObject     = @($hosts | ForEach-Object { @{ HostInfo = $_ } })
+            FunctionName    = 'Get-NexusHostStatus'
+            Parameter       = @{ Config = $config; RunContext = $run }
+            FailureFunction = 'ConvertTo-NexusHostStatusFailure'
+            ThrottleLimit   = $ThrottleLimit
+            Activity        = 'NexusFleet status'
         }
-        $seen = @()
-        if ($hosts.Count -gt 0 -and $ThrottleLimit -eq 1) {
-            $seen = @($hosts | ForEach-Object { Get-NexusHostStatus -HostInfo $_ -Config $config -RunContext $run } | & $showProgress)
-        }
-        elseif ($hosts.Count -gt 0) {
-            $manifest = Join-Path -Path $PSScriptRoot -ChildPath '../../NexusFleet.psd1'
-            $seen = @($hosts | ForEach-Object -ThrottleLimit $ThrottleLimit -Parallel {
-                    $module = Import-Module -Name $using:manifest -PassThru
-                    & $module {
-                        param($HostInfo, $Config, $Run)
-                        Get-NexusHostStatus -HostInfo $HostInfo -Config $Config -RunContext $Run
-                    } $_ $using:config $using:run
-                } | & $showProgress)
-        }
-        Write-Progress -Activity 'NexusFleet status' -Completed
+        $seen = @(Invoke-NexusHostLoop @loop)
 
         # 3. One status per node: the inventory first, in its order, then the nodes only NexusInfra knows.
         $results = foreach ($hostInfo in $hosts) {
