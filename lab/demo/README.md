@@ -10,10 +10,11 @@ A NexusInfra community install the VMs can reach, for example on your own machin
 
 - **The broker must be reachable from the VMs.** Since NexusInfra's `fleet-support` changes (on its `dev` branch,
   in the next release; see [docs/nexusinfra-wijzigingen.md](../../docs/nexusinfra-wijzigingen.md)):
-  - set `BROKER_BIND` in the control plane's `.env` to its address on the lab network, then `docker compose up -d`;
-  - the installer (`deploy/install.sh` or `install.ps1`) writes a broker user and password (`RABBITMQ_USER`,
-    `RABBITMQ_PASS`). With a hand-written `.env`, set both before the first start. RabbitMQ refuses `guest` from
-    another machine.
+  - the installer (`deploy/install.sh` or `install.ps1`) asks for the address to publish the broker on and writes
+    it as `BROKER_BIND`. With an `.env` of your own, set `BROKER_BIND` to the control plane's address on the lab
+    network, then `docker compose up -d`;
+  - the installer writes a broker user and password (`RABBITMQ_USER`, `RABBITMQ_PASS`). With a hand-written
+    `.env`, set both before the first start. RabbitMQ refuses `guest` from another machine.
 
   The agents then connect with `amqp://<user>:<password>@<control-plane-address>:5672`. With the 0.4.0 bundle, add
   `ports: ['<lab-address>:5672:5672']` to its `rabbitmq` service yourself.
@@ -23,6 +24,43 @@ Note the `INTERNAL_API_TOKEN` from the control plane's `.env`: the agents need t
 
 In the panel: sign in as the admin, create an API token with the scopes **write** and **admin** (`POST /me/tokens`,
 or the panel's API token page).
+
+## Machines on different networks
+
+For example: the control plane on a desktop at home (Docker Desktop), one VM in VirtualBox on that desktop, one on
+a laptop, one on Azure, and the demo shown from school. Four connections have to work:
+
+| From | To | Port | Over |
+|---|---|---|---|
+| the admin machine | each host | 22 | ssh |
+| the admin machine | the gateway | 9400 | HTTP, API token |
+| each host's agent | the broker | 5672 | AMQP, broker password |
+| the orchestrator | each host's agent | 9100 | HTTP, `INTERNAL_API_TOKEN` |
+
+The last row decides it: the orchestrator at home opens the connection to each agent. A laptop on the school
+network is behind that network's NAT, so nothing at home can reach it, and port forwarding at home does not
+change that. Publishing 5672 and 9100 on the internet would also send the broker password and the
+`INTERNAL_API_TOKEN` unencrypted.
+
+**Use an overlay network instead**, such as [Tailscale](https://tailscale.com/kb/1017/install) (free for personal
+use). Install it on the desktop, on each VM, and on the laptop you run NexusFleet from. Every machine then gets a
+fixed address (`100.x.y.z`) that works from any network, school included, and the traffic between them is
+encrypted. No port forwarding is needed. Use those addresses everywhere:
+
+| Setting | Value |
+|---|---|
+| The installer's broker question (`BROKER_BIND`) | the desktop's Tailscale address |
+| `Broker.Host` in `config/nexusinfra.local.psd1` | the desktop's Tailscale address |
+| `Api.BaseUrl` | `http://<desktop's Tailscale address>:9400`, with `AllowUnencryptedHttp = $true` (Tailscale encrypts it) |
+| `address` of each host in the inventory | the VM's Tailscale address |
+| `agentUrl` (default `http://<address>:9100`) | follows from the address |
+
+Then check:
+- Docker Desktop publishes the broker on that address: `Test-NexusHost` checks the broker from each VM (`Broker`).
+  If the check fails, set `BROKER_BIND=0.0.0.0` and allow port 5672 in Windows Firewall only from `100.64.0.0/10`.
+- On Azure, open no ports in the network security group for 9100 or 5672: Tailscale needs none.
+- Port forwarding the panel is only needed to show it to someone outside the overlay. Then only behind TLS
+  (NexusInfra `docs/deployment.md`).
 
 ## 2. Each VM
 
