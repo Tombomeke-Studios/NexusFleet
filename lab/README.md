@@ -1,24 +1,32 @@
-# lab — experiments of phase 1; not part of the module.
+# lab — the experiments, the node lab and the demo
 
-Each experiment has its own folder. Results and decisions: [docs/ontwerpkeuzes.md](../docs/ontwerpkeuzes.md).
+Nothing here is part of the module, but it is all linted. The experiments of phase 1 settled the design. The node lab
+and the demo prove that the module works. The results and decisions are in
+[docs/ontwerpkeuzes.md](../docs/ontwerpkeuzes.md).
 
-| Experiment | Folder | Run (repo root, `pwsh`) |
+## Experiments
+
+| | Question | Outcome | Folder |
+|---|---|---|---|
+| **E1** | How does NexusFleet talk to a host? | native `ssh`, secrets over stdin | [E1-transport/](E1-transport/README.md) |
+| **E2** | How does it handle many hosts at once? | `ForEach-Object -Parallel` | [E2-concurrency/](E2-concurrency/README.md) |
+| **E3** | Do Pester mocks reach into parallel runspaces? | no, so the work per host is its own function | [E3-mocks-parallel/](E3-mocks-parallel/README.md) |
+| **E4** | Which token rights does managing nodes need? | a platform admin with the scopes `write` and `admin` | [E4-token-scopes/](E4-token-scopes/README.md) |
+
+## Proving it works
+
+| | What | Folder |
 |---|---|---|
-| E1 — transport (`ssh`, PowerShell remoting, Posh-SSH) | `E1-transport/` | `./lab/E1-transport/Start-LabTarget.ps1`, then `./lab/E1-transport/Measure-Transport.ps1 \| Format-Table` |
-| E2 — concurrency (`-Parallel`, ThreadJob, Start-Job) | `E2-concurrency/` | `./lab/E2-concurrency/Measure-Concurrency.ps1 \| Format-Table` |
-| E3 — Pester mocks and `-Parallel` | `E3-mocks-parallel/` | `Invoke-Pester -Path ./lab/E3-mocks-parallel -Output Detailed` |
-| E4 — API token scopes | `E4-token-scopes/` | source analysis, see its README; confirmed live in the node lab |
-| Demo — the phase 4 demo with measurements, and what the lab VMs need | `demo/` | `./lab/demo/Invoke-NexusDemo.ps1 -InventoryPath ./config/inventory.json` (see `demo/README.md`) |
-| Node lab — `Install-NexusNode` end to end | `node-lab/` | `./lab/node-lab/Start-NodeLab.ps1`, then `Invoke-Pester -Path ./tests -TagFilter Integration` |
+| **Node lab** | A NexusInfra control plane and two fresh Ubuntu hosts in Docker, on your machine. The integration tests run here, locally and in CI | [node-lab/](node-lab/README.md) |
+| **Demo** | The whole flow on an inventory, timed per phase, with the three MVP criteria checked. Also: what real lab VMs need | [demo/](demo/README.md) |
 
-E1 needs Docker (the lab targets are containers) and the Posh-SSH module
-(`Install-Module Posh-SSH -Scope CurrentUser`). Lab SSH keys live in `E1-transport/.keys/`, which is git-ignored.
-Remove the lab targets with `./lab/E1-transport/Start-LabTarget.ps1 -Remove`.
+```powershell
+./lab/node-lab/Start-NodeLab.ps1                       # start the node lab
+./tools/Invoke-NexusTests.ps1 -Suite Integration       # the integration tests against it
+./lab/node-lab/Start-NodeLab.ps1 -Remove               # and remove it again
+```
 
-The node lab (`node-lab/`) needs only Docker: a NexusInfra control plane from the published images (RabbitMQ,
-orchestrator, gateway on `127.0.0.1:29400`, control-room) and two fresh Ubuntu hosts as privileged containers (ssh on
-`127.0.0.1:2231` and `2232`). `Start-NodeLab.ps1` creates everything in the git-ignored `node-lab/.keys/`: an SSH key,
-lab-only secrets (`.env`), an API token with `write` + `admin`, a config override and an inventory. The integration
-test `tests/public/Install-NexusNode.Integration.Tests.ps1` checks the three "Klaar als" criteria there. Remove it with
-`./lab/node-lab/Start-NodeLab.ps1 -Remove` (delete `.keys/` by hand for new secrets).
+The demo against the node lab, step by step: [demo/README.md](demo/README.md).
 
+The labs need Docker. Keys and secrets for the labs are created in each lab's git-ignored `.keys/` folder, and are
+for the lab only.
