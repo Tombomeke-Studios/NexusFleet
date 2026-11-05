@@ -57,6 +57,9 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Nodes behind NAT: `reach: outbound`, the agent connects to the control plane itself (design `docs/agent-link.md`, with NexusInfra #416) (#105)
 - [x] Integration test for an outbound host against a NexusInfra with the agent link (after NexusInfra #416) (#106) — node lab host `node3`, the test, and the CI job `Integration (NexusInfra dev)` (images built from NexusInfra dev with `-BuildFrom`)
 - [x] Preflight: the agent link check ran into the broker check (`fiif`) (#109)
+- [x] Code review of `src/`: switch a node back from outbound to direct (#113), outbound advice in AgentReachable (#114), link token as log secret without a race (#115), retry a 429 for every method (#116), report a reach/connection mismatch (#117), keep the apply error when the rollback fails (#118)
+- [x] `NEXUSFLEET_CONFIG` chooses the local config override (#120); the demo on the node lab in one command (#121)
+- [x] CI: the demo with the three criteria on every pull request (#122), one run per change (#123), the build (#124), nightly against NexusInfra dev (#125), Dependabot (#126)
 - [ ] **[Tom]** Decide on a NexusInfra release with the agent link, or build the images yourself, for the outbound demo VM (#111)
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
