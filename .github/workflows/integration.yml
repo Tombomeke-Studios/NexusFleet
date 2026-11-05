@@ -66,6 +66,9 @@ jobs:
                   -o StrictHostKeyChecking=accept-new -p $port fleet@127.0.0.1 'sudo -n docker logs nexusinfra-node-agent' *> "./TestResults/lab-logs/agent-on-$port.log"
           }
           if (Test-Path -Path ./logs) { Copy-Item -Path ./logs -Destination ./TestResults/nexusfleet-logs -Recurse }
+          # A host without an agent (node3 against a control plane without the agent link) makes docker logs fail;
+          # collecting is best effort, so that exit code must not fail the job.
+          exit 0
 
       - name: Keep the results and the logs
         if: always()
