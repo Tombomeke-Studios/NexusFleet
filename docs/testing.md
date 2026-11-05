@@ -77,9 +77,12 @@ run again and again.
 
 | Workflow | When | Jobs |
 |---|---|---|
-| [ci.yml](../.github/workflows/ci.yml) | pull requests, pushes to `dev` and `main`, by hand | `PSScriptAnalyzer`, `Pester` on `ubuntu-latest` and `windows-latest`, and the build |
+| [ci.yml](../.github/workflows/ci.yml) | pull requests, pushes to `dev` and `main`, by hand | `PSScriptAnalyzer` (also to code scanning), `actionlint`, the commit messages, `Pester` on `ubuntu-latest`, `windows-latest` and `macos-latest` (at least 95 % coverage), and the build |
 | [integration.yml](../.github/workflows/integration.yml) | pull requests and pushes to `dev` and `main`, every night, and by hand | both labs in Docker, then the `Integration` tests; and the demo on a fresh node lab, with the three criteria in the summary. Each against NexusInfra 0.4.0 and NexusInfra `dev` |
-| [release.yml](../.github/workflows/release.yml) | a `v*` tag, and by hand (dry run) | the CI checks, then build and release |
+| [release.yml](../.github/workflows/release.yml) | a `v*` tag, and by hand (dry run) | the CI checks, then build, checksum, provenance and release |
+| [secrets.yml](../.github/workflows/secrets.yml) | pull requests, pushes to `dev` and `main`, weekly | gitleaks over the commits |
+| [scorecard.yml](../.github/workflows/scorecard.yml) | pushes to `dev`, weekly | OpenSSF Scorecard |
+| [pr-labels.yml](../.github/workflows/pr-labels.yml) | every pull request | the `type:*` label from the title |
 
 What a run shows:
 

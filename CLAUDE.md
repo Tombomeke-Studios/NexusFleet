@@ -246,6 +246,9 @@ never committed.
 | `lab/control-planes.json` | The control planes CI tests against: `name`, `version` (image tag), `nexusinfra-ref` (build from that branch, or empty), `id` (artifact suffix). The `control-planes` job of `integration.yml` turns it into the matrix of every lab job |
 | `.github/workflows/integration.yml` | On PRs and pushes to `dev`/`main`, every night (`schedule`, catches a breaking NexusInfra dev) and by hand, as a matrix over `lab/control-planes.json` (job `control-planes` → `fromJSON`): starts the E1 lab (`-PlainOnly`) and the node lab on `ubuntu-latest`, runs `tools/Invoke-NexusTests.ps1 -Suite Integration -CI` (a skip fails the job), keeps NexusFleet's `logs/` and every container's log as artifact `integration-results`, always removes the labs. Job `demo` (same two control planes): a fresh node lab, `lab/demo/Invoke-NexusLabDemo.ps1`, its `summary.md` into the job summary, fails when a "Klaar als" criterion does not hold, artifact `demo-results[-nexusinfra-dev]` |
 | `.github/pull_request_template.md`, `ISSUE_TEMPLATE/`, `CODEOWNERS` | The PR checklist of section 2b; issue forms for a bug (`type:bug`) and a feature (`type:feature`, with the NexusFleet/NexusWatch boundary); every path owned by `@tombomeke-ehb` |
+| `.github/workflows/secrets.yml` | gitleaks 8.30.1 (released binary, checksum-verified): a PR's commits, the whole history on `dev`/`main` and weekly; config `.gitleaks.toml` (default rules + the tests' fake secrets by value); SARIF to code scanning |
+| `.github/workflows/scorecard.yml` | OpenSSF Scorecard on `dev`, weekly, on branch-protection changes; publishes the result (badge) and SARIF |
+| `.github/workflows/pr-labels.yml` | `pull_request_target` (base checkout only, title via `env:`): sets the `type:*` label from the title's type; `.github/release.yml` groups the release notes by it |
 | `.github/dependabot.yml` | Weekly PRs into `dev` for newer GitHub Actions (prefix `ci(ci)`, label `type:ci`) |
 | `.github/workflows/release.yml` | On a tag `v*` (main only, milestones): the CI checks, tag must equal `v<ModuleVersion>`, `tools/Build-NexusModule.ps1`, `gh release create` with the zip. `workflow_dispatch` = dry run (build + artifact, no release) |
 
@@ -293,6 +296,13 @@ never committed.
 - Every public cmdlet run gets a `RunId`. `Write-NexusLog` writes one human-readable line per event:
   time (UTC ISO-8601), RunId, host, step, level, message. It redacts known secrets before writing.
 - A dry run is logged too.
+
+### GitHub Actions
+- **Every `uses:` is a full commit SHA with `# vX.Y.Z`** (a tag can be moved); `tests/Quality.Tests.ps1` fails otherwise.
+  Find a SHA with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`; Dependabot keeps them current.
+- **Never paste `${{ }}` text into a `run:` script** (PR titles, inputs, refs): pass it through `env:` (script injection).
+- `permissions: contents: read` at the top; a job gets more only for what it does (`security-events: write`, `id-token: write`).
+- A composite action's steps that must run after a failure carry their own `if: always()`.
 
 ### SSH and the hosts
 - Native `ssh` must never wait for input: `-o BatchMode=yes -o ConnectTimeout=<n>`. Check

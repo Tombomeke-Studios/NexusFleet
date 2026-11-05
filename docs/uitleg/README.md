@@ -24,4 +24,5 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | Bereik (outbound) | [agent-link.md](agent-link.md) | `reach: outbound`: de agent verbindt zelf, link-token per node, geen open poort, de check `AgentLink` |
 | CI/CD | [ci-cd.md](ci-cd.md) | Testresultaten en dekking in CI, het buildscript, de release-workflow, schaaltests, het demoscript |
 | CI-kwaliteitspoorten | [ci-kwaliteitspoorten.md](ci-kwaliteitspoorten.md) | Commitberichten, lint in code scanning (SARIF), ondergrens voor de dekking, actionlint, macOS |
+| CI-beveiliging | [ci-beveiliging.md](ci-beveiliging.md) | Actions vast op een commit-SHA, gitleaks, OpenSSF Scorecard, rechten per job |
 | Gedeelde hulpfuncties | [gedeelde-hulpfuncties.md](gedeelde-hulpfuncties.md) | De gedeelde lus per server (`Invoke-NexusHostLoop`), ssh- en API-parameters, `sleutel=waarde` lezen |
