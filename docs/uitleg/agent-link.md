@@ -131,9 +131,9 @@ Invoke-Pester -Path ./tests/steps/AgentContainer.Tests.ps1, ./tests/core/Invoke-
 
 In het node-lab is `node3` (ssh `127.0.0.1:2233`) zo'n outbound host. Met de integratietest zie je beide kanten:
 tegen NexusInfra 0.4.0 weigert `Test-NexusHost` hem bij `AgentLink`; tegen een NexusInfra met de link wordt hij een
-*healthy* node zonder open poort. De test kiest zelf welk deel hij draait, door vóór de tests `GET /config` te vragen. De link staat nog niet in een
-NexusInfra-release; bouw de images dan uit een checkout met `./lab/node-lab/Start-NodeLab.ps1 -Version
-agentlink-community -BuildFrom ../NexusInfra` (uitleg in `lab/node-lab/README.md`).
+*healthy* node zonder open poort. De test kiest zelf welk deel hij draait, door vóór de tests `GET /config` te vragen. De link zit in
+NexusInfra 0.4.1, de standaardversie van het lab. Start het lab met `-Version 0.4.0-community` om de weigering te
+zien.
 
 ```powershell
 ./lab/node-lab/Start-NodeLab.ps1

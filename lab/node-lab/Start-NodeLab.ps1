@@ -18,12 +18,13 @@ Every secret here is a lab-only value, created by this script and kept in the gi
 Stops the lab and deletes its containers and volumes (the .keys folder stays; delete it by hand for new secrets).
 
 .PARAMETER Version
-The NexusInfra image tag, for the control plane and the agents alike. Default: 0.4.0-community, the published
-images of the nexusfleet-baseline release (v0.4.0) on ghcr.io, so any machine and CI can pull them.
+The NexusInfra image tag, for the control plane and the agents alike. Default: 0.4.1-community, the published
+images of NexusInfra v0.4.1 (the first release with the agent link) on ghcr.io, so any machine and CI can pull them.
+0.4.0-community is the nexusfleet-baseline release, without the agent link.
 
 .PARAMETER BuildFrom
 A NexusInfra checkout to build the images from, under the tag -Version, instead of pulling published ones: for a
-NexusInfra change that is not released yet (the agent link, NexusInfra #417). The hosts cannot see this machine's
+NexusInfra change that is not released yet (for example NexusInfra dev). The hosts cannot see this machine's
 images (they run their own Docker), so the agent image also goes into the lab's registry (172.29.50.30:5000), and
 the lab config points Agent.Image there.
 
@@ -41,7 +42,7 @@ param(
     [switch]$Remove,
 
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
-    [string]$Version = '0.4.0-community',
+    [string]$Version = '0.4.1-community',
 
     [ValidateScript({ Test-Path -Path (Join-Path -Path $_ -ChildPath 'services/node-agent/Dockerfile') })]
     [string]$BuildFrom
@@ -196,7 +197,7 @@ $inventory = [ordered]@{
 }
 $inventory | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path -Path $keyFolder -ChildPath 'inventory.lab.json')
 
-# The outbound host in its own inventory: it needs a NexusInfra with the agent link, which 0.4.0 is not.
+# The outbound host in its own inventory: it needs a NexusInfra with the agent link (0.4.1 or later).
 $outbound = [ordered]@{
     defaults = $inventory.defaults
     hosts    = @([ordered]@{ name = 'node-lab3'; address = '127.0.0.1'; port = 2233; reach = 'outbound' })

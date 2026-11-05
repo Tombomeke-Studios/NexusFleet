@@ -63,7 +63,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] CI quality gates: commit messages (#134), lint in code scanning (#132), coverage at least 95 % (#135), actionlint (#133), macOS (#136)
 - [x] CI for extras: control planes from one file and shared lab actions (#137); release notes by type (#138), checksum and provenance (#139); templates and CODEOWNERS (#140)
 - [x] CI security: actions pinned to commit SHAs (#129), gitleaks (#130), OpenSSF Scorecard (#131), images pinned to digests
-- [ ] Switch the lab jobs to NexusInfra 0.4.1 once it is released (#150)
+- [x] Switch the lab jobs to NexusInfra 0.4.1 once it is released (#150)
 - [ ] **[Tom]** Turn on branch protection for dev and main (#148)
 - [ ] **[Tom]** Choose a license (#149)
 - [x] **[Tom]** Decide on a NexusInfra release with the agent link: release it as 0.4.1 (#111)

@@ -37,7 +37,7 @@ Invoke-Pester -Path ./tests/steps -Output Detailed
 | Scale | none | every CI run | 50 and 100 generated hosts, some unreachable and some failing, for `Test-NexusHost`, `Install-NexusNode` and `Get-NexusFleetStatus`: exactly one correct result per host, and no crash. |
 | Local HTTP | `LocalHttp` | every CI run | `Invoke-NexusApi` against a real `HttpListener` on a free loopback port. This catches what a mock of `Invoke-RestMethod` cannot (it found three bugs). |
 | Local SSH | `LocalSsh` | every CI run | The real `ForEach-Object -Parallel` path with the real ssh client against closed loopback ports. One result per host comes from real runspaces, and logging works from inside them. |
-| Integration | `Integration` | `integration.yml`, and by hand | The real thing: the E1 lab (an Ubuntu host with sshd) and the node lab (a NexusInfra 0.4.0 control plane and two fresh Ubuntu hosts in Docker). It includes the three "Klaar als" criteria of the MVP. |
+| Integration | `Integration` | `integration.yml`, and by hand | The real thing: the E1 lab (an Ubuntu host with sshd) and the node lab (a NexusInfra 0.4.1 control plane and three fresh Ubuntu hosts in Docker, one of them outbound). It includes the three "Klaar als" criteria of the MVP. |
 | Quality | none | every CI run | Tests about the tests: every config value has a validation rule, every error id is tested, and the help of every cmdlet is complete and its examples are valid. |
 
 ### Why the parallel code is tested this way
@@ -78,7 +78,7 @@ run again and again.
 | Workflow | When | Jobs |
 |---|---|---|
 | [ci.yml](../.github/workflows/ci.yml) | pull requests, pushes to `dev` and `main`, by hand | `PSScriptAnalyzer` (also to code scanning), `actionlint`, the commit messages, `Pester` on `ubuntu-latest`, `windows-latest` and `macos-latest` (at least 95 % coverage), and the build |
-| [integration.yml](../.github/workflows/integration.yml) | pull requests and pushes to `dev` and `main`, every night, and by hand | both labs in Docker, then the `Integration` tests; and the demo on a fresh node lab, with the three criteria in the summary. Each against NexusInfra 0.4.0 and NexusInfra `dev` |
+| [integration.yml](../.github/workflows/integration.yml) | pull requests and pushes to `dev` and `main`, every night, and by hand | both labs in Docker, then the `Integration` tests; and the demo on a fresh node lab, with the three criteria in the summary. Each against every control plane of [lab/control-planes.json](../lab/control-planes.json): NexusInfra 0.4.0 (the oldest supported, no agent link), 0.4.1 and `dev` |
 | [release.yml](../.github/workflows/release.yml) | a `v*` tag, and by hand (dry run) | the CI checks, then build, checksum, provenance and release |
 | [secrets.yml](../.github/workflows/secrets.yml) | pull requests, pushes to `dev` and `main`, weekly | gitleaks over the commits |
 | [scorecard.yml](../.github/workflows/scorecard.yml) | pushes to `dev`, weekly | OpenSSF Scorecard |
