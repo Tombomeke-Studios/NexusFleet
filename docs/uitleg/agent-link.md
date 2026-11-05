@@ -52,6 +52,8 @@ enkele poort open.
 4. **Preflight.** Voor een outbound host komt er een check `AgentLink` bij: ondersteunt de control plane de link,
    en kan de host zelf de host en poort van de link bereiken (`/dev/tcp`, zoals bij de broker)? Alleen een gewone
    hostnaam of een gewoon adres komt in het script, nooit iets anders.
+   Die check komt op een eigen regel: een here-string eindigt zonder newline, dus zonder de `` `n `` ervoor plakte
+   `fi` aan `if` vast, en dan faalde ook de broker-check (#109, gevonden door de integratietest).
 
 5. **RegisterNode.** `POST /nodes` met `connection = 'outbound'` en zonder `agentUrl`. Een directe host wordt
    geregistreerd zoals vroeger, zodat NexusInfra 0.4.0 blijft werken.
