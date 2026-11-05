@@ -69,6 +69,16 @@ function ConvertTo-NexusNodeStatus {
         if ($Node.connection -eq 'outbound' -and -not $Node.linked) {
             $problems.Add('its agent link is down: NexusInfra hears its heartbeats but cannot send it anything')
         }
+        # The inventory and NexusInfra must agree on how the agent is reached. A node that NexusInfra calls directly
+        # while its agent waits to dial out (or the other way round) cannot be controlled. NexusInfra 0.4.0 names no
+        # connection: then it is direct, and so is a host without a reach.
+        if ($HostInfo) {
+            $registered = if ($Node.connection) { $Node.connection } else { 'direct' }
+            $wanted = if ($HostInfo.Reach) { $HostInfo.Reach } else { 'direct' }
+            if ($registered -ne $wanted) {
+                $problems.Add("the inventory says reach $wanted, but NexusInfra has it as $registered (run Install-NexusNode for it again)")
+            }
+        }
     }
 
     # How NexusInfra reaches the agent. NexusInfra 0.4.0 says nothing, and then it is direct.

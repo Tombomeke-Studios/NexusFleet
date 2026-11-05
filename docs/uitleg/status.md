@@ -51,6 +51,12 @@ Import-NexusInventory ./config/inventory.json | Get-NexusFleetStatus | Format-Ta
    ...
    Ok = $problems.Count -eq 0;  Problem = $problems -join '; '
    ```
+
+   Nog twee problemen gaan over hoe NexusInfra de agent bereikt. Een outbound node waarvan de link niet op staat,
+   hoort NexusInfra wel, maar kan hij niets sturen. En als de inventaris een andere `reach` zegt dan de
+   `connection` waarmee NexusInfra de node kent (bijvoorbeeld `outbound` in de inventaris, `direct` in NexusInfra),
+   dan is de node niet te besturen tot `Install-NexusNode` opnieuw gedraaid heeft (#117). NexusInfra 0.4.0 noemt
+   geen `connection`, en dat telt als `direct`.
 5. `Export-NexusFleetStatus` verzamelt de objecten, zet tijden om naar ISO-8601 in UTC, en schrijft JSON
    (`{ generatedAt, nodes }`) of CSV (één rij per node).
 

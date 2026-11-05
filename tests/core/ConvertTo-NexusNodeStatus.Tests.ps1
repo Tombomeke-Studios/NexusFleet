@@ -9,6 +9,8 @@ BeforeAll {
         id = 'node-web01'; name = 'node-web01'; location = 'home'; agentUrl = 'http://10.0.0.5:9100'; health = 'healthy'
         maintenance = $false; lastHeartbeat = '2026-11-04T07:35:00.000Z'; cpuPercent = 12.5; ramUsedMb = 900; ramTotalMb = 4000
     }
+    $outboundHost = $hostInfo.PSObject.Copy()
+    $outboundHost | Add-Member -NotePropertyName Reach -NotePropertyValue 'outbound'
     $seen = [pscustomobject]@{
         Host = 'node-web01'; Reachable = $true; Error = $null; UptimeSeconds = 3600; DiskFreeMB = 20000
         Docker = 'Docker version 27.3.1'; AgentState = 'running'; AgentRestarts = 0
@@ -74,7 +76,7 @@ Describe 'ConvertTo-NexusNodeStatus' {
         $outbound = $node.PSObject.Copy()
         $outbound | Add-Member -NotePropertyName connection -NotePropertyValue 'outbound'
         $outbound | Add-Member -NotePropertyName linked -NotePropertyValue $true
-        $linked = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $outbound -HostInfo $hostInfo -HostStatus $seen
+        $linked = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $outbound -HostInfo $outboundHost -HostStatus $seen
         $linked.Connection | Should -Be 'outbound'
         $linked.Linked | Should -BeTrue
         $linked.Ok | Should -BeTrue
@@ -85,10 +87,40 @@ Describe 'ConvertTo-NexusNodeStatus' {
         $outbound | Add-Member -NotePropertyName connection -NotePropertyValue 'outbound'
         $outbound | Add-Member -NotePropertyName linked -NotePropertyValue $false
 
-        $status = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $outbound -HostInfo $hostInfo -HostStatus $seen
+        $status = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $outbound -HostInfo $outboundHost -HostStatus $seen
 
         $status.Ok | Should -BeFalse
         $status.Problem | Should -BeLike '*agent link is down*'
+        $status.Problem | Should -Not -BeLike '*inventory says*'
+    }
+
+    It 'names a node that NexusInfra reaches another way than the inventory says (<Reach> vs <Connection>) (#117)' -ForEach @(
+        @{ Reach = 'outbound'; Connection = $null }
+        @{ Reach = 'outbound'; Connection = 'direct' }
+        @{ Reach = 'direct'; Connection = 'outbound' }
+    ) {
+        $inventoryHost = $hostInfo.PSObject.Copy()
+        $inventoryHost | Add-Member -NotePropertyName Reach -NotePropertyValue $Reach
+        $registered = $node.PSObject.Copy()
+        if ($Connection) {
+            $registered | Add-Member -NotePropertyName connection -NotePropertyValue $Connection
+            $registered | Add-Member -NotePropertyName linked -NotePropertyValue $true
+        }
+
+        $status = ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $registered -HostInfo $inventoryHost -HostStatus $seen
+
+        $status.Ok | Should -BeFalse
+        $status.Problem | Should -BeLike "*inventory says reach $Reach*NexusInfra has it as $(if ($Connection) { $Connection } else { 'direct' })*Install-NexusNode*"
+    }
+
+    It 'is Ok when the inventory and NexusInfra agree on outbound' {
+        $inventoryHost = $hostInfo.PSObject.Copy()
+        $inventoryHost | Add-Member -NotePropertyName Reach -NotePropertyValue 'outbound'
+        $registered = $node.PSObject.Copy()
+        $registered | Add-Member -NotePropertyName connection -NotePropertyValue 'outbound'
+        $registered | Add-Member -NotePropertyName linked -NotePropertyValue $true
+
+        (ConvertTo-NexusNodeStatus -Name 'node-web01' -Node $registered -HostInfo $inventoryHost -HostStatus $seen).Ok | Should -BeTrue
     }
 
     It 'lists several problems at once' {
