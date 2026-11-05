@@ -85,6 +85,24 @@ Describe 'Invoke-NexusHostPreflight' {
             Should -Invoke -CommandName Invoke-NexusHostCommand -ParameterFilter { $Command -like '*/dev/tcp/nexus.example.com/443*' }
         }
 
+        It 'puts the link check on a line of its own, after the broker check (#109)' {
+            $sent = @{}
+            Mock -CommandName Invoke-NexusHostCommand -ParameterFilter { $Command -like '*os-release*' } -MockWith {
+                $sent.Script = $Command
+                Get-FactsResult -Change @{ link = 'yes' }
+            }
+
+            $null = Invoke-NexusHostPreflight -HostInfo $outbound -Config $config -LinkUrl $linkUrl
+
+            # Glued to the line before, "fi" and "if" become one word bash cannot parse, and the broker check fails.
+            $lines = @($sent.Script -split "`n" | Where-Object { $_ -like 'if *' })
+            $lines | Where-Object { $_ -like '*/dev/tcp/nexus.example.com/443*' } | Should -HaveCount 1
+            foreach ($line in $lines) {
+                $line.TrimEnd() | Should -BeLike '*; fi' -Because "every check must be a complete command: $line"
+                $line | Should -Not -BeLike '*fiif*'
+            }
+        }
+
         It 'fails AgentLink when the host cannot reach the link''s address' {
             $facts = @{ link = 'no' }
 
