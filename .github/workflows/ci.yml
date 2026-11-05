@@ -1,8 +1,12 @@
 # CI: lint, unit tests and the build on every pull request and every push to dev and main.
 #
-#   lint   PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1)
-#   test   the Pester unit tests on Linux and on Windows (tools/Invoke-NexusTests.ps1), with code coverage
-#   build  the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
+#   lint       PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1); its findings also go to GitHub
+#              code scanning (the Security tab) as SARIF
+#   workflows  actionlint on the workflow files, so a typo in a workflow fails here and not at its next run
+#   commits    (pull requests) the title and every commit message against the commit rules (CLAUDE.md, section 3)
+#   test       the Pester unit tests on Linux, Windows and macOS (tools/Invoke-NexusTests.ps1); fails when the
+#              coverage of src/ drops below 95 %
+#   build      the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
 #
 # A feature branch is checked by its pull request, not by every push as well: that ran everything twice. A newer
 # push to the same pull request cancels the run it makes outdated. Run it by hand for a branch without a pull request.
@@ -38,6 +42,10 @@ jobs:
   lint:
     name: PSScriptAnalyzer
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To upload the findings to code scanning.
+      security-events: write
     defaults:
       run:
         shell: pwsh
@@ -52,16 +60,70 @@ jobs:
       - name: Run PSScriptAnalyzer
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
-          ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath $env:GITHUB_STEP_SUMMARY
+          ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath $env:GITHUB_STEP_SUMMARY -SarifPath ./psscriptanalyzer.sarif
           Write-Output 'PSScriptAnalyzer: no findings.'
+
+      # Also when there are findings (that is when they matter), and also with none: an empty list closes old alerts.
+      - name: Upload the findings to code scanning
+        if: always() && hashFiles('psscriptanalyzer.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: psscriptanalyzer.sarif
+          category: psscriptanalyzer
+
+  workflows:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # actionlint checks the syntax of every workflow, the expressions, the job and step references, and the
+      # inputs of known actions. Run from its published image, at a fixed version.
+      - name: Run actionlint
+        run: docker run --rm --volume "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color
+
+  commits:
+    name: Commit messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The whole history, so the commits between the base and the head of the pull request are there.
+          fetch-depth: 0
+
+      # The title comes in through an environment variable, never pasted into the script: a title is text anyone
+      # opening a pull request chooses, and pasted into the script it could run as code.
+      - name: Check the title and the commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $title = ./tools/Test-NexusCommitMessage.ps1 -Message $env:PR_TITLE
+          $commits = ./tools/Test-NexusCommitMessage.ps1 -Range "$env:BASE_SHA..$env:HEAD_SHA"
+          $summary = @('## Commit messages', '', '| | Message | Problem |', '|---|---|---|')
+          foreach ($check in @($title) + @($commits)) {
+              $mark = if ($check.Valid) { ':white_check_mark:' } else { ':x:' }
+              $summary += "| $mark | ``$($check.Message.Replace('|', '\|'))`` | $($check.Reason) |"
+          }
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ($summary -join "`n")
+          $wrong = @(@($title) + @($commits) | Where-Object { -not $_.Valid })
+          foreach ($check in $wrong) {
+              Write-Output "::error title=Commit message::'$($check.Message)': $($check.Reason). Rules: CLAUDE.md, section 3."
+          }
+          if ($wrong) { exit 1 }
 
   test:
     name: Pester (${{ matrix.os }})
     strategy:
-      # Both systems always finish, so one failing system never hides the result of the other.
+      # Every system always finishes, so one failing system never hides the result of another.
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -77,7 +139,7 @@ jobs:
       - name: Run the unit tests
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
-          ./tools/Invoke-NexusTests.ps1 -Suite Unit -CI | Out-Null
+          ./tools/Invoke-NexusTests.ps1 -Suite Unit -CI -MinimumCoverage 95 | Out-Null
 
       - name: Keep the test results
         if: always()

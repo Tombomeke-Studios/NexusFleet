@@ -29,6 +29,10 @@ Write the report to $env:GITHUB_STEP_SUMMARY and print GitHub annotations for th
 .PARAMETER NoCoverage
 Skip the coverage measurement (faster, for a quick local run).
 
+.PARAMETER MinimumCoverage
+Fail when the coverage of src/ is below this percentage (Unit only). CI passes 95, so new code without tests can
+not slip in unnoticed. Without it, coverage is only reported.
+
 .EXAMPLE
 ./tools/Invoke-NexusTests.ps1
 
@@ -54,7 +58,10 @@ param(
 
     [switch]$CI,
 
-    [switch]$NoCoverage
+    [switch]$NoCoverage,
+
+    [ValidateRange(0, 100)]
+    [double]$MinimumCoverage
 )
 
 $root = Split-Path -Path $PSScriptRoot -Parent
@@ -90,6 +97,7 @@ if ($Suite -eq 'Unit' -and -not $NoCoverage) {
 $result = Invoke-Pester -Configuration $config
 
 $reportArgs = @{ Result = $result; Title = $Title; RepositoryRoot = $root }
+if ($PSBoundParameters.ContainsKey('MinimumCoverage')) { $reportArgs.MinimumCoverage = $MinimumCoverage }
 if ($CI) {
     $reportArgs.GitHubAnnotations = $true
     if ($env:GITHUB_STEP_SUMMARY) { $reportArgs.SummaryPath = $env:GITHUB_STEP_SUMMARY }
@@ -108,5 +116,8 @@ if ($CI -and $Suite -eq 'Integration' -and $result.SkippedCount -gt 0) {
 }
 if ($result.Result -ne 'Passed') {
     throw "$Title`: $($result.FailedCount) test(s) failed$(if ($result.FailedContainers.Count) { ", $($result.FailedContainers.Count) test file(s) could not run" }). See the report."
+}
+if ($report.CoverageMet -eq $false) {
+    throw "$Title`: the coverage of src/ is $($report.Coverage) %, below the minimum of $MinimumCoverage %. See the report."
 }
 $report

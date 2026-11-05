@@ -15,6 +15,7 @@ BeforeAll {
         Severity   = 'Warning'
         ScriptPath = Join-Path -Path $TestDrive -ChildPath 'Bad.ps1'
         Line       = 2
+        Column     = 5
         Message    = "'gci' is an alias of 'Get-ChildItem'."
     }
 }
@@ -95,5 +96,35 @@ Describe 'Invoke-NexusLint' {
         $output = try { & $lintScript -Path $TestDrive -GitHubAnnotations } catch { $null }
 
         $output | Should -Contain "::error file=Bad.ps1,line=2::PSAvoidUsingCmdletAliases: 'gci' is an alias of 'Get-ChildItem'."
+    }
+
+    It 'writes the findings as SARIF 2.1.0 for GitHub code scanning (#132)' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith { $fakeFinding }
+        $sarifPath = Join-Path -Path $TestDrive -ChildPath 'lint.sarif'
+
+        try { & $lintScript -Path $TestDrive -SarifPath $sarifPath -WarningAction SilentlyContinue } catch { $null = $_ }
+
+        $sarif = Get-Content -Path $sarifPath -Raw | ConvertFrom-Json
+        $sarif.version | Should -Be '2.1.0'
+        $run = $sarif.runs[0]
+        $run.tool.driver.name | Should -Be 'PSScriptAnalyzer'
+        $run.tool.driver.rules.id | Should -Be 'PSAvoidUsingCmdletAliases'
+        $result = $run.results[0]
+        $result.ruleId | Should -Be 'PSAvoidUsingCmdletAliases'
+        $result.level | Should -Be 'warning'
+        $result.message.text | Should -Be "'gci' is an alias of 'Get-ChildItem'."
+        $result.locations[0].physicalLocation.artifactLocation.uri | Should -Be 'Bad.ps1'
+        $result.locations[0].physicalLocation.region.startLine | Should -Be 2
+        $result.locations[0].physicalLocation.region.startColumn | Should -Be 5
+    }
+
+    It 'writes a SARIF file without results when there are no findings, so code scanning closes old alerts' {
+        Mock -CommandName Invoke-ScriptAnalyzer -MockWith { }
+        $sarifPath = Join-Path -Path $TestDrive -ChildPath 'clean.sarif'
+
+        & $lintScript -Path $TestDrive -SarifPath $sarifPath
+
+        $sarif = Get-Content -Path $sarifPath -Raw | ConvertFrom-Json
+        $sarif.runs[0].results | Should -HaveCount 0
     }
 }

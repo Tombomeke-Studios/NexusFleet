@@ -70,8 +70,12 @@ feature/<topic>  →  dev  →  main
   6. commit.
 - **Commits:** `type(scope): summary`, one logical change each. Types: `feat`, `fix`, `docs`, `chore`, `refactor`,
   `test`, `ci`. Scopes: `core`, `steps`, `transport`, `api`, `public`, `log`, `config`, `tests`, `docs`, `ci`, `lab`.
-- **Pull requests** go into `dev`, with one `Closes #N` line per issue, and are merged only when all four checks are
-  green: lint, Pester on Linux, Pester on Windows, and Integration.
+  At most 100 characters, no full stop at the end. The pull request title follows the same rule. CI checks both
+  (`tools/Test-NexusCommitMessage.ps1`); check your branch before a pull request with
+  `./tools/Test-NexusCommitMessage.ps1 -Range origin/dev..HEAD`.
+- **Pull requests** go into `dev`, with one `Closes #N` line per issue, and are merged only when every check is
+  green: lint, actionlint, the commit messages, Pester on Linux, Windows and macOS (with at least 95 % coverage),
+  the build, Integration and the demo.
 - `main` gets milestones only, each tagged (`v1.0.0` = the MVP). A tag `v<ModuleVersion>` builds a GitHub release.
 
 ## Adding an installation step
