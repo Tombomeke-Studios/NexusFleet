@@ -19,6 +19,20 @@ you change, in the same structure. That file is git-ignored.
 The local file is merged into the default one key by key, so nested tables keep the keys you do not mention. A key
 that does not exist in the default config, which is probably a typo, gives a warning.
 
+### Another override: `NEXUSFLEET_CONFIG`
+
+To switch between overrides (the node lab, the lab VMs, your own panel) without copying files, point the
+environment variable `NEXUSFLEET_CONFIG` at the one you want. It is used instead of `config/nexusinfra.local.psd1`:
+
+```powershell
+$env:NEXUSFLEET_CONFIG = './lab/node-lab/.keys/nexusinfra.lab.psd1'
+Connect-NexusInfra -Token $token
+Remove-Item Env:NEXUSFLEET_CONFIG   # back to config/nexusinfra.local.psd1
+```
+
+A file the variable names must exist: NexusFleet stops with an error instead of quietly falling back to another
+panel.
+
 ## Validation
 
 Every cmdlet reads the config when it starts (`Get-NexusConfig`) and checks every value against a rule. All problems

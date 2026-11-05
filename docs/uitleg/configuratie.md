@@ -68,6 +68,11 @@ Agent  = @{
   geweigerd. JSON kent geen commentaar, en commentaar is hier nuttig (waarom een waarde zo moet zijn).
 - **Een lokaal bestand met alleen de verschillen.** Zo blijft het voorbeeld in de repo correct, en staan jouw
   adressen niet in de publieke repository. Het patroon `config/*.local.*` staat in `.gitignore`.
+- **Een ander lokaal bestand kiezen met `$env:NEXUSFLEET_CONFIG` (#120).** Wie wisselt tussen het node-lab en de
+  lab-VM's, hoeft dan geen bestanden te kopiëren, en de demo in CI schrijft niets in `config/`. Een
+  omgevingsvariabele en geen parameter, omdat elke cmdlet `Get-NexusConfig` zelf aanroept: een parameter zou op
+  vijf cmdlets moeten. Een bestand dat de variabele noemt maar dat niet bestaat, geeft een fout: met een tikfout
+  zou je anders stil tegen een ander panel werken.
 - **Alle problemen tegelijk melden.** Bij "alleen de eerste fout" moet je drie keer opnieuw starten voor drie
   fouten. Dat hoort bij het criterium *usability*.
 - **Regels als data.** Een nieuwe waarde controleren is één regel toevoegen aan de lijst, zonder nieuwe
@@ -106,6 +111,14 @@ $config.Health
 Set-Content ./config/nexusinfra.local.psd1 "@{ Api = @{ BaseUrl = 'https://panel.example.com' } }"
 (Get-NexusConfig).Api          # BaseUrl is overschreven, TimeoutSeconds en RetryCount niet
 Remove-Item ./config/nexusinfra.local.psd1
+
+# Een ander lokaal bestand, zonder te kopiëren
+Set-Content "$env:TEMP/ander.psd1" "@{ Api = @{ BaseUrl = 'https://ander.example.com' } }"
+$env:NEXUSFLEET_CONFIG = "$env:TEMP/ander.psd1"
+(Get-NexusConfig).Api.BaseUrl  # https://ander.example.com
+$env:NEXUSFLEET_CONFIG = "$env:TEMP/bestaat-niet.psd1"
+Get-NexusConfig                # fout: het bestand bestaat niet
+Remove-Item Env:NEXUSFLEET_CONFIG
 ```
 
 Zien hoe het faalt:
@@ -134,3 +147,5 @@ Remove-Item ./config/nexusinfra.local.psd1
 3. Hoe werkt `Merge-NexusHashtable` voor geneste tabellen, en waarom roept de functie zichzelf aan?
 4. Waarom meldt `Get-NexusConfig` alle problemen tegelijk?
 5. Wat moet je doen om een nieuwe configuratiewaarde toe te voegen én te laten controleren?
+6. Waarom geeft een `NEXUSFLEET_CONFIG` die naar een onbestaand bestand wijst een fout, terwijl een ontbrekend
+   `nexusinfra.local.psd1` gewoon mag?
