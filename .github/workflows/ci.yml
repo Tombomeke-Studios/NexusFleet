@@ -1,7 +1,8 @@
-# CI: lint and unit tests on every pull request and every push to dev and main.
+# CI: lint, unit tests and the build on every pull request and every push to dev and main.
 #
 #   lint   PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1)
 #   test   the Pester unit tests on Linux and on Windows (tools/Invoke-NexusTests.ps1), with code coverage
+#   build  the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
 #
 # A feature branch is checked by its pull request, not by every push as well: that ran everything twice. A newer
 # push to the same pull request cancels the run it makes outdated. Run it by hand for a branch without a pull request.
@@ -86,3 +87,23 @@ jobs:
           path: TestResults/
           if-no-files-found: ignore
 
+  build:
+    name: Build the module
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      # Copies only the module files to out/, checks in a fresh pwsh that the result loads and exports the manifest's
+      # list, and zips it: the same script the release uses.
+      - name: Build
+        run: ./tools/Build-NexusModule.ps1 | Format-List
+
+      - name: Keep the module
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexusfleet-module
+          path: out/*.zip
+          if-no-files-found: error
