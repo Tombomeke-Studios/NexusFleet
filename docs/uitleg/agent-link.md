@@ -73,7 +73,9 @@ enkele poort open.
    Een `ws://`-link (zonder TLS) wordt geweigerd, behalve met `Api.AllowUnencryptedHttp` in een lab.
 
 7. **VerifyHealthy en AgentReachable** veranderen niet. `GET /nodes/<id>/disk` gaat bij een outbound node gewoon
-   over de link: dezelfde stap bewijst dus voor beide manieren dat NexusInfra de node kan besturen.
+   over de link: dezelfde stap bewijst dus voor beide manieren dat NexusInfra de node kan besturen. Alleen de
+   foutmelding verschilt: bij een outbound host noemt ze de link-URL en de agent-logs, niet een poort of
+   port forwarding, want er staat niets open (#114).
 
 8. **Status.** `Get-NexusFleetStatus` toont `Connection` en, voor outbound, `Linked`. Een outbound node die
    *healthy* is maar geen link heeft, krijgt een probleem: NexusInfra hoort hem, maar kan hem niets sturen.
