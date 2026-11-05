@@ -21,6 +21,11 @@ Also write each finding as a GitHub Actions annotation (::error file=...,line=..
 .PARAMETER SummaryPath
 Also append a Markdown summary (no findings, or a table of them) to this file. CI passes $env:GITHUB_STEP_SUMMARY.
 
+.PARAMETER SarifPath
+Also write the findings to this file as SARIF 2.1.0, the format GitHub code scanning reads. CI uploads it, so every
+finding shows in the repository's Security tab and on its line in the pull request. Written also when there are no
+findings: an empty result list is how code scanning learns that old findings are fixed.
+
 .EXAMPLE
 ./tools/Invoke-NexusLint.ps1
 Lints the repository; no output and no error means clean.
@@ -39,7 +44,9 @@ param(
 
     [switch]$GitHubAnnotations,
 
-    [string]$SummaryPath
+    [string]$SummaryPath,
+
+    [string]$SarifPath
 )
 
 $settingsPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'PSScriptAnalyzerSettings.psd1'
@@ -79,6 +86,40 @@ if ($SummaryPath) {
         "## :white_check_mark: PSScriptAnalyzer: no findings in $files files"
     }
     Add-Content -Path $SummaryPath -Value ($summary -join "`n") -Encoding utf8
+}
+
+if ($SarifPath) {
+    # SARIF (Static Analysis Results Interchange Format): one run of one tool, its rules, and one result per finding
+    # with the file (relative to the repository, with /), the line and the column.
+    $levels = @{ Error = 'error'; ParseError = 'error'; Warning = 'warning'; Information = 'note' }
+    $results = foreach ($finding in $findings) {
+        [ordered]@{
+            ruleId    = $finding.RuleName
+            level     = $levels["$($finding.Severity)"] ?? 'warning'
+            message   = @{ text = $finding.Message }
+            locations = @(@{
+                    physicalLocation = @{
+                        artifactLocation = @{ uri = [System.IO.Path]::GetRelativePath($Path, $finding.ScriptPath).Replace('\', '/') }
+                        region           = @{ startLine = [math]::Max(1, [int]$finding.Line); startColumn = [math]::Max(1, [int]$finding.Column) }
+                    }
+                })
+        }
+    }
+    $sarif = [ordered]@{
+        '$schema' = 'https://json.schemastore.org/sarif-2.1.0.json'
+        version   = '2.1.0'
+        runs      = @(@{
+                tool    = @{
+                    driver = @{
+                        name           = 'PSScriptAnalyzer'
+                        informationUri = 'https://github.com/PowerShell/PSScriptAnalyzer'
+                        rules          = @($findings.RuleName | Sort-Object -Unique | ForEach-Object { @{ id = $_ } })
+                    }
+                }
+                results = @($results)
+            })
+    }
+    $sarif | ConvertTo-Json -Depth 10 | Set-Content -Path $SarifPath -Encoding utf8
 }
 
 if ($findings) {

@@ -1,6 +1,7 @@
 # CI: lint, unit tests and the build on every pull request and every push to dev and main.
 #
-#   lint       PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1)
+#   lint       PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1); its findings also go to GitHub
+#              code scanning (the Security tab) as SARIF
 #   commits    (pull requests) the title and every commit message against the commit rules (CLAUDE.md, section 3)
 #   test       the Pester unit tests on Linux and Windows (tools/Invoke-NexusTests.ps1), with code coverage
 #   build      the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
@@ -39,6 +40,10 @@ jobs:
   lint:
     name: PSScriptAnalyzer
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To upload the findings to code scanning.
+      security-events: write
     defaults:
       run:
         shell: pwsh
@@ -53,9 +58,16 @@ jobs:
       - name: Run PSScriptAnalyzer
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
-          ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath $env:GITHUB_STEP_SUMMARY
+          ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath $env:GITHUB_STEP_SUMMARY -SarifPath ./psscriptanalyzer.sarif
           Write-Output 'PSScriptAnalyzer: no findings.'
 
+      # Also when there are findings (that is when they matter), and also with none: an empty list closes old alerts.
+      - name: Upload the findings to code scanning
+        if: always() && hashFiles('psscriptanalyzer.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: psscriptanalyzer.sarif
+          category: psscriptanalyzer
 
   commits:
     name: Commit messages
