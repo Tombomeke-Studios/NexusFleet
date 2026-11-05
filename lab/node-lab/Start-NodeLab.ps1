@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Starts the node lab: a local NexusInfra control plane and two fresh Ubuntu hosts, for Install-NexusNode end to end.
+Starts the node lab: a local NexusInfra control plane and three fresh Ubuntu hosts, for Install-NexusNode end to end.
 
 .DESCRIPTION
 A lab on this machine that needs nothing but Docker (see docker-compose.yml for the layout):
@@ -9,7 +9,9 @@ A lab on this machine that needs nothing but Docker (see docker-compose.yml for 
   2. Builds the host image and starts the stack (docker compose).
   3. Waits for the panel, signs in as the lab admin and creates an API token with the scopes write and admin.
   4. Writes for NexusFleet: .keys/api-token, .keys/nexusinfra.lab.psd1 (config override: panel, broker address
-     as the hosts see it, known_hosts) and .keys/inventory.lab.json (the two hosts).
+     as the hosts see it, the agent link URL, known_hosts), .keys/inventory.lab.json (the two direct hosts) and
+     .keys/inventory.outbound.json (node-lab3, reach "outbound": its agent connects to the gateway over the agent
+     link, docs/agent-link.md).
 Every secret here is a lab-only value, created by this script and kept in the git-ignored .keys folder.
 
 .PARAMETER Remove
@@ -138,10 +140,15 @@ if (-not $tokenValid) {
 # 4. What NexusFleet needs for this lab.
 $labConfig = @"
 # Written by lab/node-lab/Start-NodeLab.ps1: NexusFleet config override for the node lab.
+# The agent link goes to the gateway on the lab network, without TLS (ws://): allowed only because this is a lab
+# (AllowUnencryptedHttp). The API itself stays on 127.0.0.1, so its token never leaves this machine.
 @{
-    Api    = @{ BaseUrl = '$baseUrl' }
+    Api    = @{ BaseUrl = '$baseUrl'; AllowUnencryptedHttp = `$true }
     Broker = @{ Host = '172.29.50.10'; Port = 5672 }
-    Agent  = @{ Image = 'ghcr.io/tombomeke-studios/nexusinfra/node-agent:$Version' }
+    Agent  = @{
+        Image = 'ghcr.io/tombomeke-studios/nexusinfra/node-agent:$Version'
+        Link  = @{ Url = 'ws://172.29.50.12:9400/agent-link' }
+    }
     Ssh    = @{ KnownHostsFile = '$($knownHosts.Replace('\', '/'))' }
     Health = @{ VerifyTimeoutSeconds = 120 }
 }
@@ -157,9 +164,16 @@ $inventory = [ordered]@{
 }
 $inventory | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path -Path $keyFolder -ChildPath 'inventory.lab.json')
 
+# The outbound host in its own inventory: it needs a NexusInfra with the agent link, which 0.4.0 is not.
+$outbound = [ordered]@{
+    defaults = $inventory.defaults
+    hosts    = @([ordered]@{ name = 'node-lab3'; address = '127.0.0.1'; port = 2233; reach = 'outbound' })
+}
+$outbound | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path -Path $keyFolder -ChildPath 'inventory.outbound.json')
+
 [pscustomobject]@{
     Panel     = $baseUrl
-    Hosts     = 'node-lab1 (127.0.0.1:2231), node-lab2 (127.0.0.1:2232)'
+    Hosts     = 'node-lab1 (127.0.0.1:2231), node-lab2 (127.0.0.1:2232), node-lab3 (127.0.0.1:2233, outbound)'
     Config    = 'lab/node-lab/.keys/nexusinfra.lab.psd1'
-    Inventory = 'lab/node-lab/.keys/inventory.lab.json'
+    Inventory = 'lab/node-lab/.keys/inventory.lab.json, lab/node-lab/.keys/inventory.outbound.json'
 }
