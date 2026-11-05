@@ -1,0 +1,49 @@
+# Labels every pull request with the type:* label of its title (feat -> type:feature, fix -> type:bug, ...), so the
+# release notes (.github/release.yml) group it right without anyone labelling by hand. When the title changes, the
+# label follows.
+#
+# pull_request_target and not pull_request: it runs with this repository's token, which may set labels also on a
+# pull request from a fork. That is safe here only because it checks out the base branch (never the pull request's
+# code) and reads the title through an environment variable.
+
+name: Pull request labels
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    name: Label from the title
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      # The base branch: the checker as it is on dev, not as the pull request may have changed it.
+      - uses: actions/checkout@v7
+
+      - name: Set the type label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          $labels = @{
+              feat = 'type:feature'; fix = 'type:bug'; docs = 'type:docs'; test = 'type:test'
+              refactor = 'type:refactor'; ci = 'type:ci'; chore = 'type:ci'
+          }
+          $check = ./tools/Test-NexusCommitMessage.ps1 -Message $env:PR_TITLE
+          $wanted = if ($check.Type) { $labels[$check.Type] } else { $null }
+          $current = @(gh pr view $env:PR_NUMBER --json labels --jq '.labels[].name' | Where-Object { $_ -like 'type:*' })
+          foreach ($label in $current | Where-Object { $_ -ne $wanted }) {
+              gh pr edit $env:PR_NUMBER --remove-label $label
+          }
+          if ($wanted -and $wanted -notin $current) {
+              gh pr edit $env:PR_NUMBER --add-label $wanted
+          }
+          Write-Output "Title: $env:PR_TITLE -> $(if ($wanted) { $wanted } else { 'no type label (the commit check names the problem)' })"

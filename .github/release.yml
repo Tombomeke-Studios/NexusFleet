@@ -1,0 +1,18 @@
+# How GitHub groups the generated notes of a release (gh release create --generate-notes, in release.yml): by the
+# type:* label of each merged pull request. The labels are set from the pull request title by pr-labels.yml.
+changelog:
+  exclude:
+    labels: ['skip-changelog']
+  categories:
+    - title: New features
+      labels: ['type:feature']
+    - title: Fixes
+      labels: ['type:bug']
+    - title: Documentation
+      labels: ['type:docs']
+    - title: Tests, labs and CI
+      labels: ['type:test', 'type:lab', 'type:ci']
+    - title: Refactoring
+      labels: ['type:refactor']
+    - title: Other changes
+      labels: ['*']

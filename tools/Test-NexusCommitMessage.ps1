@@ -12,7 +12,8 @@ A capital at the start is allowed: summaries often start with a name (E3, Invoke
 The merge commits git and GitHub write themselves ("Merge pull request ...", "Merge branch ...") are accepted.
 Only the first line is checked: the body may say anything.
 
-Returns one result per message: Message (its first line), Valid, Reason (why not, or empty). It never throws on an
+Returns one result per message: Message (its first line), Valid, Reason (why not, or empty), and for a valid
+"type(scope): summary" its Type and Scope (the pull request labeler reads Type). It never throws on an
 invalid message, so the caller decides what to do; CI fails the job when a result is not valid.
 
 .PARAMETER Message
@@ -80,11 +81,16 @@ begin {
         param([string]$Text)
         $line = ($Text -split '\r?\n', 2)[0].Trim()
         $problem = & $findProblem $line
+        $valid = $null -eq $problem
+        # Read the parts again here: $Matches belongs to the last -match, which may have been the merge pattern.
+        $parts = if ($valid -and $line -match '^(?<type>[a-z]+)\((?<scope>[a-z]+)\): ') { $Matches } else { @{} }
         [pscustomobject]@{
             PSTypeName = 'NexusFleet.CommitMessageCheck'
             Message    = $line
-            Valid      = $null -eq $problem
+            Valid      = $valid
             Reason     = $problem
+            Type       = $parts.type
+            Scope      = $parts.scope
         }
     }
 }
