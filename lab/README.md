@@ -17,7 +17,8 @@ and the demo prove that the module works. The results and decisions are in
 
 | | What | Folder |
 |---|---|---|
-| **Node lab** | A NexusInfra control plane and two fresh Ubuntu hosts in Docker, on your machine. The integration tests run here, locally and in CI | [node-lab/](node-lab/README.md) |
+| **Node lab** | A NexusInfra control plane and three fresh Ubuntu hosts in Docker, on your machine. The integration tests run here, locally and in CI | [node-lab/](node-lab/README.md) |
+| **Control planes** | The NexusInfra versions CI tests against (`control-planes.json`): a published version (`version`), or a branch built from source (`nexusinfra-ref`). One entry per control plane; every lab job in `integration.yml` runs once per entry | [control-planes.json](control-planes.json) |
 | **Demo** | The whole flow on an inventory, timed per phase, with the three MVP criteria checked. Also: what real lab VMs need | [demo/](demo/README.md) |
 
 ```powershell

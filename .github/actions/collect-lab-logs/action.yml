@@ -1,0 +1,40 @@
+# Everything needed to follow a failure after a lab job, kept as one artifact: what every lab container said, the
+# agent's log on each node-lab host, and NexusFleet's own run logs (logs/<RunId>/), next to whatever the job already
+# put in TestResults/. Best effort: a host without an agent makes docker logs fail, and that must not fail the job.
+name: Collect the lab logs
+description: Collects the container, agent and NexusFleet logs into TestResults/ and uploads them as an artifact.
+
+inputs:
+  artifact:
+    description: The name of the artifact.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # always(): the job calls this after a failure too, and then its own success() would skip these steps.
+    - name: Collect the logs
+      if: always()
+      shell: pwsh
+      run: |
+        New-Item -Path ./TestResults/lab-logs -ItemType Directory -Force | Out-Null
+        foreach ($name in docker ps -a --format '{{.Names}}') {
+            docker logs $name *> "./TestResults/lab-logs/$name.log"
+        }
+        $keys = './lab/node-lab/.keys'
+        if (Test-Path -Path "$keys/id_ed25519") {
+            foreach ($port in 2231, 2232, 2233) {
+                ssh -i "$keys/id_ed25519" -o "UserKnownHostsFile=$keys/known_hosts" -o BatchMode=yes `
+                    -o StrictHostKeyChecking=accept-new -p $port fleet@127.0.0.1 'sudo -n docker logs nexusinfra-node-agent' *> "./TestResults/lab-logs/agent-on-$port.log"
+            }
+        }
+        if (Test-Path -Path ./logs) { Copy-Item -Path ./logs -Destination ./TestResults/nexusfleet-logs -Recurse -Force }
+        exit 0
+
+    - name: Keep the results and the logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact }}
+        path: TestResults/
+        if-no-files-found: ignore

@@ -1,0 +1,36 @@
+# Starts the node lab (lab/node-lab/Start-NodeLab.ps1) for one control plane of lab/control-planes.json: a published
+# NexusInfra version, or one built from a NexusInfra branch. Every job that needs NexusInfra and fresh hosts uses this
+# action, so a new job (for example the tests of a new extra) is a few lines, and the lab starts the same way in each.
+name: Start the node lab
+description: Starts a NexusInfra control plane and three fresh Ubuntu hosts in Docker.
+
+inputs:
+  version:
+    description: The image tag of the control plane, e.g. 0.4.0-community (built under this tag with nexusinfra-ref).
+    required: true
+  nexusinfra-ref:
+    description: A NexusInfra branch or tag to build the images from; empty for the published images.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Check out NexusInfra
+      if: inputs.nexusinfra-ref != ''
+      uses: actions/checkout@v7
+      with:
+        repository: Tombomeke-Studios/NexusInfra
+        ref: ${{ inputs.nexusinfra-ref }}
+        path: nexusinfra
+
+    # The inputs come in through the environment, so no input text is ever pasted into the script.
+    - name: Start the node lab
+      shell: pwsh
+      env:
+        LAB_VERSION: ${{ inputs.version }}
+        LAB_REF: ${{ inputs.nexusinfra-ref }}
+      run: |
+        $lab = @{ Version = $env:LAB_VERSION }
+        if ($env:LAB_REF) { $lab.BuildFrom = './nexusinfra' }
+        ./lab/node-lab/Start-NodeLab.ps1 @lab | Format-List

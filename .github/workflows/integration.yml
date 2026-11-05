@@ -2,8 +2,8 @@
 #
 # Starts the two labs (lab/README.md):
 #   E1 lab    an Ubuntu host with sshd and a sudo user          (transport, preflight)
-#   node lab  a NexusInfra control plane (0.4.0 from the published images, and dev built from source, as a
-#             matrix) and three fresh Ubuntu hosts
+#   node lab  a NexusInfra control plane (each one of lab/control-planes.json: published images, or a branch
+#             built from source) and three fresh Ubuntu hosts
 #             in which Install-NexusNode installs Docker and the agent (install, status); the third is an
 #             outbound host (docs/agent-link.md), refused with a clear reason by a control plane without the link
 # and runs every test tagged Integration: among them the three "Klaar als" criteria of the MVP (one command
@@ -43,25 +43,36 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # The control planes every lab job runs against, from one file: adding a NexusInfra version to test is one entry
+  # in lab/control-planes.json, and every job below gets it.
+  control-planes:
+    name: Control planes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.read.outputs.matrix }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read lab/control-planes.json
+        id: read
+        run: |
+          $planes = Get-Content -Path ./lab/control-planes.json -Raw | ConvertFrom-Json
+          $planes | Format-Table -AutoSize | Out-String | Write-Output
+          "matrix=$(@{ include = @($planes) } | ConvertTo-Json -Depth 3 -Compress)" | Add-Content -Path $env:GITHUB_OUTPUT
+
   integration:
-    name: ${{ matrix.name }}
+    name: Integration (${{ matrix.name }})
+    needs: control-planes
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Two control planes: the published 0.4.0 release, and NexusInfra dev built from source (it has the agent link,
-    # NexusInfra #417, which is not released yet). The same tests run against both; the outbound test picks its
-    # part from what the control plane supports, so against dev it installs node3 over the agent link.
+    # The same tests run against every control plane; the outbound test picks its part from what the control plane
+    # supports, so against one with the agent link it installs node3 over the link.
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: Integration (labs in Docker)
-            version: 0.4.0-community
-            nexusinfra-ref: ''
-            artifact: integration-results
-          - name: Integration (NexusInfra dev)
-            version: agentlink-community
-            nexusinfra-ref: dev
-            artifact: integration-results-nexusinfra-dev
+      matrix: ${{ fromJSON(needs.control-planes.outputs.matrix) }}
     defaults:
       run:
         shell: pwsh
@@ -74,49 +85,20 @@ jobs:
       - name: Start the E1 lab
         run: ./lab/E1-transport/Start-LabTarget.ps1 -PlainOnly | Format-Table -AutoSize
 
-      - name: Check out NexusInfra
-        if: matrix.nexusinfra-ref != ''
-        uses: actions/checkout@v7
+      - uses: ./.github/actions/start-node-lab
         with:
-          repository: Tombomeke-Studios/NexusInfra
-          ref: ${{ matrix.nexusinfra-ref }}
-          path: nexusinfra
-
-      - name: Start the node lab
-        run: |
-          $lab = @{ Version = '${{ matrix.version }}' }
-          if ('${{ matrix.nexusinfra-ref }}') { $lab.BuildFrom = './nexusinfra' }
-          ./lab/node-lab/Start-NodeLab.ps1 @lab | Format-List
+          version: ${{ matrix.version }}
+          nexusinfra-ref: ${{ matrix.nexusinfra-ref }}
 
       - name: Run the integration tests
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
           ./tools/Invoke-NexusTests.ps1 -Suite Integration -CI | Out-Null
 
-      # Everything needed to follow a failure: NexusFleet's logs per run and host, and what the lab containers said.
-      - name: Collect the logs
+      - uses: ./.github/actions/collect-lab-logs
         if: always()
-        run: |
-          New-Item -Path ./TestResults/lab-logs -ItemType Directory -Force | Out-Null
-          foreach ($name in docker ps -a --format '{{.Names}}') {
-              docker logs $name *> "./TestResults/lab-logs/$name.log"
-          }
-          foreach ($port in 2231, 2232, 2233) {
-              ssh -i ./lab/node-lab/.keys/id_ed25519 -o UserKnownHostsFile=./lab/node-lab/.keys/known_hosts -o BatchMode=yes `
-                  -o StrictHostKeyChecking=accept-new -p $port fleet@127.0.0.1 'sudo -n docker logs nexusinfra-node-agent' *> "./TestResults/lab-logs/agent-on-$port.log"
-          }
-          if (Test-Path -Path ./logs) { Copy-Item -Path ./logs -Destination ./TestResults/nexusfleet-logs -Recurse }
-          # A host without an agent (node3 against a control plane without the agent link) makes docker logs fail;
-          # collecting is best effort, so that exit code must not fail the job.
-          exit 0
-
-      - name: Keep the results and the logs
-        if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: TestResults/
-          if-no-files-found: ignore
+          artifact: integration-${{ matrix.id }}
 
       - name: Remove the labs
         if: always()
@@ -126,41 +108,24 @@ jobs:
 
   demo:
     name: Demo (${{ matrix.name }})
+    needs: control-planes
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: NexusInfra 0.4.0
-            version: 0.4.0-community
-            nexusinfra-ref: ''
-            artifact: demo-results
-          - name: NexusInfra dev
-            version: agentlink-community
-            nexusinfra-ref: dev
-            artifact: demo-results-nexusinfra-dev
+      matrix: ${{ fromJSON(needs.control-planes.outputs.matrix) }}
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v7
 
-      - name: Check out NexusInfra
-        if: matrix.nexusinfra-ref != ''
-        uses: actions/checkout@v7
+      - uses: ./.github/actions/start-node-lab
         with:
-          repository: Tombomeke-Studios/NexusInfra
-          ref: ${{ matrix.nexusinfra-ref }}
-          path: nexusinfra
+          version: ${{ matrix.version }}
+          nexusinfra-ref: ${{ matrix.nexusinfra-ref }}
 
-      - name: Start the node lab
-        run: |
-          $lab = @{ Version = '${{ matrix.version }}' }
-          if ('${{ matrix.nexusinfra-ref }}') { $lab.BuildFrom = './nexusinfra' }
-          ./lab/node-lab/Start-NodeLab.ps1 @lab | Format-List
-
-      # Against 0.4.0 the outbound host is left out (no agent link); against dev it is installed over the link.
+      # Without the agent link the outbound host is left out; with it, it is installed over the link.
       - name: Run the demo
         run: |
           $demo = ./lab/demo/Invoke-NexusLabDemo.ps1 -OutputPath ./TestResults/demo
@@ -171,23 +136,10 @@ jobs:
           }
           if ($notHolding) { exit 1 }
 
-      - name: Collect the logs
+      - uses: ./.github/actions/collect-lab-logs
         if: always()
-        run: |
-          New-Item -Path ./TestResults/lab-logs -ItemType Directory -Force | Out-Null
-          foreach ($name in docker ps -a --format '{{.Names}}') {
-              docker logs $name *> "./TestResults/lab-logs/$name.log"
-          }
-          if (Test-Path -Path ./logs) { Copy-Item -Path ./logs -Destination ./TestResults/nexusfleet-logs -Recurse }
-          exit 0
-
-      - name: Keep the demo results and the logs
-        if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: TestResults/
-          if-no-files-found: ignore
+          artifact: demo-${{ matrix.id }}
 
       - name: Remove the lab
         if: always()

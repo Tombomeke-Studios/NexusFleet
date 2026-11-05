@@ -61,6 +61,21 @@ inventaris met de lab-hosts en `node-broken`, een host op een poort waar niemand
 gaat naar `$env:GITHUB_STEP_SUMMARY`. Houdt een criterium niet (`Holds` is niet `$true`), dan schrijft de stap een
 `::error::`-regel en stopt hij met `exit 1`. Zo staat bij elke pull request "Klaar als" als tabel op de pagina.
 
+**Eén lijst met control planes, en herbruikbare lab-stappen (#137).** Tegen welke versies van NexusInfra de
+lab-jobs draaien, staat in `lab/control-planes.json`, één object per control plane:
+
+```json
+{ "name": "NexusInfra dev", "version": "agentlink-community", "nexusinfra-ref": "dev", "id": "nexusinfra-dev" }
+```
+
+De eerste job van `integration.yml` (`control-planes`) leest dat bestand en geeft het als JSON-tekst door
+(`$env:GITHUB_OUTPUT`). Elke lab-job maakt er met `matrix: ${{ fromJSON(needs.control-planes.outputs.matrix) }}`
+zijn matrix van. Een NexusInfra-versie erbij is dan één regel in dat bestand, en elke lab-job draait er
+meteen ook tegen. Het lab starten en de logs verzamelen staan elk in een eigen *composite action*
+(`.github/actions/start-node-lab`, `.github/actions/collect-lab-logs`): een reeks stappen met een naam en invoer,
+die een job met `uses: ./.github/actions/...` aanroept. Een nieuwe lab-job, bijvoorbeeld voor de tests van een
+extra zoals bulkacties, is dan: checkout, `start-node-lab`, je eigen stap, `collect-lab-logs`, opruimen.
+
 **Eén run per wijziging (#123).** Eerst draaide `ci.yml` bij elke push én bij elke pull request: een branch met een PR
 werd dus twee keer getest. Nu alleen bij pull requests en pushes naar `dev` en `main` (en met de hand). Een
 `concurrency`-groep per branch breekt bij een pull request de oudere run af als er een nieuwere push komt; op `dev`
@@ -171,3 +186,4 @@ Invoke-Pester -Path ./tests/public/Scale.Tests.ps1 -Output Detailed
 5. Waarom is 100 % dekking geen doel, en welke functie blijft bewust buiten de unit-tests?
 6. Waarom draait de demo in een eigen job op een vers lab, en niet na de integratietests?
 7. Wat doet `cancel-in-progress`, en waarom alleen bij een pull request?
+8. Wat moet je veranderen om de lab-jobs ook tegen een nieuwe NexusInfra-versie te laten draaien, en waarom is dat maar één plaats?
