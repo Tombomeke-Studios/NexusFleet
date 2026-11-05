@@ -25,7 +25,7 @@ jobs:
         shell: pwsh
     steps:
       # The base branch: the checker as it is on dev, not as the pull request may have changed it.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set the type label
         env:

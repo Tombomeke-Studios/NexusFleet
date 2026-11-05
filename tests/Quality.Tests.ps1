@@ -3,12 +3,26 @@
 #     with the key named in the message (so a new config key without a rule fails here)
 #   - every error id that src/ can raise (NexusFleet.* and NexusApi.*) is asserted by at least one test
 #   - every cmdlet that starts a run passes the log settings of the config
+#   - every action a workflow uses is pinned to a full commit SHA (a tag can be moved, a commit cannot)
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '',
     Justification = 'Pester: variables set in BeforeAll/BeforeDiscovery are used in It blocks; the analyzer does not look across script blocks.')]
 param()
 
 BeforeDiscovery {
     $root = Join-Path -Path $PSScriptRoot -ChildPath '..'
+
+    # Every 'uses:' of another repository's action in the workflows and in our own composite actions.
+    $actionFiles = @(Get-ChildItem -Path (Join-Path -Path $root -ChildPath '.github') -Include '*.yml' -Recurse -File |
+            Where-Object { $_.FullName -match '[\\/](workflows|actions)[\\/]' })
+    $actionUses = foreach ($file in $actionFiles) {
+        $number = 0
+        foreach ($line in Get-Content -Path $file.FullName) {
+            $number++
+            if ($line -match '^\s*(-\s*)?uses:\s*(?<ref>[^\s#]+)(\s*#\s*(?<comment>.*))?$' -and $Matches.ref -notlike './*') {
+                @{ File = $file.Name; Line = $number; Ref = $Matches.ref; Comment = $Matches.comment }
+            }
+        }
+    }
 
     # Every leaf of the default config as a dotted key, e.g. Agent.EnvNames.NodeId.
     function Get-LeafKey {
@@ -159,5 +173,16 @@ Describe 'Every run uses the log settings of the config' {
 Describe 'Every error id is tested' {
     It '<Id> is asserted by at least one test' -ForEach $errorIds {
         $testText | Should -Match ([regex]::Escape($Id)) -Because "a test should prove when $Id is raised"
+    }
+}
+
+Describe 'Every action is pinned to a commit' {
+    It 'the search finds the actions the workflows use' -ForEach @{ Count = @($actionUses).Count } {
+        $Count | Should -BeGreaterThan 5
+    }
+
+    It '<File>:<Line> <Ref> is a full commit SHA with its version as a comment' -ForEach $actionUses {
+        $Ref | Should -Match '@[0-9a-f]{40}$' -Because 'a tag like @v4 can be moved by whoever owns the action; a commit cannot'
+        $Comment | Should -Match '^v\d+' -Because 'the comment says which version the SHA is, for people and for Dependabot'
     }
 }

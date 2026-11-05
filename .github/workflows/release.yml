@@ -35,7 +35,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The tag and the manifest must agree, so a release can never ship another version than its name says.
       - name: Check the version
@@ -71,12 +71,12 @@ jobs:
       # with: gh attestation verify NexusFleet-<version>.zip --repo Tombomeke-Studios/NexusFleet
       - name: Attest the build provenance
         if: github.ref_type == 'tag'
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: ${{ steps.build.outputs.zip }}
 
       - name: Keep the build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: module
           path: |

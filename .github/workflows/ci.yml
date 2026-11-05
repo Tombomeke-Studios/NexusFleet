@@ -50,7 +50,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install PSScriptAnalyzer
         run: ./tools/Install-NexusTooling.ps1 -Name PSScriptAnalyzer
@@ -66,7 +66,7 @@ jobs:
       # Also when there are findings (that is when they matter), and also with none: an empty list closes old alerts.
       - name: Upload the findings to code scanning
         if: always() && hashFiles('psscriptanalyzer.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@9418214df1f2c4b8128c770156c409013b07d6b9 # v3.39.3
         with:
           sarif_file: psscriptanalyzer.sarif
           category: psscriptanalyzer
@@ -75,7 +75,7 @@ jobs:
     name: actionlint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # actionlint checks the syntax of every workflow, the expressions, the job and step references, and the
       # inputs of known actions. Run from its published image, at a fixed version.
@@ -90,7 +90,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The whole history, so the commits between the base and the head of the pull request are there.
           fetch-depth: 0
@@ -129,7 +129,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # PSScriptAnalyzer and SecretManagement are only mocked here (tests/tools, tests/utils), but Pester can only
       # mock a command that exists.
@@ -143,7 +143,7 @@ jobs:
 
       - name: Keep the test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-results-${{ matrix.os }}
           path: TestResults/
@@ -156,7 +156,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Copies only the module files to out/, checks in a fresh pwsh that the result loads and exports the manifest's
       # list, and zips it: the same script the release uses.
@@ -164,7 +164,7 @@ jobs:
         run: ./tools/Build-NexusModule.ps1 | Format-List
 
       - name: Keep the module
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: nexusfleet-module
           path: out/*.zip
