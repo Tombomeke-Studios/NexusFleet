@@ -20,7 +20,7 @@ x-nexusinfra-env: &nexusinfra-env
 
 services:
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:3-management-alpine@sha256:606d8c0d6b3c18d1da9afc53bc7cdb2a8d5486df91b5a9830e9e07626c9ae281
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
@@ -57,7 +57,7 @@ services:
     networks: { lab: { ipv4_address: 172.29.50.12 } }
 
   registry:
-    image: registry:2
+    image: registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
     ports: ['127.0.0.1:29500:5000']
     networks: { lab: { ipv4_address: 172.29.50.30 } }
 

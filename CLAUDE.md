@@ -300,6 +300,8 @@ never committed.
 ### GitHub Actions
 - **Every `uses:` is a full commit SHA with `# vX.Y.Z`** (a tag can be moved); `tests/Quality.Tests.ps1` fails otherwise.
   Find a SHA with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`; Dependabot keeps them current.
+- **Docker images by digest** (`image:tag@sha256:...`): the lab base images, the lab's RabbitMQ and registry, the
+  actionlint image. Dependabot (`docker`, `docker-compose`) proposes new digests.
 - **Never paste `${{ }}` text into a `run:` script** (PR titles, inputs, refs): pass it through `env:` (script injection).
 - `permissions: contents: read` at the top; a job gets more only for what it does (`security-events: write`, `id-token: write`).
 - A composite action's steps that must run after a failure carry their own `if: always()`.
