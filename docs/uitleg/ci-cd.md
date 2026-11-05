@@ -118,6 +118,21 @@ ze precies de cmdlets van de manifest? Pas dan maakt het de zip.
 
 Met de hand gestart (`workflow_dispatch`) doet hij stap 1 en 3: een proefrelease zonder release.
 
+**Wat een release nu meekrijgt (#138, #139).**
+- **`SHA256SUMS`**: de controlesom van de zip. Wie de zip downloadt, vergelijkt die met `Get-FileHash`.
+- **Een build provenance attestation** (`actions/attest-build-provenance`): een ondertekende verklaring dat deze zip
+  gebouwd is door deze workflow, uit deze repository, op deze commit. GitHub ondertekent ze met het OIDC-token
+  van de run (`id-token: write`). Controleren gaat met
+  `gh attestation verify NexusFleet-<versie>.zip --repo Tombomeke-Studios/NexusFleet`.
+- **Release notes per soort wijziging.** `--generate-notes` zet elke gemergde PR in de notes. `.github/release.yml`
+  deelt ze in volgens hun label (`type:feature` onder "New features", `type:bug` onder "Fixes", ...). Die labels
+  zet `pr-labels.yml` zelf, uit de titel van de PR: `feat(...)` wordt `type:feature`. Het gebruikt daarvoor
+  hetzelfde `Test-NexusCommitMessage.ps1` (de eigenschap `Type`).
+
+`pr-labels.yml` draait op `pull_request_target`: met het token van deze repository, zodat het ook labels mag zetten
+op een PR uit een fork. Dat is alleen veilig omdat het de code van de PR nooit uitcheckt (alleen `dev`) en de titel
+via `env:` leest.
+
 **Het demoscript** voert de vijf fases uit, meet elke fase met een `Stopwatch`, en beoordeelt daarna de drie
 criteria op de resultaten zelf (niet op wat iemand ziet): zijn alle geslaagde servers nu *healthy*, veranderde de
 tweede run niets, en kregen falende servers hun eigen fout terwijl de rest slaagde?
@@ -187,3 +202,5 @@ Invoke-Pester -Path ./tests/public/Scale.Tests.ps1 -Output Detailed
 6. Waarom draait de demo in een eigen job op een vers lab, en niet na de integratietests?
 7. Wat doet `cancel-in-progress`, en waarom alleen bij een pull request?
 8. Wat moet je veranderen om de lab-jobs ook tegen een nieuwe NexusInfra-versie te laten draaien, en waarom is dat maar één plaats?
+9. Wat bewijst een build provenance attestation dat een `SHA256SUMS`-bestand niet bewijst?
+10. Waarom is `pull_request_target` gevaarlijk, en wat maakt het in `pr-labels.yml` toch veilig?
