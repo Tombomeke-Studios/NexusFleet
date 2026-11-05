@@ -57,7 +57,7 @@ services:
     networks: { lab: { ipv4_address: 172.29.50.12 } }
 
   registry:
-    image: registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+    image: registry:3@sha256:d4032d4cc323c1731c707931ecada07a53076eac38e3b61ae57533f170f2c6c3
     ports: ['127.0.0.1:29500:5000']
     networks: { lab: { ipv4_address: 172.29.50.30 } }
 
