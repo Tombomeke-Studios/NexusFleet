@@ -11,3 +11,23 @@ updates:
     labels: ['type:ci']
     commit-message:
       prefix: 'ci(ci)'
+
+  # The base images of the lab hosts and the lab's own services, pinned to a digest: Dependabot proposes the new
+  # digest when the image changes (security fixes in Ubuntu, RabbitMQ, the registry).
+  - package-ecosystem: docker
+    directories: ['/lab/E1-transport/target', '/lab/node-lab/node']
+    schedule:
+      interval: weekly
+    target-branch: dev
+    labels: ['type:lab']
+    commit-message:
+      prefix: 'chore(lab)'
+
+  - package-ecosystem: docker-compose
+    directory: /lab/node-lab
+    schedule:
+      interval: weekly
+    target-branch: dev
+    labels: ['type:lab']
+    commit-message:
+      prefix: 'chore(lab)'

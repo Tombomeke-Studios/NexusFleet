@@ -33,7 +33,11 @@ verplaatst worden:
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 ```
 
-Het commentaar zegt welke versie dat is, voor mensen en voor Dependabot. Dependabot opent elke week een PR met de
+Het commentaar zegt welke versie dat is, voor mensen en voor Dependabot. Hetzelfde geldt voor Docker-images: een
+tag als `ubuntu:24.04` kan naar een ander image wijzen, een *digest* (`ubuntu:24.04@sha256:fe81...`) niet. De
+basis-images van de labs, de diensten van het node-lab en het actionlint-image staan daarom op hun digest, en
+Dependabot stelt een nieuwe digest voor als het image verandert (`docker` en `docker-compose` in
+`dependabot.yml`). Dependabot opent elke week een PR met de
 nieuwe SHA én het nieuwe commentaar. Een Quality-test leest elke `uses:`-regel en faalt als er geen 40 hex-tekens na
 de `@` staan.
 

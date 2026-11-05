@@ -28,7 +28,7 @@ Ubuntu-machine.
 
 ## 3. Hoe het werkt
 
-**De doelhost.** De `Dockerfile` start van `ubuntu:24.04`, installeert `openssh-server` en `sudo`, en maakt
+**De doelhost.** De `Dockerfile` start van `ubuntu:24.04` (vastgezet op zijn digest, zie [ci-beveiliging.md](ci-beveiliging.md)), installeert `openssh-server` en `sudo`, en maakt
 een gebruiker `fleet` die alleen met een sleutel binnenkomt:
 
 ```dockerfile
