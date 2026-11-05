@@ -14,6 +14,7 @@ Plus:
 |---|---|
 | `Connect-NexusInfra.LocalHttp.Tests.ps1` | The connection against a real local HTTP server, which a mock of `Invoke-RestMethod` cannot replace |
 | `Import-NexusInventory.Tests.ps1` | Every field rule of the inventory, defaults, duplicates, and every problem reported at once |
+| `Install-NexusNode.Outbound.Integration.Tests.ps1` | The outbound host of the node lab (`reach: outbound`). With a control plane that has the agent link: a healthy node with no open port, controlled over the link, and a second run that changes nothing. Without it (0.4.0): `Test-NexusHost` refuses the host on `AgentLink`. Which part runs is decided when Pester discovers the tests, so it never skips while the lab runs |
 | `Scale.Tests.ps1` | Generated inventories of 50 and 100 hosts, some unreachable and some failing. Exactly one correct result per host, and no crash |
 
 The integration tests skip themselves without a running lab. In CI a skip fails the job, because there the labs are

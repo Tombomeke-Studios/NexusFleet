@@ -2,8 +2,9 @@
 #
 # Starts the two labs (lab/README.md):
 #   E1 lab    an Ubuntu host with sshd and a sudo user          (transport, preflight)
-#   node lab  a NexusInfra 0.4.0 control plane from the published images and two fresh Ubuntu hosts
-#             in which Install-NexusNode installs Docker and the agent (install, status)
+#   node lab  a NexusInfra 0.4.0 control plane from the published images and three fresh Ubuntu hosts
+#             in which Install-NexusNode installs Docker and the agent (install, status); the third is an
+#             outbound host (docs/agent-link.md), refused with a clear reason by a control plane without the link
 # and runs every test tagged Integration: among them the three "Klaar als" criteria of the MVP (one command
 # turns the hosts into healthy nodes, a second run changes nothing, a failing host does not stop the others).
 #
@@ -60,11 +61,14 @@ jobs:
           foreach ($name in docker ps -a --format '{{.Names}}') {
               docker logs $name *> "./TestResults/lab-logs/$name.log"
           }
-          foreach ($port in 2231, 2232) {
+          foreach ($port in 2231, 2232, 2233) {
               ssh -i ./lab/node-lab/.keys/id_ed25519 -o UserKnownHostsFile=./lab/node-lab/.keys/known_hosts -o BatchMode=yes `
                   -o StrictHostKeyChecking=accept-new -p $port fleet@127.0.0.1 'sudo -n docker logs nexusinfra-node-agent' *> "./TestResults/lab-logs/agent-on-$port.log"
           }
           if (Test-Path -Path ./logs) { Copy-Item -Path ./logs -Destination ./TestResults/nexusfleet-logs -Recurse }
+          # A host without an agent (node3 against a control plane without the agent link) makes docker logs fail;
+          # collecting is best effort, so that exit code must not fail the job.
+          exit 0
 
       - name: Keep the results and the logs
         if: always()

@@ -52,6 +52,8 @@ enkele poort open.
 4. **Preflight.** Voor een outbound host komt er een check `AgentLink` bij: ondersteunt de control plane de link,
    en kan de host zelf de host en poort van de link bereiken (`/dev/tcp`, zoals bij de broker)? Alleen een gewone
    hostnaam of een gewoon adres komt in het script, nooit iets anders.
+   Die check komt op een eigen regel: een here-string eindigt zonder newline, dus zonder de `` `n `` ervoor plakte
+   `fi` aan `if` vast, en dan faalde ook de broker-check (#109, gevonden door de integratietest).
 
 5. **RegisterNode.** `POST /nodes` met `connection = 'outbound'` en zonder `agentUrl`. Een directe host wordt
    geregistreerd zoals vroeger, zodat NexusInfra 0.4.0 blijft werken.
@@ -88,6 +90,10 @@ enkele poort open.
 
 ## PowerShell-concepten
 
+- **`BeforeDiscovery`** (Pester): code die draait vóór Pester de tests vindt. De outbound-integratietest vraagt daar of
+  de control plane de link kent, en een gewone `if` bepaalt dan welke `Context` er bestaat. Zo wordt er nooit een test
+  overgeslagen terwijl het lab draait. [Pester: Discovery and Run](https://pester.dev/docs/usage/discovery-and-run)
+
 - **`-replace` met een reguliere expressie** (`'^http'`): `^` betekent "aan het begin", dus alleen `http` vooraan
   wordt `ws`, en `https` wordt vanzelf `wss`.
   [about_Comparison_Operators](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_comparison_operators#replacement-operator)
@@ -116,6 +122,15 @@ Import-NexusInventory -Path ./config/inventory.example.json | Format-Table Name,
 
 # De tests van dit onderwerp.
 Invoke-Pester -Path ./tests/steps/AgentContainer.Tests.ps1, ./tests/core/Invoke-NexusHostInstall.Tests.ps1 -Output Detailed
+```
+
+In het node-lab is `node3` (ssh `127.0.0.1:2233`) zo'n outbound host. Met de integratietest zie je beide kanten:
+tegen NexusInfra 0.4.0 weigert `Test-NexusHost` hem bij `AgentLink`; tegen een NexusInfra met de link wordt hij een
+*healthy* node zonder open poort. De test kiest zelf welk deel hij draait, door vóór de tests `GET /config` te vragen.
+
+```powershell
+./lab/node-lab/Start-NodeLab.ps1
+Invoke-Pester -Path ./tests/public/Install-NexusNode.Outbound.Integration.Tests.ps1 -TagFilter Integration -Output Detailed
 ```
 
 Zien falen: zet bij een host in je inventaris zowel `"reach": "outbound"` als een `agentUrl`; `Import-NexusInventory`

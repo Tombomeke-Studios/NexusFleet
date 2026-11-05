@@ -102,7 +102,8 @@ if timeout 3 bash -c '</dev/tcp/{BrokerHost}/{BrokerPort}' 2>/dev/null; then ech
 '@
             $script = $script.Replace('{BrokerHost}', $Config.Broker.Host).Replace('{BrokerPort}', "$($Config.Broker.Port)")
             if ($link) {
-                $script += "if timeout 3 bash -c '</dev/tcp/$($link.Host)/$($link.Port)' 2>/dev/null; then echo `"link=yes`"; else echo `"link=no`"; fi`n"
+                # A here-string has no newline after its last line, so the check starts with one of its own.
+                $script += "`nif timeout 3 bash -c '</dev/tcp/$($link.Host)/$($link.Port)' 2>/dev/null; then echo `"link=yes`"; else echo `"link=no`"; fi`n"
             }
             $answer = Invoke-NexusHostCommand @ssh -Command $script
 
