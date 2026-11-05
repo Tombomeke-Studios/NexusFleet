@@ -1,8 +1,9 @@
 # CI: lint, unit tests and the build on every pull request and every push to dev and main.
 #
-#   lint   PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1)
-#   test   the Pester unit tests on Linux and on Windows (tools/Invoke-NexusTests.ps1), with code coverage
-#   build  the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
+#   lint       PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1)
+#   commits    (pull requests) the title and every commit message against the commit rules (CLAUDE.md, section 3)
+#   test       the Pester unit tests on Linux and Windows (tools/Invoke-NexusTests.ps1), with code coverage
+#   build      the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
 #
 # A feature branch is checked by its pull request, not by every push as well: that ran everything twice. A newer
 # push to the same pull request cancels the run it makes outdated. Run it by hand for a branch without a pull request.
@@ -55,10 +56,46 @@ jobs:
           ./tools/Invoke-NexusLint.ps1 -GitHubAnnotations -SummaryPath $env:GITHUB_STEP_SUMMARY
           Write-Output 'PSScriptAnalyzer: no findings.'
 
+
+  commits:
+    name: Commit messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The whole history, so the commits between the base and the head of the pull request are there.
+          fetch-depth: 0
+
+      # The title comes in through an environment variable, never pasted into the script: a title is text anyone
+      # opening a pull request chooses, and pasted into the script it could run as code.
+      - name: Check the title and the commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $title = ./tools/Test-NexusCommitMessage.ps1 -Message $env:PR_TITLE
+          $commits = ./tools/Test-NexusCommitMessage.ps1 -Range "$env:BASE_SHA..$env:HEAD_SHA"
+          $summary = @('## Commit messages', '', '| | Message | Problem |', '|---|---|---|')
+          foreach ($check in @($title) + @($commits)) {
+              $mark = if ($check.Valid) { ':white_check_mark:' } else { ':x:' }
+              $summary += "| $mark | ``$($check.Message.Replace('|', '\|'))`` | $($check.Reason) |"
+          }
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ($summary -join "`n")
+          $wrong = @(@($title) + @($commits) | Where-Object { -not $_.Valid })
+          foreach ($check in $wrong) {
+              Write-Output "::error title=Commit message::'$($check.Message)': $($check.Reason). Rules: CLAUDE.md, section 3."
+          }
+          if ($wrong) { exit 1 }
+
   test:
     name: Pester (${{ matrix.os }})
     strategy:
-      # Both systems always finish, so one failing system never hides the result of the other.
+      # Every system always finishes, so one failing system never hides the result of another.
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
