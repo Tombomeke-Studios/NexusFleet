@@ -55,7 +55,9 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Check that NexusInfra reaches the agent, not only hears it (#101)
 - [x] Demo guide over the internet without a VPN: public name, port forwarding, agentUrl per host (#103)
 - [x] Nodes behind NAT: `reach: outbound`, the agent connects to the control plane itself (design `docs/agent-link.md`, with NexusInfra #416) (#105)
-- [ ] Integration test for an outbound host against a NexusInfra with the agent link (after NexusInfra #416) (#106) — node lab host `node3`, the test, and the CI job `Integration (NexusInfra dev)` (images built from NexusInfra dev with `-BuildFrom`)
+- [x] Integration test for an outbound host against a NexusInfra with the agent link (after NexusInfra #416) (#106) — node lab host `node3`, the test, and the CI job `Integration (NexusInfra dev)` (images built from NexusInfra dev with `-BuildFrom`)
+- [x] Preflight: the agent link check ran into the broker check (`fiif`) (#109)
+- [ ] **[Tom]** Decide on a NexusInfra release with the agent link, or build the images yourself, for the outbound demo VM (#111)
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
 - [ ] Merge `dev → main`, tag `v1.0.0`
