@@ -29,6 +29,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request cancels the run it makes outdated; pushes to dev and main always finish.
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   integration:
     name: ${{ matrix.name }}
@@ -110,3 +115,4 @@ jobs:
         run: |
           ./lab/node-lab/Start-NodeLab.ps1 -Remove
           ./lab/E1-transport/Start-LabTarget.ps1 -Remove
+
