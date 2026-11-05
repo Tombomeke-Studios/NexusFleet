@@ -2,6 +2,7 @@
 #
 #   lint       PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1); its findings also go to GitHub
 #              code scanning (the Security tab) as SARIF
+#   workflows  actionlint on the workflow files, so a typo in a workflow fails here and not at its next run
 #   commits    (pull requests) the title and every commit message against the commit rules (CLAUDE.md, section 3)
 #   test       the Pester unit tests on Linux and Windows (tools/Invoke-NexusTests.ps1); fails when the
 #              coverage of src/ drops below 95 %
@@ -69,6 +70,17 @@ jobs:
         with:
           sarif_file: psscriptanalyzer.sarif
           category: psscriptanalyzer
+
+  workflows:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # actionlint checks the syntax of every workflow, the expressions, the job and step references, and the
+      # inputs of known actions. Run from its published image, at a fixed version.
+      - name: Run actionlint
+        run: docker run --rm --volume "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color
 
   commits:
     name: Commit messages
