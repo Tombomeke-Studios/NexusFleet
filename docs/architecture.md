@@ -174,4 +174,4 @@ share a file) or `run.log`, redacting the context's secrets and `nxi_` tokens. L
 Pester 5 tests in `tests/`, mirroring `src/`; no network, SSH or real NexusInfra in unit tests. Tests tagged
 `LocalHttp` use a real HTTP listener on loopback and run with the unit tests. Tests tagged `Integration` need the
 lab (for now the E1 Docker target) and are run by hand. CI runs `tools/Invoke-NexusLint.ps1` and Pester as
-separate jobs on every push and pull request.
+separate jobs on every pull request and every push to `dev` and `main`, with a build of the module.

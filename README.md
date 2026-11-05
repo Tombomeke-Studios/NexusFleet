@@ -188,8 +188,8 @@ Index of everything: [docs/README.md](docs/README.md).
 
 | Workflow | Runs | What you see |
 |---|---|---|
-| [CI](.github/workflows/ci.yml) | every push and pull request | lint, and the unit tests on Linux **and** Windows: totals, every failure with its reason and `file:line`, coverage per file |
-| [Integration](.github/workflows/integration.yml) | pull requests and pushes to `dev`/`main` | the real flow against the labs in Docker, with every log kept as an artifact |
+| [CI](.github/workflows/ci.yml) | pull requests and pushes to `dev`/`main` | lint, the unit tests on Linux **and** Windows (totals, every failure with its reason and `file:line`, coverage per file), and the build of the module |
+| [Integration](.github/workflows/integration.yml) | pull requests, pushes to `dev`/`main`, every night | the real flow against the labs in Docker (NexusInfra 0.4.0 and `dev`), with every log kept as an artifact; and the demo, with the three "Klaar als" criteria as a table in the run's summary |
 | [Release](.github/workflows/release.yml) | a `v*` tag on `main` | the checks, the build, and a GitHub release with the zip |
 
 Branches: `feature/<topic>` → `dev` (always green) → `main` (milestones, tagged). More in
