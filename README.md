@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/ci.yml)
 [![Integration](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/integration.yml/badge.svg?branch=dev)](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/integration.yml)
+[![Secrets](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/secrets.yml/badge.svg?branch=dev)](https://github.com/Tombomeke-Studios/NexusFleet/actions/workflows/secrets.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Tombomeke-Studios/NexusFleet/badge)](https://scorecard.dev/viewer/?uri=github.com/Tombomeke-Studios/NexusFleet)
 ![PowerShell 7.6+](https://img.shields.io/badge/PowerShell-7.6%2B-5391FE?logo=powershell&logoColor=white)
 ![Tested with Pester 5](https://img.shields.io/badge/tested%20with-Pester%205-1f6feb)
 ![Windows | Linux | macOS](https://img.shields.io/badge/runs%20on-Windows%20%7C%20Linux%20%7C%20macOS-0f3460)
@@ -190,7 +192,9 @@ Index of everything: [docs/README.md](docs/README.md).
 |---|---|---|
 | [CI](.github/workflows/ci.yml) | pull requests and pushes to `dev`/`main` | lint, the unit tests on Linux **and** Windows (totals, every failure with its reason and `file:line`, coverage per file), and the build of the module |
 | [Integration](.github/workflows/integration.yml) | pull requests, pushes to `dev`/`main`, every night | the real flow against the labs in Docker (NexusInfra 0.4.0 and `dev`), with every log kept as an artifact; and the demo, with the three "Klaar als" criteria as a table in the run's summary |
-| [Release](.github/workflows/release.yml) | a `v*` tag on `main` | the checks, the build, and a GitHub release with the zip |
+| [Release](.github/workflows/release.yml) | a `v*` tag on `main` | the checks, the build, and a GitHub release with the zip, its `SHA256SUMS` and a build provenance attestation; notes grouped by change type |
+| [Secrets](.github/workflows/secrets.yml) | pull requests, pushes to `dev`/`main`, weekly | gitleaks over the commits; a leaked token fails the run |
+| [Scorecard](.github/workflows/scorecard.yml) | pushes to `dev`, weekly | the OpenSSF Scorecard of the repository's supply-chain practices, in the Security tab and the badge |
 
 Branches: `feature/<topic>` → `dev` (always green) → `main` (milestones, tagged). More in
 [development.md](docs/development.md) and [testing.md](docs/testing.md).

@@ -1,0 +1,51 @@
+# OpenSSF Scorecard: an independent check of how safely this repository is built and maintained. It scores practices
+# such as pinned dependencies, token permissions, branch protection, code review, signed releases and the use of
+# static analysis, each from 0 to 10, and publishes the result (the badge in the README links to it). The findings,
+# with what to improve, go to GitHub code scanning (the Security tab).
+#
+# Runs on dev only (Scorecard reads the default branch), weekly, and when the branch protection changes.
+
+name: Scorecard
+
+on:
+  push:
+    branches: [dev]
+  schedule:
+    - cron: '23 5 * * 2'
+  branch_protection_rule:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # For code scanning, and to publish the result (signed with the run's OIDC token).
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Keep the results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scorecard
+          path: scorecard.sarif
+          retention-days: 7
+
+      - name: Upload the findings to code scanning
+        uses: github/codeql-action/upload-sarif@9418214df1f2c4b8128c770156c409013b07d6b9 # v3.39.3
+        with:
+          sarif_file: scorecard.sarif
+          category: scorecard
