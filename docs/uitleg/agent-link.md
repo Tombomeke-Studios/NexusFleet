@@ -55,8 +55,11 @@ enkele poort open.
    Die check komt op een eigen regel: een here-string eindigt zonder newline, dus zonder de `` `n `` ervoor plakte
    `fi` aan `if` vast, en dan faalde ook de broker-check (#109, gevonden door de integratietest).
 
-5. **RegisterNode.** `POST /nodes` met `connection = 'outbound'` en zonder `agentUrl`. Een directe host wordt
-   geregistreerd zoals vroeger, zodat NexusInfra 0.4.0 blijft werken.
+5. **RegisterNode.** `POST /nodes` met `connection = 'outbound'` en zonder `agentUrl`. Een directe host krijgt
+   `connection = 'direct'` met zijn `agentUrl`. Dat moet er uitdrukkelijk bij: noemt de body geen `connection`, dan
+   laat NexusInfra een bestaande outbound node outbound (en negeert hij de `agentUrl`), zodat een host die je van
+   `outbound` naar `direct` zet nooit terug zou gaan (#113, gevonden in de code review). NexusInfra 0.4.0 kent het
+   veld niet en negeert het. De Test van een directe host is dan ook pas in orde als de node niet outbound staat.
 
 6. **AgentContainer.** Voor een outbound host:
    - eerst `POST /nodes/<id>/link-token`: NexusInfra maakt een nieuw token **voor deze ene node** en geeft het één
