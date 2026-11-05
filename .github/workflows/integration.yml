@@ -2,7 +2,8 @@
 #
 # Starts the two labs (lab/README.md):
 #   E1 lab    an Ubuntu host with sshd and a sudo user          (transport, preflight)
-#   node lab  a NexusInfra 0.4.0 control plane from the published images and three fresh Ubuntu hosts
+#   node lab  a NexusInfra control plane (0.4.0 from the published images, and dev built from source, as a
+#             matrix) and three fresh Ubuntu hosts
 #             in which Install-NexusNode installs Docker and the agent (install, status); the third is an
 #             outbound host (docs/agent-link.md), refused with a clear reason by a control plane without the link
 # and runs every test tagged Integration: among them the three "Klaar als" criteria of the MVP (one command
@@ -30,9 +31,24 @@ permissions:
 
 jobs:
   integration:
-    name: Integration (labs in Docker)
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    # Two control planes: the published 0.4.0 release, and NexusInfra dev built from source (it has the agent link,
+    # NexusInfra #417, which is not released yet). The same tests run against both; the outbound test picks its
+    # part from what the control plane supports, so against dev it installs node3 over the agent link.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Integration (labs in Docker)
+            version: 0.4.0-community
+            nexusinfra-ref: ''
+            artifact: integration-results
+          - name: Integration (NexusInfra dev)
+            version: agentlink-community
+            nexusinfra-ref: dev
+            artifact: integration-results-nexusinfra-dev
     defaults:
       run:
         shell: pwsh
@@ -45,8 +61,19 @@ jobs:
       - name: Start the E1 lab
         run: ./lab/E1-transport/Start-LabTarget.ps1 -PlainOnly | Format-Table -AutoSize
 
+      - name: Check out NexusInfra
+        if: matrix.nexusinfra-ref != ''
+        uses: actions/checkout@v7
+        with:
+          repository: Tombomeke-Studios/NexusInfra
+          ref: ${{ matrix.nexusinfra-ref }}
+          path: nexusinfra
+
       - name: Start the node lab
-        run: ./lab/node-lab/Start-NodeLab.ps1 | Format-List
+        run: |
+          $lab = @{ Version = '${{ matrix.version }}' }
+          if ('${{ matrix.nexusinfra-ref }}') { $lab.BuildFrom = './nexusinfra' }
+          ./lab/node-lab/Start-NodeLab.ps1 @lab | Format-List
 
       - name: Run the integration tests
         run: |
@@ -74,7 +101,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-results
+          name: ${{ matrix.artifact }}
           path: TestResults/
           if-no-files-found: ignore
 

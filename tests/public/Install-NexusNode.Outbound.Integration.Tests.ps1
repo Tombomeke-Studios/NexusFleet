@@ -94,7 +94,8 @@ Describe 'An outbound host in the node lab' -Tag 'Integration' {
                 $node = & $getNodes | Where-Object id -EQ $outboundHost.Name
                 $ports = & $onHost 'sudo -n docker port nexusinfra-node-agent'
                 $envNames = & $onHost "sudo -n cut -d= -f1 /etc/nexusinfra/agent.env"
-                $status = $outboundHost | Get-NexusFleetStatus
+                # The status also lists nodes only NexusInfra knows (the direct lab hosts): keep this host's row.
+                $status = $outboundHost | Get-NexusFleetStatus | Where-Object Name -EQ $outboundHost.Name
             }
 
             It 'one command makes it a healthy node that NexusInfra can control' {
