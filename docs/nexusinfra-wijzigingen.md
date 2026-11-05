@@ -33,3 +33,5 @@ Elke wijziging krijgt hieronder één regel. Deze lijst maakt de scheiding tusse
 | 2026-11-05 | `55ba60b` (NexusInfra #417) | Een geweigerde link wordt één keer gelogd, niet twee keer | Duidelijkere logs van de agent bij een fout token |
 | 2026-11-05 | `c383ca8` (NexusInfra #417) | Documentatie van de agent link | De installatie zonder NexusFleet moet ook beschreven zijn |
 | 2026-11-05 | `ef551a9` (NexusInfra #417) | De codekaart en TODO van NexusInfra bijgewerkt | Onderhoud van de NexusInfra-repo zelf |
+| 2026-11-05 | `657a643` (NexusInfra #419) | undici vastgezet op 6.x, dat op Node 18 draait | De orchestrator-image van #417 startte niet (`File is not defined`); gevonden door de integratietest van NexusFleet tegen NexusInfra dev |
+| 2026-11-05 | `c284e3d` (NexusInfra #419) | De CI van NexusInfra bouwt en start elke service-image | Zo valt een image dat niet start op in NexusInfra zelf, en niet pas in de NexusFleet-lab |
