@@ -105,6 +105,16 @@ Describe 'Invoke-NexusStepSequence' {
         $script:calls | Should -Contain 'rollback:a'
     }
 
+    It 'keeps why the Apply failed when the rollback of that step fails too (#118)' {
+        $steps = (Get-FakeStep -Name 'a' -Order 10), (Get-FakeStep -Name 'b' -Order 20 -ApplyFails -RollbackFails)
+
+        $result = Invoke-NexusStepSequence -HostName 'web01' -Step $steps -Context @{}
+
+        $result.Steps[1].Outcome | Should -Be 'Failed'
+        $result.Steps[1].Rollback | Should -Be 'Failed'
+        $result.Steps[1].Error | Should -BeLike "Apply of step 'b' failed*; Rollback of step 'b' failed*rollback of b broke*"
+    }
+
     It 'treats a Test that throws as a failure and rolls back what was applied' {
         $broken = Get-FakeStep -Name 'b' -Order 20
         $broken.Test = { param($Context) throw 'cannot check' }

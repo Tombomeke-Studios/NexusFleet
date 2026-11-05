@@ -36,9 +36,16 @@ Invoke-NexusApi -BaseUrl $config.Api.BaseUrl -Token $token -Method POST -Path '/
    (`[uri]$BaseUrl).IsLoopback`: `localhost`, `127.0.0.1`, `::1`). Voor een andere `http://`-host moet
    `-AllowUnencryptedHttp` gezet zijn (in de configuratie), en dan volgt een waarschuwing. Anders stopt de
    functie meteen met `NexusApi.UnencryptedNotAllowed`, nog vóór er iets verstuurd is.
-3. **Proberen, en eventueel opnieuw.** Een `for`-lus doet hoogstens `1 + RetryCount` pogingen voor `GET`, en
-   precies één voor alle andere methodes. Na een netwerkfout, 429 of 502/503/504 wacht de functie even (1 s,
-   2 s, 4 s: telkens het dubbele) en probeert opnieuw. 429 is de snelheidslimiet van de gateway: 50 verzoeken per
+3. **Proberen, en eventueel opnieuw.** Een `for`-lus doet hoogstens `1 + RetryCount` pogingen. Na een fout die
+   voorbijgaat wacht de functie even (1 s, 2 s, 4 s: telkens het dubbele) en probeert opnieuw. Welke fouten mogen
+   opnieuw (`$mayRepeat`)?
+   - **429, voor elke methode.** De gateway weigert het verzoek nog vóór NexusInfra het ziet, dus er is niets
+     gebeurd, ook niet bij een `POST` (#116, gevonden in de code review: anders faalde bij een grote installatie
+     het aanmaken van een link-token).
+   - **Een netwerkfout of 502/503/504, alleen voor `GET`.** Daar weet je niet of NexusInfra het verzoek al
+     uitgevoerd had: een `POST` twee keer sturen kan dan iets dubbel doen.
+
+   429 is de snelheidslimiet van de gateway: 50 verzoeken per
    seconde per token (#99). Met honderd hosts die elk om de 2 s `GET /nodes` vragen, zit de vloot daar al op, en
    even later laat de gateway het verzoek weer door.
 4. **Een fout begrijpelijk maken.** In de `catch` wordt de fout eerst in `$caught` bewaard. Daarna:

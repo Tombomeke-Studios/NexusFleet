@@ -21,7 +21,14 @@ Register-NexusStep -Name 'AgentReachable' -Order 50 -Description 'NexusInfra rea
     }
     catch {
         $caught = $_
-        throw "NexusInfra cannot reach the agent of $($Context.HostInfo.Name) at $($Context.HostInfo.AgentUrl): " +
+        $name = $Context.HostInfo.Name
+        # The two ways NexusInfra reaches an agent fail for different reasons, so each gets its own advice.
+        if ($Context.HostInfo.Reach -eq 'outbound') {
+            throw "NexusInfra cannot reach the agent of $name over its agent link: $($caught.Exception.Message) " +
+            "Does the agent reach $($Context.LinkUrl) (see: sudo docker logs $($Context.Config.Agent.ContainerName)), " +
+            'and does a proxy in front of the gateway pass WebSocket connections?'
+        }
+        throw "NexusInfra cannot reach the agent of $name at $($Context.HostInfo.AgentUrl): " +
         "$($caught.Exception.Message) Can the control plane open port $($Context.Config.Agent.Port) on this host " +
         '(firewall, port forwarding, the agentUrl in the inventory), and is the INTERNAL_API_TOKEN the same as in its .env?'
     }

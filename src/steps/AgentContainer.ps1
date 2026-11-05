@@ -103,8 +103,8 @@ sudo -n docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$c"
         $minted = Invoke-NexusStepApi -Context $Context -Method POST -Path "/nodes/$($hostInfo.Name)/link-token"
         $secrets += [System.Net.NetworkCredential]::new('', $minted.token).SecurePassword
         if ($Context.RunContext) {
-            # The log hides it too, should it ever appear in a message.
-            $Context.RunContext.Secrets = @(@($Context.RunContext.Secrets) + $minted.token | Sort-Object -Property Length -Descending)
+            # The log hides it too, should it ever appear in a message. The run context is shared by every host.
+            Add-NexusLogSecret -Context $Context.RunContext -Secret $minted.token
         }
         $readLink = 'IFS= read -r link_token'
         $reachEnv = "$(& $q $agent.EnvNames.LinkUrl) $(& $q $Context.LinkUrl) $(& $q $agent.EnvNames.LinkToken) " + '"$link_token"'

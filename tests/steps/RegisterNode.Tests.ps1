@@ -55,6 +55,14 @@ Describe 'Step RegisterNode' {
             & $step.Test $context | Should -BeFalse
             $context.State.NodeExisted | Should -BeTrue
         }
+
+        It 'is not in order when the node is still registered as outbound (#113)' {
+            $wasOutbound = $sameNode.PSObject.Copy()
+            $wasOutbound | Add-Member -NotePropertyName connection -NotePropertyValue 'outbound'
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { @($wasOutbound) }
+
+            & $step.Test $context | Should -BeFalse
+        }
     }
 
     Context 'Apply' {
@@ -66,6 +74,16 @@ Describe 'Step RegisterNode' {
             Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 1 -Exactly -ParameterFilter {
                 $Method -eq 'POST' -and $Path -eq '/nodes' -and $Body.id -eq 'node-web01' -and $Body.name -eq 'node-web01' -and
                 $Body.location -eq 'home' -and $Body.agentUrl -eq 'http://10.0.0.5:9100'
+            }
+        }
+
+        It 'says connection direct, so a node that was outbound is switched back (#113)' {
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { $sameNode }
+
+            & $step.Apply $context
+
+            Should -Invoke -ModuleName NexusFleet -CommandName Invoke-NexusApi -Times 1 -Exactly -ParameterFilter {
+                $Method -eq 'POST' -and $Body.connection -eq 'direct'
             }
         }
     }
