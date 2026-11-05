@@ -14,8 +14,14 @@
 # can be followed step by step. A skipped integration test fails the job here: in CI the labs are started first,
 # so a skip means a lab did not come up.
 #
+# The demo jobs start a fresh node lab of their own and run lab/demo/Invoke-NexusLabDemo.ps1: the whole flow
+# (preflight, plan, install, second run, status) on every lab host plus one host that cannot work. They put the
+# demo's summary (times per phase, the three criteria) in the run's summary, and fail when a criterion does not hold.
+# So every pull request shows the MVP's "Klaar als" in a table, next to the tests that check it in detail.
+#
 # Takes a few minutes (images, apt inside the hosts), so it runs on pull requests and pushes to dev and main, and
-# by hand; not on every push to a feature branch.
+# by hand; not on every push to a feature branch. Every night it also runs on dev, so a change on NexusInfra's dev
+# that breaks NexusFleet shows the next morning, not at the next NexusFleet pull request.
 
 name: Integration
 
@@ -24,10 +30,17 @@ on:
     branches: [dev, main]
   push:
     branches: [dev, main]
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# A newer push to a pull request cancels the run it makes outdated; pushes to dev and main always finish.
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   integration:
@@ -110,3 +123,72 @@ jobs:
         run: |
           ./lab/node-lab/Start-NodeLab.ps1 -Remove
           ./lab/E1-transport/Start-LabTarget.ps1 -Remove
+
+  demo:
+    name: Demo (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: NexusInfra 0.4.0
+            version: 0.4.0-community
+            nexusinfra-ref: ''
+            artifact: demo-results
+          - name: NexusInfra dev
+            version: agentlink-community
+            nexusinfra-ref: dev
+            artifact: demo-results-nexusinfra-dev
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check out NexusInfra
+        if: matrix.nexusinfra-ref != ''
+        uses: actions/checkout@v7
+        with:
+          repository: Tombomeke-Studios/NexusInfra
+          ref: ${{ matrix.nexusinfra-ref }}
+          path: nexusinfra
+
+      - name: Start the node lab
+        run: |
+          $lab = @{ Version = '${{ matrix.version }}' }
+          if ('${{ matrix.nexusinfra-ref }}') { $lab.BuildFrom = './nexusinfra' }
+          ./lab/node-lab/Start-NodeLab.ps1 @lab | Format-List
+
+      # Against 0.4.0 the outbound host is left out (no agent link); against dev it is installed over the link.
+      - name: Run the demo
+        run: |
+          $demo = ./lab/demo/Invoke-NexusLabDemo.ps1 -OutputPath ./TestResults/demo
+          Get-Content -Path (Join-Path -Path $demo.Folder -ChildPath 'summary.md') | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          $notHolding = @($demo.Criteria | Where-Object { $_.Holds -ne $true })
+          foreach ($criterion in $notHolding) {
+              Write-Output "::error::Klaar als does not hold: $($criterion.Criterion). $($criterion.Detail)"
+          }
+          if ($notHolding) { exit 1 }
+
+      - name: Collect the logs
+        if: always()
+        run: |
+          New-Item -Path ./TestResults/lab-logs -ItemType Directory -Force | Out-Null
+          foreach ($name in docker ps -a --format '{{.Names}}') {
+              docker logs $name *> "./TestResults/lab-logs/$name.log"
+          }
+          if (Test-Path -Path ./logs) { Copy-Item -Path ./logs -Destination ./TestResults/nexusfleet-logs -Recurse }
+          exit 0
+
+      - name: Keep the demo results and the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: TestResults/
+          if-no-files-found: ignore
+
+      - name: Remove the lab
+        if: always()
+        run: ./lab/node-lab/Start-NodeLab.ps1 -Remove

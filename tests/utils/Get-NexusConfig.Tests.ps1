@@ -1,3 +1,7 @@
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '',
+    Justification = 'Pester: variables set in BeforeEach are used in AfterEach; the analyzer does not look across script blocks.')]
+param()
+
 BeforeAll {
     . (Join-Path -Path $PSScriptRoot -ChildPath '../../src/utils/Merge-NexusHashtable.ps1')
     . (Join-Path -Path $PSScriptRoot -ChildPath '../../src/utils/Get-NexusConfig.ps1')
@@ -37,6 +41,41 @@ Describe 'Get-NexusConfig' {
 
         $config.Api.BaseUrl | Should -Be 'https://panel.example.com'
         $config.Api.TimeoutSeconds | Should -Be 30
+    }
+
+    Context 'NEXUSFLEET_CONFIG names the local override (#120)' {
+        BeforeEach {
+            $saved = $env:NEXUSFLEET_CONFIG
+        }
+        AfterEach {
+            $env:NEXUSFLEET_CONFIG = $saved
+        }
+
+        It 'reads the file it names instead of nexusinfra.local.psd1' {
+            $path = Write-TestConfig
+            Set-Content -Path (Join-Path -Path $TestDrive -ChildPath 'nexusinfra.local.psd1') -Value "@{ Api = @{ BaseUrl = 'https://local.example.com' } }"
+            $labPath = Join-Path -Path $TestDrive -ChildPath 'lab.psd1'
+            Set-Content -Path $labPath -Value "@{ Api = @{ BaseUrl = 'http://127.0.0.1:29400' } }"
+            $env:NEXUSFLEET_CONFIG = $labPath
+
+            (Get-NexusConfig -Path $path).Api.BaseUrl | Should -Be 'http://127.0.0.1:29400'
+        }
+
+        It 'lets an explicit -LocalPath win' {
+            $path = Write-TestConfig
+            $localPath = Join-Path -Path $TestDrive -ChildPath 'explicit.psd1'
+            Set-Content -Path $localPath -Value "@{ Api = @{ BaseUrl = 'https://explicit.example.com' } }"
+            $env:NEXUSFLEET_CONFIG = Join-Path -Path $TestDrive -ChildPath 'lab.psd1'
+
+            (Get-NexusConfig -Path $path -LocalPath $localPath).Api.BaseUrl | Should -Be 'https://explicit.example.com'
+        }
+
+        It 'fails clearly when the file it names does not exist (a typo must not silently fall back)' {
+            $path = Write-TestConfig
+            $env:NEXUSFLEET_CONFIG = Join-Path -Path $TestDrive -ChildPath 'typo.psd1'
+
+            { Get-NexusConfig -Path $path } | Should -Throw -ExpectedMessage '*NEXUSFLEET_CONFIG*typo.psd1*does not exist*'
+        }
     }
 
     It 'fails clearly when the config file is missing' {

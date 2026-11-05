@@ -1,0 +1,12 @@
+# Dependabot keeps the pinned GitHub Actions (actions/checkout, actions/upload-artifact, ...) up to date: once a week
+# it opens a pull request into dev for every action with a newer version. CI checks it like any other change.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: dev
+    labels: ['type:ci']
+    commit-message:
+      prefix: 'ci(ci)'

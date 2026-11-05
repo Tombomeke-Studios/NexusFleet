@@ -7,10 +7,11 @@ het buildscript, de release-workflow en het demoscript._
 
 ## 1. Wat het doet
 
-Bij elke push controleert GitHub de code (lint en tests, zie `kwaliteitscontrole.md`). Nu bewaart die controle ook
+Bij elke pull request en elke push naar `dev` en `main` controleert GitHub de code (lint en tests, zie `kwaliteitscontrole.md`). Nu bewaart die controle ook
 de testresultaten en meet hij hoeveel van de code de tests echt uitvoeren (de *dekking*). Bij een versietag
 (`v1.0.0`) bouwt een tweede workflow de module zoals ze uitgeleverd wordt, en zet die als zip in een GitHub-release.
-Het demoscript draait de hele flow op een inventaris en meet de tijden voor het verslag.
+Het demoscript draait de hele flow op een inventaris en meet de tijden voor het verslag; in CI draait het bij elke
+pull request op een vers node-lab, en staan de drie criteria van "Klaar als" als tabel op de pagina van de run.
 
 ## 2. Waar het staat
 
@@ -26,7 +27,9 @@ Het demoscript draait de hele flow op een inventaris en meet de tijden voor het 
 | `tests/tools/Build-NexusModule.Tests.ps1` | Bouwt echt in TestDrive en controleert de inhoud |
 | `tests/public/Scale.Tests.ps1` | 50 en 100 gegenereerde servers voor de drie cmdlets die per server werken |
 | `lab/demo/Invoke-NexusDemo.ps1` | De demo: preflight, plan, installatie, tweede run, status, met tijden en de drie criteria |
+| `lab/demo/Invoke-NexusLabDemo.ps1` | De demo op het node-lab in één commando: lab-config, lab-token, elke lab-host en één kapotte host |
 | `lab/demo/README.md` | Wat de lab-VM's nodig hebben, en hoe je de demo draait |
+| `.github/dependabot.yml` | Houdt de vastgezette actions (checkout, upload-artifact) bij: één PR per week naar `dev` |
 
 ## 3. Hoe het werkt
 
@@ -50,6 +53,25 @@ drie criteria van "Klaar als". Dat gebeurt bij elke pull request en push naar `d
 overgeslagen test laat de job hier falen: in CI worden de labs eerst gestart, dus een overslag betekent dat een lab
 niet opkwam. De logs van NexusFleet (`logs/<RunId>/`) en van elke container gaan mee als artifact, en de labs worden
 altijd weer opgeruimd (`if: always()`).
+
+**De demo in de pipeline (#122).** Naast de tests draait `integration.yml` een job `Demo`, ook tegen NexusInfra
+0.4.0 en tegen NexusInfra `dev`. Die start een eigen, vers node-lab en roept `Invoke-NexusLabDemo.ps1` aan. Die zet
+`$env:NEXUSFLEET_CONFIG` op de config van het lab, zodat er niets in `config/` geschreven wordt, en maakt een
+inventaris met de lab-hosts en `node-broken`, een host op een poort waar niemand luistert. De `summary.md` van de demo
+gaat naar `$env:GITHUB_STEP_SUMMARY`. Houdt een criterium niet (`Holds` is niet `$true`), dan schrijft de stap een
+`::error::`-regel en stopt hij met `exit 1`. Zo staat bij elke pull request "Klaar als" als tabel op de pagina.
+
+**Eén run per wijziging (#123).** Eerst draaide `ci.yml` bij elke push én bij elke pull request: een branch met een PR
+werd dus twee keer getest. Nu alleen bij pull requests en pushes naar `dev` en `main` (en met de hand). Een
+`concurrency`-groep per branch breekt bij een pull request de oudere run af als er een nieuwere push komt; op `dev`
+en `main` maakt elke push zijn eigen run af, zodat je per commit weet of hij groen was.
+
+**Bouwen bij elke wijziging (#124).** De job `build` draait `Build-NexusModule.ps1` en bewaart de zip als artifact.
+Een build die breekt, zie je dan meteen, en niet pas bij een release.
+
+**Elke nacht (#125).** `integration.yml` heeft een `schedule` (`cron: '17 3 * * *'`, in UTC). Zo draaien de labs
+elke nacht ook tegen de nieuwste NexusInfra `dev`. Een wijziging daar die NexusFleet breekt (zoals de crash door
+undici, NexusInfra #418), zie je de volgende ochtend, en niet pas bij de volgende pull request.
 
 **Linux en Windows.** De testjob draait als matrix op `ubuntu-latest` en `windows-latest`, met `fail-fast: false`, zodat
 het ene systeem het resultaat van het andere nooit verbergt. De eerste Windows-run vond meteen een echte fout (#72): de
@@ -96,6 +118,11 @@ tweede run niets, en kregen falende servers hun eigen fout terwijl de rest slaag
 - **De versiecontrole**: een release mag nooit een andere versie bevatten dan haar naam zegt.
 - **Schaaltests met falende servers erin** (elke 17e onbereikbaar, elke 23e weigert NexusInfra): het gaat er niet om
   dat 100 servers werken, wel dat elke server zijn eigen, juiste resultaat krijgt.
+- **Een eigen job voor de demo, en niet na de integratietests:** die tests hebben de hosts dan al geïnstalleerd, en
+  de eerste run van de demo zou niets meer veranderen. Op een vers lab bewijst de demo echt "één commando maakt er
+  healthy nodes van".
+- **Feature-branches alleen via hun pull request:** de dubbele runs kostten tijd, en gaven twee keer hetzelfde
+  resultaat. Een branch zonder PR test je met de hand (`workflow_dispatch`) of lokaal met dezelfde scripts.
 - **Het demoscript beoordeelt de criteria zelf**, zodat de meting in het verslag niet afhangt van iemand die een tabel
   goed leest. De tijden uit het node-lab zijn niet representatief (cache), die van de VM's wel.
 
@@ -142,3 +169,5 @@ Invoke-Pester -Path ./tests/public/Scale.Tests.ps1 -Output Detailed
 3. Waarom hergebruikt de release-workflow `ci.yml` in plaats van de lint- en teststappen te kopiëren?
 4. Wat controleert `Build-NexusModule.ps1` voordat het de zip maakt, en waarom in een apart `pwsh`-proces?
 5. Waarom is 100 % dekking geen doel, en welke functie blijft bewust buiten de unit-tests?
+6. Waarom draait de demo in een eigen job op een vers lab, en niet na de integratietests?
+7. Wat doet `cancel-in-progress`, en waarom alleen bij een pull request?

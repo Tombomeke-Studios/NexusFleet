@@ -1,7 +1,11 @@
-# CI: lint and unit tests on every push and pull request.
+# CI: lint, unit tests and the build on every pull request and every push to dev and main.
 #
 #   lint   PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1)
 #   test   the Pester unit tests on Linux and on Windows (tools/Invoke-NexusTests.ps1), with code coverage
+#   build  the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
+#
+# A feature branch is checked by its pull request, not by every push as well: that ran everything twice. A newer
+# push to the same pull request cancels the run it makes outdated. Run it by hand for a branch without a pull request.
 #
 # Every job writes what it found to the run's summary page: the totals, every failed test with its reason and
 # file:line, the results per test file, the slowest tests and the coverage per source file. Each failure is also
@@ -15,12 +19,20 @@ name: CI
 
 on:
   push:
+    branches: [dev, main]
   pull_request:
+  workflow_dispatch:
   # The release workflow runs these same checks before it builds anything.
   workflow_call:
 
 permissions:
   contents: read
+
+# One run per branch or pull request at a time. Only a pull request's outdated run is cancelled: every push to dev
+# and main keeps its own result.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
@@ -74,3 +86,24 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: TestResults/
           if-no-files-found: ignore
+
+  build:
+    name: Build the module
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      # Copies only the module files to out/, checks in a fresh pwsh that the result loads and exports the manifest's
+      # list, and zips it: the same script the release uses.
+      - name: Build
+        run: ./tools/Build-NexusModule.ps1 | Format-List
+
+      - name: Keep the module
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexusfleet-module
+          path: out/*.zip
+          if-no-files-found: error

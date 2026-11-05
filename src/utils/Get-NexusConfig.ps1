@@ -12,7 +12,10 @@ function Get-NexusConfig {
     The config file. Default: config/nexusinfra.psd1 of the module.
 
     .PARAMETER LocalPath
-    The optional local override. Default: nexusinfra.local.psd1 next to the config file.
+    The optional local override. Default: the file $env:NEXUSFLEET_CONFIG names, and when it is not set,
+    nexusinfra.local.psd1 next to the config file. So you switch between overrides (the node lab, a VM demo) by
+    setting one environment variable, without copying files. A file the variable names must exist: a typo would
+    otherwise quietly run against the wrong panel.
 
     .EXAMPLE
     $config = Get-NexusConfig
@@ -32,6 +35,12 @@ function Get-NexusConfig {
     }
     # A clean full path for messages (no 'src/utils/../../').
     $Path = (Resolve-Path -Path $Path).ProviderPath
+    if (-not $LocalPath -and $env:NEXUSFLEET_CONFIG) {
+        if (-not (Test-Path -Path $env:NEXUSFLEET_CONFIG -PathType Leaf)) {
+            throw "NEXUSFLEET_CONFIG names the config file '$env:NEXUSFLEET_CONFIG', which does not exist."
+        }
+        $LocalPath = $env:NEXUSFLEET_CONFIG
+    }
     if (-not $LocalPath) {
         $LocalPath = Join-Path -Path (Split-Path -Path $Path -Parent) -ChildPath 'nexusinfra.local.psd1'
     }
