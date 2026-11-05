@@ -182,16 +182,20 @@ and delete the nodes in the panel.
 
 ## The same against the node lab
 
+One command, after starting the lab:
+
 ```powershell
 ./lab/node-lab/Start-NodeLab.ps1
-Copy-Item ./lab/node-lab/.keys/nexusinfra.lab.psd1 ./config/nexusinfra.local.psd1
-$lab = @{}; Get-Content ./lab/node-lab/.keys/.env | ForEach-Object { $k, $v = $_ -split '=', 2; $lab[$k] = $v }
-Import-Module ./NexusFleet.psd1
-Connect-NexusInfra -Token (ConvertTo-SecureString (Get-Content ./lab/node-lab/.keys/api-token -Raw) -AsPlainText -Force)
-./lab/demo/Invoke-NexusDemo.ps1 -InventoryPath ./lab/node-lab/.keys/inventory.lab.json `
-    -RabbitMqUrl (ConvertTo-SecureString "amqp://$($lab.RABBITMQ_USER):$($lab.RABBITMQ_PASS)@172.29.50.10:5672" -AsPlainText -Force) `
-    -InternalApiToken (ConvertTo-SecureString $lab.INTERNAL_API_TOKEN -AsPlainText -Force)
-Remove-Item ./config/nexusinfra.local.psd1
+./lab/demo/Invoke-NexusLabDemo.ps1
 ```
+
+`Invoke-NexusLabDemo.ps1` reads everything from `lab/node-lab/.keys/`: it points `NEXUSFLEET_CONFIG` at the lab's
+config override (and puts it back afterwards, so `config/` is never touched), connects with the lab's API token, and
+builds a demo inventory. That inventory has the two direct hosts, the outbound host when the control plane has the
+agent link (a lab started with `-BuildFrom`), and `node-broken`, a host on a port where nothing listens: the failing
+host of criterion 3. Then it runs `Invoke-NexusDemo.ps1` with the lab's agent secrets.
+
+CI does the same on every pull request (the `Demo` jobs of `integration.yml`). It puts `summary.md` in the job
+summary and fails when a criterion does not hold.
 
 Times in the node lab are not representative: Docker's packages and the agent image are cached after the first run.
