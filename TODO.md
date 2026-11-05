@@ -60,7 +60,13 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Code review of `src/`: switch a node back from outbound to direct (#113), outbound advice in AgentReachable (#114), link token as log secret without a race (#115), retry a 429 for every method (#116), report a reach/connection mismatch (#117), keep the apply error when the rollback fails (#118)
 - [x] `NEXUSFLEET_CONFIG` chooses the local config override (#120); the demo on the node lab in one command (#121)
 - [x] CI: the demo with the three criteria on every pull request (#122), one run per change (#123), the build (#124), nightly against NexusInfra dev (#125), Dependabot (#126)
-- [ ] **[Tom]** Decide on a NexusInfra release with the agent link, or build the images yourself, for the outbound demo VM (#111)
+- [x] CI quality gates: commit messages (#134), lint in code scanning (#132), coverage at least 95 % (#135), actionlint (#133), macOS (#136)
+- [x] CI for extras: control planes from one file and shared lab actions (#137); release notes by type (#138), checksum and provenance (#139); templates and CODEOWNERS (#140)
+- [x] CI security: actions pinned to commit SHAs (#129), gitleaks (#130), OpenSSF Scorecard (#131), images pinned to digests
+- [ ] Switch the lab jobs to NexusInfra 0.4.1 once it is released (#150)
+- [ ] **[Tom]** Turn on branch protection for dev and main (#148)
+- [ ] **[Tom]** Choose a license (#149)
+- [x] **[Tom]** Decide on a NexusInfra release with the agent link: release it as 0.4.1 (#111)
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
 - [ ] Merge `dev → main`, tag `v1.0.0`
