@@ -16,8 +16,21 @@ Only the gateway and the three ssh ports are published, and only on this machine
 node3 is the host behind NAT of [docs/agent-link.md](../../docs/agent-link.md). Its agent publishes no port, so the
 orchestrator cannot call it on its address; it can only reach it over the agent link that the agent opens to the
 gateway (`ws://172.29.50.12:9400/agent-link`, without TLS because this is a lab). It needs a NexusInfra with the
-agent link: start the lab with `-Version <tag>` of such a release. Against 0.4.0 the integration test checks that
-`Test-NexusHost` refuses it with a clear reason instead.
+agent link. Against 0.4.0 the integration test checks that `Test-NexusHost` refuses it with a clear reason instead.
+
+## A NexusInfra that is not released yet
+
+The agent link (NexusInfra #417) is on NexusInfra's `dev`, not in a release. Build the images from a checkout:
+
+```powershell
+./lab/node-lab/Start-NodeLab.ps1 -Version agentlink-community -BuildFrom ../NexusInfra
+```
+
+That builds the four images under the published names with that tag, so the compose file uses them. The hosts run
+their own Docker and cannot see this machine's images, so the agent image also goes into the lab registry
+(`registry`, 172.29.50.30:5000, pushed through `127.0.0.1:29500`), and the lab config points `Agent.Image` there.
+The host image allows that registry over plain HTTP (`node/Dockerfile`, `/etc/docker/daemon.json`). CI does the same
+in the `Integration (NexusInfra dev)` job.
 
 | File | What it is |
 |---|---|

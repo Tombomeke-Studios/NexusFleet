@@ -20,5 +20,10 @@ RUN useradd --create-home --shell /bin/bash fleet \
     && chmod 600 /home/fleet/.ssh/authorized_keys \
     && sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
 
+# The lab registry speaks plain HTTP (Start-NodeLab.ps1 -BuildFrom). The Docker that Install-NexusNode installs
+# later reads this file, so it may pull the agent image from there. Only in the lab host image, never on a real host.
+RUN mkdir -p /etc/docker \
+    && echo '{ "insecure-registries": ["172.29.50.30:5000"] }' > /etc/docker/daemon.json
+
 EXPOSE 22
 CMD ["/usr/sbin/sshd", "-D", "-e"]

@@ -21,19 +21,32 @@ Stops the lab and deletes its containers and volumes (the .keys folder stays; de
 The NexusInfra image tag, for the control plane and the agents alike. Default: 0.4.0-community, the published
 images of the nexusfleet-baseline release (v0.4.0) on ghcr.io, so any machine and CI can pull them.
 
+.PARAMETER BuildFrom
+A NexusInfra checkout to build the images from, under the tag -Version, instead of pulling published ones: for a
+NexusInfra change that is not released yet (the agent link, NexusInfra #417). The hosts cannot see this machine's
+images (they run their own Docker), so the agent image also goes into the lab's registry (172.29.50.30:5000), and
+the lab config points Agent.Image there.
+
 .EXAMPLE
 ./lab/node-lab/Start-NodeLab.ps1
 
 .EXAMPLE
 ./lab/node-lab/Start-NodeLab.ps1 -Remove
+
+.EXAMPLE
+./lab/node-lab/Start-NodeLab.ps1 -Version agentlink-community -BuildFrom ../NexusInfra
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [switch]$Remove,
 
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
-    [string]$Version = '0.4.0-community'
+    [string]$Version = '0.4.0-community',
+
+    [ValidateScript({ Test-Path -Path (Join-Path -Path $_ -ChildPath 'services/node-agent/Dockerfile') })]
+    [string]$BuildFrom
 )
+$imageRoot = 'ghcr.io/tombomeke-studios/nexusinfra'
 
 $keyFolder = Join-Path -Path $PSScriptRoot -ChildPath '.keys'
 $envFile = Join-Path -Path $keyFolder -ChildPath '.env'
@@ -85,8 +98,27 @@ foreach ($line in Get-Content -Path $envFile) {
 if (-not $PSCmdlet.ShouldProcess('nexusfleet-node-lab', 'Build and start the lab')) {
     return
 }
+if ($BuildFrom) {
+    # Every Dockerfile of NexusInfra builds from the root of the checkout. Under the published names, so the
+    # compose file uses them as they are (compose pulls only an image that is missing).
+    foreach ($service in 'orchestrator', 'gateway', 'control-room', 'node-agent') {
+        docker build --file (Join-Path -Path $BuildFrom -ChildPath "services/$service/Dockerfile") `
+            --build-arg NEXUS_EDITION=community --build-arg "APP_VERSION=0.0.0-$Version" --tag "$imageRoot/${service}:$Version" $BuildFrom
+        if ($LASTEXITCODE -ne 0) { throw "docker build of $service failed" }
+    }
+}
 docker @compose up --detach --build
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
+
+# The agent image as the hosts pull it: published on ghcr.io, or built here and pushed into the lab registry.
+$agentImage = "$imageRoot/node-agent:$Version"
+if ($BuildFrom) {
+    $pushed = "127.0.0.1:29500/nexusinfra/node-agent:$Version"
+    docker tag $agentImage $pushed
+    docker push --quiet $pushed
+    if ($LASTEXITCODE -ne 0) { throw 'docker push of the agent image into the lab registry failed' }
+    $agentImage = "172.29.50.30:5000/nexusinfra/node-agent:$Version"
+}
 
 # 3. Wait for the panel, then sign in and create the API token for NexusFleet.
 $baseUrl = 'http://127.0.0.1:29400'
@@ -146,7 +178,7 @@ $labConfig = @"
     Api    = @{ BaseUrl = '$baseUrl'; AllowUnencryptedHttp = `$true }
     Broker = @{ Host = '172.29.50.10'; Port = 5672 }
     Agent  = @{
-        Image = 'ghcr.io/tombomeke-studios/nexusinfra/node-agent:$Version'
+        Image = '$agentImage'
         Link  = @{ Url = 'ws://172.29.50.12:9400/agent-link' }
     }
     Ssh    = @{ KnownHostsFile = '$($knownHosts.Replace('\', '/'))' }

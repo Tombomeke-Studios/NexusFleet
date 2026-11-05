@@ -7,10 +7,12 @@
 #   172.29.50.11 orchestrator   reaches the agents at http://172.29.50.2x:9100 (AGENT_URL)
 #   172.29.50.21 node1          ssh on 127.0.0.1:2231
 #   172.29.50.22 node2          ssh on 127.0.0.1:2232
+#   172.29.50.30 registry       only for Start-NodeLab.ps1 -BuildFrom: the agent image built on this machine, which
+#                               the hosts pull (127.0.0.1:29500 to push it; plain HTTP, allowed in node/daemon.json)
 #   172.29.50.23 node3          ssh on 127.0.0.1:2233; the outbound host (reach "outbound", docs/agent-link.md): its
 #                               agent publishes no port, so the orchestrator cannot call it and must use the agent
 #                               link it opens to the gateway (ws://172.29.50.12:9400/agent-link)
-# Only the gateway (127.0.0.1:29400) and the three ssh ports are published, and only on this machine.
+# Only the gateway (127.0.0.1:29400), the registry (127.0.0.1:29500) and the three ssh ports are published, and only on this machine.
 name: nexusfleet-node-lab
 
 x-nexusinfra-env: &nexusinfra-env
@@ -53,6 +55,11 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     depends_on: [orchestrator]
     networks: { lab: { ipv4_address: 172.29.50.12 } }
+
+  registry:
+    image: registry:2
+    ports: ['127.0.0.1:29500:5000']
+    networks: { lab: { ipv4_address: 172.29.50.30 } }
 
   node1: &node
     build: { context: ./node, args: { PUBKEY: '${LAB_PUBKEY}' } }
