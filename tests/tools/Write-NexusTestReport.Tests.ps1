@@ -144,3 +144,65 @@ Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99
         $coveredReport.Markdown | Should -Match '\| `Code\.ps1` \| \d+ % \| 7 \|'
     }
 }
+
+Describe 'Write-NexusTestReport with a coverage minimum (#135)' {
+    BeforeAll {
+        # A source file with two branches, and a test that runs only one of them: about half is covered.
+        $coverageRoot = New-Item -Path (Join-Path -Path $TestDrive -ChildPath 'coverage') -ItemType Directory
+        Set-Content -Path (Join-Path -Path $coverageRoot -ChildPath 'Half.ps1') -Value @'
+function Get-Half {
+    param([int]$Value)
+    if ($Value -gt 0) {
+        'positive'
+    }
+    else {
+        'not positive'
+        'still not positive'
+    }
+}
+'@
+        Set-Content -Path (Join-Path -Path $coverageRoot -ChildPath 'Half.Tests.ps1') -Value @'
+BeforeAll { . (Join-Path -Path $PSScriptRoot -ChildPath 'Half.ps1') }
+Describe 'Half' { It 'is positive' { Get-Half -Value 1 | Should -Be 'positive' } }
+'@
+        $coverageRun = @"
+Import-Module Pester -MinimumVersion 5.0 -MaximumVersion 5.99
+`$config = New-PesterConfiguration
+`$config.Run.Path = '$coverageRoot'
+`$config.Run.PassThru = `$true
+`$config.Output.Verbosity = 'None'
+`$config.CodeCoverage.Enabled = `$true
+`$config.CodeCoverage.Path = '$(Join-Path -Path $coverageRoot -ChildPath 'Half.ps1')'
+`$config.CodeCoverage.OutputPath = '$(Join-Path -Path $coverageRoot -ChildPath 'coverage.xml')'
+`$result = Invoke-Pester -Configuration `$config
+`$reports = @(
+    foreach (`$minimum in 10, 90) {
+        & '$reportScript' -Result `$result -RepositoryRoot '$coverageRoot' -MinimumCoverage `$minimum |
+            Select-Object Coverage, CoverageMet, Markdown
+    }
+    & '$reportScript' -Result `$result -RepositoryRoot '$coverageRoot' | Select-Object Coverage, CoverageMet
+)
+ConvertTo-Json -InputObject `$reports -Depth 3
+"@
+        $low, $high, $none = pwsh -NoProfile -NonInteractive -Command $coverageRun | Out-String | ConvertFrom-Json
+    }
+
+    It 'measured part of the file, not all of it' {
+        $low.Coverage | Should -BeGreaterThan 10
+        $low.Coverage | Should -BeLessThan 90
+    }
+
+    It 'says the minimum is met when the coverage reaches it' {
+        $low.CoverageMet | Should -BeTrue
+        $low.Markdown | Should -Match 'At least the minimum of 10 %'
+    }
+
+    It 'says the minimum is not met, in the report too, when the coverage is below it' {
+        $high.CoverageMet | Should -BeFalse
+        $high.Markdown | Should -Match 'Below the minimum of 90 %'
+    }
+
+    It 'says nothing about a minimum when none was asked for' {
+        $none.CoverageMet | Should -BeNullOrEmpty
+    }
+}

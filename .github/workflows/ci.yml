@@ -3,7 +3,8 @@
 #   lint       PSScriptAnalyzer with the repo settings (tools/Invoke-NexusLint.ps1); its findings also go to GitHub
 #              code scanning (the Security tab) as SARIF
 #   commits    (pull requests) the title and every commit message against the commit rules (CLAUDE.md, section 3)
-#   test       the Pester unit tests on Linux and Windows (tools/Invoke-NexusTests.ps1), with code coverage
+#   test       the Pester unit tests on Linux and Windows (tools/Invoke-NexusTests.ps1); fails when the
+#              coverage of src/ drops below 95 %
 #   build      the shipped module (tools/Build-NexusModule.ps1), so a broken build shows before a release
 #
 # A feature branch is checked by its pull request, not by every push as well: that ran everything twice. A newer
@@ -126,7 +127,7 @@ jobs:
       - name: Run the unit tests
         run: |
           Write-Output "PowerShell $($PSVersionTable.PSVersion) on $($PSVersionTable.OS)"
-          ./tools/Invoke-NexusTests.ps1 -Suite Unit -CI | Out-Null
+          ./tools/Invoke-NexusTests.ps1 -Suite Unit -CI -MinimumCoverage 95 | Out-Null
 
       - name: Keep the test results
         if: always()

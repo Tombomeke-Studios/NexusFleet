@@ -30,6 +30,10 @@ Paths in the report are shown relative to this folder. Default: the repository r
 .PARAMETER GitHubAnnotations
 Also prepare a GitHub Actions ::error annotation for every failure (property Annotations).
 
+
+.PARAMETER MinimumCoverage
+The lowest coverage in percent that is good enough. The report says whether it is met (CoverageMet), and the
+coverage section says so in words. Invoke-NexusTests.ps1 fails the run when it is not met.
 .EXAMPLE
 $result = Invoke-Pester -Path ./tests -ExcludeTagFilter Integration -PassThru -Output None
 ./tools/Write-NexusTestReport.ps1 -Result $result -Title 'Unit tests'
@@ -43,7 +47,8 @@ $report.Annotations
 What CI runs: the report in the job summary, and the annotations in the step's output.
 
 .OUTPUTS
-NexusFleet.TestReport: Title, Passed, Failed, Skipped, NotRun, Total, Coverage (percent or $null), Markdown,
+NexusFleet.TestReport: Title, Passed, Failed, Skipped, NotRun, Total, Coverage (percent or $null), CoverageMet
+($true or $false against -MinimumCoverage; $null without a minimum or without coverage), Markdown,
 Failures (Name, File, Line, Message), Annotations.
 #>
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'RepositoryRoot',
@@ -62,7 +67,10 @@ param(
     [ValidateNotNullOrEmpty()]
     [string]$RepositoryRoot = (Split-Path -Path $PSScriptRoot -Parent),
 
-    [switch]$GitHubAnnotations
+    [switch]$GitHubAnnotations,
+
+    [ValidateRange(0, 100)]
+    [double]$MinimumCoverage
 )
 
 # Numbers the same on every machine (0.6 s, not 0,6 s on a Dutch Windows).
@@ -167,10 +175,18 @@ if ($slowest.Count -gt 0) {
 }
 
 $coverage = $null
+# $null: no minimum was asked for, or the run did not measure coverage.
+$coverageMet = $null
 if ($Result.CodeCoverage) {
     $coverage = [math]::Round($Result.CodeCoverage.CoveragePercent, 1)
     $markdown.Add("### Coverage of src/: $coverage %")
     $markdown.Add('')
+    if ($PSBoundParameters.ContainsKey('MinimumCoverage')) {
+        $coverageMet = $coverage -ge $MinimumCoverage
+        $markdown.Add($(if ($coverageMet) { "At least the minimum of $MinimumCoverage %." }
+                else { ":x: **Below the minimum of $MinimumCoverage %**: add tests for the new code (the files below)." }))
+        $markdown.Add('')
+    }
     # Pester lists the executed and the missed commands; together they are every analyzed command of a file.
     $executed = @($Result.CodeCoverage.CommandsExecuted) | Group-Object -Property File -AsHashTable -AsString
     $missed = @($Result.CodeCoverage.CommandsMissed) | Group-Object -Property File -AsHashTable -AsString
@@ -217,6 +233,7 @@ if ($SummaryPath) {
     NotRun      = $Result.NotRunCount
     Total       = $Result.TotalCount
     Coverage    = $coverage
+    CoverageMet = $coverageMet
     Markdown    = $text
     Failures    = $failures
     # The ::error lines; empty unless -GitHubAnnotations.
