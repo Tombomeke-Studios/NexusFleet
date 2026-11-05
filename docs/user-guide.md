@@ -54,7 +54,7 @@ inventory.json ─► Import-NexusInventory ─► Test-NexusHost ─► Install
   Register-SecretVault -Name NexusFleet -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
   ```
 
-**A NexusInfra control plane** (v0.4.0 or later) that the hosts can reach:
+**A NexusInfra control plane** (v0.4.0 or later; v0.4.1 or later for a host with `reach: outbound`) that the hosts can reach:
 
 - The **broker** (RabbitMQ, port 5672) must be reachable **from the hosts**. NexusInfra's bundles publish it on
   `127.0.0.1` only. NexusInfra's installer asks for the address to publish it on (`BROKER_BIND` in `.env`): the

@@ -16,11 +16,11 @@ Only the gateway and the three ssh ports are published, and only on this machine
 node3 is the host behind NAT of [docs/agent-link.md](../../docs/agent-link.md). Its agent publishes no port, so the
 orchestrator cannot call it on its address; it can only reach it over the agent link that the agent opens to the
 gateway (`ws://172.29.50.12:9400/agent-link`, without TLS because this is a lab). It needs a NexusInfra with the
-agent link. Against 0.4.0 the integration test checks that `Test-NexusHost` refuses it with a clear reason instead.
+agent link (0.4.1 or later). Against 0.4.0 the integration test checks that `Test-NexusHost` refuses it with a clear reason instead.
 
 ## A NexusInfra that is not released yet
 
-The agent link (NexusInfra #417) is on NexusInfra's `dev`, not in a release. Build the images from a checkout:
+For a NexusInfra change that is only on NexusInfra's `dev` (or any other branch), build the images from a checkout:
 
 ```powershell
 ./lab/node-lab/Start-NodeLab.ps1 -Version agentlink-community -BuildFrom ../NexusInfra
@@ -35,7 +35,7 @@ in the `Integration (NexusInfra dev)` job.
 | File | What it is |
 |---|---|
 | `Start-NodeLab.ps1` | Starts the lab, prepares everything NexusFleet needs, and waits until the broker is reachable from the hosts. `-Remove` stops it again |
-| `docker-compose.yml` | The control plane from NexusInfra's published images (`-Version`, default `0.4.0-community`), and the three hosts |
+| `docker-compose.yml` | The control plane from NexusInfra's published images (`-Version`, default `0.4.1-community`), and the three hosts |
 | `node/Dockerfile` | A fresh Ubuntu host: sshd and a `fleet` user with passwordless `sudo`. No Docker: NexusFleet installs it |
 
 ## Run it

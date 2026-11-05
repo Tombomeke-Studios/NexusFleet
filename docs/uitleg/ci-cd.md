@@ -48,14 +48,14 @@ Per fout maakt het ook een regel `::error file=...,line=...,title=...::melding`.
 en toont de fout op die regel in de pull request. Het rapport komt in `$env:GITHUB_STEP_SUMMARY`, de pagina van de run.
 
 **Integratie in de pipeline.** `integration.yml` start op een GitHub-runner met Docker het E1-lab en het node-lab
-(NexusInfra 0.4.0 uit de gepubliceerde images, twee verse Ubuntu-servers) en draait alle `Integration`-tests: ook de
+(NexusInfra uit de gepubliceerde images, drie verse Ubuntu-servers) en draait alle `Integration`-tests: ook de
 drie criteria van "Klaar als". Dat gebeurt bij elke pull request en push naar `dev` en `main`, en met de hand. Een
 overgeslagen test laat de job hier falen: in CI worden de labs eerst gestart, dus een overslag betekent dat een lab
 niet opkwam. De logs van NexusFleet (`logs/<RunId>/`) en van elke container gaan mee als artifact, en de labs worden
 altijd weer opgeruimd (`if: always()`).
 
-**De demo in de pipeline (#122).** Naast de tests draait `integration.yml` een job `Demo`, ook tegen NexusInfra
-0.4.0 en tegen NexusInfra `dev`. Die start een eigen, vers node-lab en roept `Invoke-NexusLabDemo.ps1` aan. Die zet
+**De demo in de pipeline (#122).** Naast de tests draait `integration.yml` een job `Demo`, tegen dezelfde control
+planes: NexusInfra 0.4.0, 0.4.1 en `dev`. Die start een eigen, vers node-lab en roept `Invoke-NexusLabDemo.ps1` aan. Die zet
 `$env:NEXUSFLEET_CONFIG` op de config van het lab, zodat er niets in `config/` geschreven wordt, en maakt een
 inventaris met de lab-hosts en `node-broken`, een host op een poort waar niemand luistert. De `summary.md` van de demo
 gaat naar `$env:GITHUB_STEP_SUMMARY`. Houdt een criterium niet (`Holds` is niet `$true`), dan schrijft de stap een
@@ -71,7 +71,8 @@ lab-jobs draaien, staat in `lab/control-planes.json`, één object per control p
 De eerste job van `integration.yml` (`control-planes`) leest dat bestand en geeft het als JSON-tekst door
 (`$env:GITHUB_OUTPUT`). Elke lab-job maakt er met `matrix: ${{ fromJSON(needs.control-planes.outputs.matrix) }}`
 zijn matrix van. Een NexusInfra-versie erbij is dan één regel in dat bestand, en elke lab-job draait er
-meteen ook tegen. Het lab starten en de logs verzamelen staan elk in een eigen *composite action*
+meteen ook tegen (#150 voegde zo NexusInfra 0.4.1 toe, de eerste release met de agent link; 0.4.0 blijft als oudste
+ondersteunde versie, zodat de weigering van een outbound host getest blijft). Het lab starten en de logs verzamelen staan elk in een eigen *composite action*
 (`.github/actions/start-node-lab`, `.github/actions/collect-lab-logs`): een reeks stappen met een naam en invoer,
 die een job met `uses: ./.github/actions/...` aanroept. Een nieuwe lab-job, bijvoorbeeld voor de tests van een
 extra zoals bulkacties, is dan: checkout, `start-node-lab`, je eigen stap, `collect-lab-logs`, opruimen.
