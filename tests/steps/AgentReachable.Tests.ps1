@@ -54,5 +54,14 @@ Describe 'Step AgentReachable' {
 
             { & $step.Apply $context } | Should -Throw -ExpectedMessage "*cannot reach the agent of node-web01 at $($context.HostInfo.AgentUrl)*the node answered 401*port 9100*INTERNAL_API_TOKEN*"
         }
+
+        It 'points an outbound host at its agent link, not at a port (#114)' {
+            $context = Get-TestStepContext -Module $module -Outbound
+            Mock -ModuleName NexusFleet -CommandName Invoke-NexusApi -MockWith { throw 'NexusInfra says: the node has no agent link' }
+
+            $message = { & $step.Apply $context } | Should -Throw -PassThru | ForEach-Object { $_.Exception.Message }
+            $message | Should -BeLike "*cannot reach the agent of node-web01 over its agent link*no agent link*wss://nexus.example.com/agent-link*"
+            $message | Should -Not -BeLike '*port forwarding*'
+        }
     }
 }

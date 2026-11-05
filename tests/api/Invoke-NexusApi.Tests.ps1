@@ -141,10 +141,28 @@ Describe 'Invoke-NexusApi' {
             Should -Invoke -CommandName Invoke-RestMethod -Times 2 -Exactly
         }
 
-        It 'never retries a changing request (POST) after 429' {
+        It 'retries a changing request (POST) after 429: the gateway refused it before NexusInfra saw it (#116)' {
+            Mock -CommandName Invoke-RestMethod -MockWith {
+                $state.Calls++
+                if ($state.Calls -eq 1) { throw (Get-TestHttpError -Status 429) }
+                'minted'
+            }
+
+            Invoke-NexusApi @https -Method POST -Path '/nodes/a/link-token' -RetryCount 1 | Should -Be 'minted'
+            Should -Invoke -CommandName Invoke-RestMethod -Times 2 -Exactly
+        }
+
+        It 'gives up on a 429 after the retries, also for a POST' {
             Mock -CommandName Invoke-RestMethod -MockWith { throw (Get-TestHttpError -Status 429) }
 
             { Invoke-NexusApi @https -Method POST -Path '/nodes' -Body @{ id = 'a' } -RetryCount 2 } | Should -Throw -ErrorId 'NexusApi.RateLimited*'
+            Should -Invoke -CommandName Invoke-RestMethod -Times 3 -Exactly
+        }
+
+        It 'never retries a POST after 502: NexusInfra may have done it already' {
+            Mock -CommandName Invoke-RestMethod -MockWith { throw (Get-TestHttpError -Status 502) }
+
+            { Invoke-NexusApi @https -Method POST -Path '/nodes' -Body @{ id = 'a' } -RetryCount 2 } | Should -Throw -ErrorId 'NexusApi.Unavailable*'
             Should -Invoke -CommandName Invoke-RestMethod -Times 1 -Exactly
         }
 

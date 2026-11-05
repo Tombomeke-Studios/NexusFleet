@@ -123,10 +123,12 @@ function Invoke-NexusStepSequence {
                 & $log $RunContext $ordered[$i].Name 'rolled back'
             }
             catch {
-                # Keep rolling back the other steps; report this one.
+                # Keep rolling back the other steps; report this one. The failed step already has an error (why its
+                # Apply failed): the rollback's error is added to it, so neither is lost.
                 $outcomes[$i].Rollback = 'Failed'
-                $outcomes[$i].Error = "Rollback of step '$($ordered[$i].Name)' failed: $($_.Exception.Message)"
-                & $log $RunContext $ordered[$i].Name $outcomes[$i].Error 'Error'
+                $rollbackError = "Rollback of step '$($ordered[$i].Name)' failed: $($_.Exception.Message)"
+                $outcomes[$i].Error = (@($outcomes[$i].Error, $rollbackError) | Where-Object { $_ }) -join '; '
+                & $log $RunContext $ordered[$i].Name $rollbackError 'Error'
             }
         }
     }

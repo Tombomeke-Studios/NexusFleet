@@ -9,6 +9,7 @@ Small internal functions the rest of the module builds on. None is exported.
 | `Merge-NexusHashtable.ps1` | Puts your local config over the default (a deep merge). Warns about unknown keys, which are usually a typo |
 | **Runs and logging** | |
 | `Initialize-NexusRunContext.ps1` | Starts a run: a RunId, its log folder (`Log.Directory`), removing old runs (`Log.KeepRuns`), and the secrets to hide |
+| `Add-NexusLogSecret.ps1` | Adds a secret that only appears during the run (a link token) to the run context, under a lock: the hosts share it |
 | `Write-NexusLog.ps1` | One line per event, one file per host plus `run.log`. Secrets become `***`, longest first. A write that fails gives a warning, never an error |
 | **The connection and secrets** | |
 | `Get-NexusSession.ps1` | The connection of `Connect-NexusInfra`, or the error `NexusFleet.NotConnected` |

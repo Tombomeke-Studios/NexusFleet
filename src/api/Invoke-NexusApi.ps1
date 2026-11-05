@@ -4,9 +4,9 @@ function Invoke-NexusApi {
     Calls the NexusInfra REST API. The only function in NexusFleet that does.
 
     .DESCRIPTION
-    Sends the API token as a bearer token (kept as a SecureString), with a time-out. Only GET requests are
-    retried, and only after a network error, 429 (the gateway's rate limit) or 502/503/504: a POST that half
-    succeeded must never be sent twice. HTTP errors 401, 403, 404, 409, 429 and 502-504 become errors with their
+    Sends the API token as a bearer token (kept as a SecureString), with a time-out. A 429 (the gateway's
+    rate limit) is retried for every method: the gateway refused it before NexusInfra saw it. After a network error
+    or 502/503/504 only GET requests are retried: a POST that half succeeded must never be sent twice. HTTP errors 401, 403, 404, 409, 429 and 502-504 become errors with their
     own id (NexusApi.Unauthorized, NexusApi.Forbidden, NexusApi.NotFound, NexusApi.Conflict, NexusApi.RateLimited,
     NexusApi.Unavailable), an explanation, and NexusInfra's own message.
     A panel that cannot be reached gives NexusApi.Unreachable.
@@ -110,8 +110,7 @@ function Invoke-NexusApi {
         $request.ContentType = 'application/json'
     }
 
-    # Only reading is safe to repeat.
-    $maxAttempts = if ($Method -eq 'GET') { 1 + $RetryCount } else { 1 }
+    $maxAttempts = 1 + $RetryCount
 
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
         try {
@@ -130,10 +129,13 @@ function Invoke-NexusApi {
                 $caught.Exception -is [System.Threading.Tasks.TaskCanceledException] -or
                 $caught.Exception -is [System.TimeoutException])
             # 429: the gateway's rate limit per token. Many hosts polling at once can reach it; a moment later it
-            # lets the request through again.
+            # lets the request through again. The gateway refuses it before NexusInfra sees it, so even a changing
+            # request (POST) may be sent again. After a network error or a 502-504 only reading is safe to repeat:
+            # NexusInfra may have done the change already, and the answer got lost.
             $isTransient = $isNetworkError -or ($status -in 429, 502, 503, 504)
+            $mayRepeat = $status -eq 429 -or ($Method -eq 'GET' -and $isTransient)
 
-            if ($isTransient -and $attempt -lt $maxAttempts) {
+            if ($mayRepeat -and $attempt -lt $maxAttempts) {
                 Write-Verbose "NexusInfra API: $Method $Path failed (attempt $attempt of $maxAttempts), retrying."
                 Start-Sleep -Milliseconds ($RetryDelayMilliseconds * [math]::Pow(2, $attempt - 1))
                 continue

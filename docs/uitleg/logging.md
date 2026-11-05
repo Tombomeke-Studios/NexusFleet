@@ -17,6 +17,8 @@ gebeurde, zonder dat er een geheim in een bestand belandt.
 |---|---|
 | `src/utils/Initialize-NexusRunContext.ps1` | Maakt de run-context: RunId, logmap, geheimen |
 | `src/utils/Write-NexusLog.ps1` | Schrijft één logregel, met redactie |
+| `src/utils/Add-NexusLogSecret.ps1` | Voegt een geheim toe dat pas tijdens de run ontstaat (een link-token), met een slot |
+| `tests/utils/Add-NexusLogSecret.Tests.ps1` | 3 tests, waaronder 40 runspaces tegelijk |
 | `tests/utils/Initialize-NexusRunContext.Tests.ps1` | 5 tests |
 | `tests/utils/Write-NexusLog.Tests.ps1` | 11 tests, waaronder redactie en een test vanuit `-Parallel` |
 
@@ -122,6 +124,14 @@ $module = Import-Module -Name $using:manifest -PassThru -Force
   (`amqp://fleet:***@broker:5672`). Met de langste eerst wordt de hele URL `***`.
 - **Het broker-wachtwoord apart.** Een foutmelding van een programma kan alleen het wachtwoord tonen, zonder de rest
   van de URL. Daarom is het ook een geheim op zich.
+- **Een geheim dat pas tijdens de run ontstaat, met een slot (#115).** Het link-token van een outbound node maakt
+  NexusInfra pas in de stap AgentContainer. Alle hosts van een run delen dezelfde run-context, ook in parallelle
+  runspaces: `$using:` geeft hetzelfde object door, geen kopie. "Lijst lezen, token erbij, lijst terugschrijven" is
+  dan een race: twee hosts lezen tegelijk dezelfde lijst, en wie als laatste schrijft, wist het token van de ander.
+  De test met 40 runspaces verloor zonder slot 16 tokens. `Add-NexusLogSecret` doet het daarom onder
+  `[System.Threading.Monitor]::Enter($Context)`: één runspace tegelijk. De nieuwe lijst vervangt de oude in één
+  toewijzing, zodat `Write-NexusLog` altijd een hele lijst ziet. Verworpen: een `ConcurrentBag`, want die houdt
+  geen volgorde bij, en "langste eerst" is nodig.
 
 ## 5. PowerShell-concepten
 
@@ -143,6 +153,8 @@ $module = Import-Module -Name $using:manifest -PassThru -Force
 - **`[uri]::TryCreate` en `UserInfo`** (een URL ontleden zonder fout):
   https://learn.microsoft.com/dotnet/api/system.uri.trycreate
 - **Pester `TestDrive` en `Should -Match`:** https://pester.dev/docs/usage/testdrive
+- **`[System.Threading.Monitor]`** (een slot: `Enter` wacht tot niemand anders het heeft, `Exit` in een `finally`
+  geeft het altijd terug): https://learn.microsoft.com/dotnet/api/system.threading.monitor
 
 ## 6. Zelf proberen
 
@@ -195,3 +207,5 @@ $WhatIfPreference = $false
 6. Waarom verwijdert `Initialize-NexusRunContext` alleen mappen waarvan de naam op een RunId lijkt?
 7. Wat zou er in het log staan als de geheimen in de volgorde "kortste eerst" vervangen werden, met het
    broker-wachtwoord en de broker-URL als geheimen?
+8. Waarom staat `Monitor.Exit` in een `finally`, en wat gebeurt er met de andere hosts als dat niet zo was en het
+   toevoegen een fout gaf?

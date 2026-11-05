@@ -60,7 +60,9 @@ $wasTouched = ($i -eq $failedIndex -and $failedPhase -eq 'Apply') -or $outcomes[
 
 Alleen stappen die deze run zelf aanraakte, worden teruggedraaid: elke **Applied**-stap, en de mislukte stap als
 zijn Apply al begonnen was (die kan half gelukt zijn). Een **AlreadyDone**-stap blijft staan. Faalt een rollback,
-dan wordt dat genoteerd (`Rollback = 'Failed'`) en gaan de andere rollbacks gewoon door.
+dan wordt dat genoteerd (`Rollback = 'Failed'`) en gaan de andere rollbacks gewoon door. Faalt de rollback van de
+mislukte stap zelf, dan komt de fout van de rollback **achter** die van de Apply (`Apply ... failed: ...; Rollback
+... failed: ...`), en niet in de plaats ervan: anders zou je niet meer zien waarom de stap mislukte (#118).
 
 **4. Het resultaat** is één object per host:
 
