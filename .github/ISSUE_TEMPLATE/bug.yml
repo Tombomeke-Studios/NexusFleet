@@ -1,0 +1,30 @@
+name: Bug
+description: NexusFleet does something wrong.
+title: 'Fix: '
+labels: ['type:bug']
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: The command you ran and what it answered. Leave out tokens, passwords and real addresses.
+      render: powershell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: NexusFleet (Get-Module NexusFleet), PowerShell ($PSVersionTable.PSVersion), NexusInfra.
+  - type: textarea
+    id: log
+    attributes:
+      label: The log
+      description: The lines of logs/<RunId>/<host>.log around the problem (secrets are redacted there already).
+      render: text

@@ -1,0 +1,26 @@
+name: Feature
+description: Something NexusFleet should be able to do.
+labels: ['type:feature']
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you want to do
+      description: The task, from the point of view of whoever runs the fleet.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: How you would check that it works, ideally as a command and its result.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it belongs
+      description: Continuous monitoring, alerts and dashboards belong in NexusWatch, not here (CLAUDE.md, section 0).
+      options:
+        - NexusFleet (onboarding, status, bulk actions, drift, maintenance, connectors)
+        - Not sure

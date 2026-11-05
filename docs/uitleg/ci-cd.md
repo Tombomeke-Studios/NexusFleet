@@ -61,6 +61,21 @@ inventaris met de lab-hosts en `node-broken`, een host op een poort waar niemand
 gaat naar `$env:GITHUB_STEP_SUMMARY`. Houdt een criterium niet (`Holds` is niet `$true`), dan schrijft de stap een
 `::error::`-regel en stopt hij met `exit 1`. Zo staat bij elke pull request "Klaar als" als tabel op de pagina.
 
+**Eén lijst met control planes, en herbruikbare lab-stappen (#137).** Tegen welke versies van NexusInfra de
+lab-jobs draaien, staat in `lab/control-planes.json`, één object per control plane:
+
+```json
+{ "name": "NexusInfra dev", "version": "agentlink-community", "nexusinfra-ref": "dev", "id": "nexusinfra-dev" }
+```
+
+De eerste job van `integration.yml` (`control-planes`) leest dat bestand en geeft het als JSON-tekst door
+(`$env:GITHUB_OUTPUT`). Elke lab-job maakt er met `matrix: ${{ fromJSON(needs.control-planes.outputs.matrix) }}`
+zijn matrix van. Een NexusInfra-versie erbij is dan één regel in dat bestand, en elke lab-job draait er
+meteen ook tegen. Het lab starten en de logs verzamelen staan elk in een eigen *composite action*
+(`.github/actions/start-node-lab`, `.github/actions/collect-lab-logs`): een reeks stappen met een naam en invoer,
+die een job met `uses: ./.github/actions/...` aanroept. Een nieuwe lab-job, bijvoorbeeld voor de tests van een
+extra zoals bulkacties, is dan: checkout, `start-node-lab`, je eigen stap, `collect-lab-logs`, opruimen.
+
 **Eén run per wijziging (#123).** Eerst draaide `ci.yml` bij elke push én bij elke pull request: een branch met een PR
 werd dus twee keer getest. Nu alleen bij pull requests en pushes naar `dev` en `main` (en met de hand). Een
 `concurrency`-groep per branch breekt bij een pull request de oudere run af als er een nieuwere push komt; op `dev`
@@ -102,6 +117,21 @@ ze precies de cmdlets van de manifest? Pas dan maakt het de zip.
 4. `gh release create` met de zip en automatische release notes.
 
 Met de hand gestart (`workflow_dispatch`) doet hij stap 1 en 3: een proefrelease zonder release.
+
+**Wat een release nu meekrijgt (#138, #139).**
+- **`SHA256SUMS`**: de controlesom van de zip. Wie de zip downloadt, vergelijkt die met `Get-FileHash`.
+- **Een build provenance attestation** (`actions/attest-build-provenance`): een ondertekende verklaring dat deze zip
+  gebouwd is door deze workflow, uit deze repository, op deze commit. GitHub ondertekent ze met het OIDC-token
+  van de run (`id-token: write`). Controleren gaat met
+  `gh attestation verify NexusFleet-<versie>.zip --repo Tombomeke-Studios/NexusFleet`.
+- **Release notes per soort wijziging.** `--generate-notes` zet elke gemergde PR in de notes. `.github/release.yml`
+  deelt ze in volgens hun label (`type:feature` onder "New features", `type:bug` onder "Fixes", ...). Die labels
+  zet `pr-labels.yml` zelf, uit de titel van de PR: `feat(...)` wordt `type:feature`. Het gebruikt daarvoor
+  hetzelfde `Test-NexusCommitMessage.ps1` (de eigenschap `Type`).
+
+`pr-labels.yml` draait op `pull_request_target`: met het token van deze repository, zodat het ook labels mag zetten
+op een PR uit een fork. Dat is alleen veilig omdat het de code van de PR nooit uitcheckt (alleen `dev`) en de titel
+via `env:` leest.
 
 **Het demoscript** voert de vijf fases uit, meet elke fase met een `Stopwatch`, en beoordeelt daarna de drie
 criteria op de resultaten zelf (niet op wat iemand ziet): zijn alle geslaagde servers nu *healthy*, veranderde de
@@ -171,3 +201,6 @@ Invoke-Pester -Path ./tests/public/Scale.Tests.ps1 -Output Detailed
 5. Waarom is 100 % dekking geen doel, en welke functie blijft bewust buiten de unit-tests?
 6. Waarom draait de demo in een eigen job op een vers lab, en niet na de integratietests?
 7. Wat doet `cancel-in-progress`, en waarom alleen bij een pull request?
+8. Wat moet je veranderen om de lab-jobs ook tegen een nieuwe NexusInfra-versie te laten draaien, en waarom is dat maar één plaats?
+9. Wat bewijst een build provenance attestation dat een `SHA256SUMS`-bestand niet bewijst?
+10. Waarom is `pull_request_target` gevaarlijk, en wat maakt het in `pr-labels.yml` toch veilig?

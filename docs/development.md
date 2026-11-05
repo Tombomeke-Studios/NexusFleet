@@ -76,6 +76,9 @@ feature/<topic>  →  dev  →  main
 - **Pull requests** go into `dev`, with one `Closes #N` line per issue, and are merged only when every check is
   green: lint, actionlint, the commit messages, Pester on Linux, Windows and macOS (with at least 95 % coverage),
   the build, Integration and the demo.
+- **Templates:** a new pull request starts from `.github/pull_request_template.md` (the checklist of the iteration
+  loop); new issues from the forms in `.github/ISSUE_TEMPLATE/`. A pull request gets its `type:*` label from its
+  title (`pr-labels.yml`), and the release notes are grouped by that label.
 - `main` gets milestones only, each tagged (`v1.0.0` = the MVP). A tag `v<ModuleVersion>` builds a GitHub release.
 
 ## Adding an installation step

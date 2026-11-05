@@ -1,0 +1,16 @@
+# gitleaks: finds secrets (tokens, keys, passwords) in the commits. CI runs it on every pull request and push
+# (.github/workflows/secrets.yml). The default rules of gitleaks, plus an allowlist of the fake values the tests use
+# on purpose. Each is listed by its value, not by folder: a real secret in a test file is still found.
+title = "NexusFleet"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake secrets of the tests and the docs, never real ones"
+regexes = [
+    '''nxi_(Ab-9_xYz0123|ConnectTestToken123|FakeTokenForTests123|LocalHttpTestToken|StoredTokenForTests|abcDEF123|owner_write_admin|writeonly|fake|\*\*\*)''',
+    '''Br0ker-pass''',
+    '''internal-T0ken''',
+    '''p%40ss%3Aword''',
+]

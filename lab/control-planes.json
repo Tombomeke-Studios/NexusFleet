@@ -1,0 +1,14 @@
+[
+  {
+    "name": "NexusInfra 0.4.0",
+    "version": "0.4.0-community",
+    "nexusinfra-ref": "",
+    "id": "nexusinfra-0.4.0"
+  },
+  {
+    "name": "NexusInfra dev",
+    "version": "agentlink-community",
+    "nexusinfra-ref": "dev",
+    "id": "nexusinfra-dev"
+  }
+]

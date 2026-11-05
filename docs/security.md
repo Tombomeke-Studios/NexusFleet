@@ -71,3 +71,15 @@ touching anything else.
 
 Restricting the agent port, a broker user per node and TLS to the broker are planned as the "secured connection"
 extra ([TODO.md](../TODO.md), phase 5).
+
+## The pipeline
+
+The build and the release are protected too (details in [testing.md](testing.md)):
+- Every GitHub Action is pinned to a full commit SHA, so a moved tag cannot change what runs. Dependabot keeps the
+  SHAs current, and a quality test fails on an action that is not pinned.
+- gitleaks scans the commits of every pull request, and the whole history on `dev`, `main` and every week, for
+  anything shaped like a secret.
+- Every workflow starts with read-only permissions; a job gets more only for what it does.
+- A release carries `SHA256SUMS` and a build provenance attestation. Check a download with
+  `gh attestation verify NexusFleet-<version>.zip --repo Tombomeke-Studios/NexusFleet`.
+- OpenSSF Scorecard rates these practices weekly: see the badge in the README.

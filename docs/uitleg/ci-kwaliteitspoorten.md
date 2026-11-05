@@ -77,7 +77,7 @@ workflow faalt dan in de PR, en niet pas bij de volgende run.
   kunt testen (`Invoke-NexusSshClient` start echt `ssh`), maar vangt een nieuwe functie zonder tests.
 - **SARIF en geen eigen tabel alleen.** De Markdown-tabel in de samenvatting blijft. Code scanning onthoudt de
   meldingen wel over runs heen, en toont ze in het Security-tabblad. Het is ook wat Scorecard (zie
-  `ci-beveiliging.md`) als "SAST" herkent.
+  [ci-beveiliging.md](ci-beveiliging.md)) als "SAST" herkent.
 - **actionlint uit zijn image, op een vaste versie,** zodat de controle niet verandert zonder dat iemand het ziet.
 
 ## 5. PowerShell-concepten

@@ -37,6 +37,15 @@ Describe 'Test-NexusCommitMessage' {
         $result.Reason | Should -BeLike $Reason
     }
 
+    It 'gives the type and the scope of a valid message, and none for a merge or an invalid one' {
+        $results = & $checkScript -Message 'fix(api): retry a 429', 'Merge pull request #1 from x/y', 'no rules here'
+
+        $results[0].Type | Should -Be 'fix'
+        $results[0].Scope | Should -Be 'api'
+        $results[1].Type | Should -BeNullOrEmpty
+        $results[2].Type | Should -BeNullOrEmpty
+    }
+
     It 'checks every message it gets, also from the pipeline, and keeps only the first line in the result' {
         $results = "fix(core): a`nbody", 'bad message' | & $checkScript
 
