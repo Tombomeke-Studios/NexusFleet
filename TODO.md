@@ -55,7 +55,7 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 - [x] Check that NexusInfra reaches the agent, not only hears it (#101)
 - [x] Demo guide over the internet without a VPN: public name, port forwarding, agentUrl per host (#103)
 - [x] Nodes behind NAT: `reach: outbound`, the agent connects to the control plane itself (design `docs/agent-link.md`, with NexusInfra #416) (#105)
-- [ ] Integration test for an outbound host against a NexusInfra with the agent link (after NexusInfra #416) (#106) — node lab host `node3` and the test are ready; against 0.4.0 they check the refusal. Left: start the lab with the NexusInfra release that has the link, and see the full part pass
+- [ ] Integration test for an outbound host against a NexusInfra with the agent link (after NexusInfra #416) (#106) — node lab host `node3`, the test, and the CI job `Integration (NexusInfra dev)` (images built from NexusInfra dev with `-BuildFrom`)
 - [ ] **[Tom]** Demo on 3–5 lab VMs; measure the automated time against the E0 baseline
 - [ ] **[Tom]** Check the three "Klaar als" criteria (CLAUDE.md section 9) on the real VMs
 - [ ] Merge `dev → main`, tag `v1.0.0`
