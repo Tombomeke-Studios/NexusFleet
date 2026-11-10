@@ -11,6 +11,9 @@ when the two do not match.
 | `Install-NexusNode.ps1` | `Install-NexusNode` | Turns hosts into healthy nodes, idempotent and with rollback. `-WhatIf` shows the plan; `-Force` is for after a secret changed |
 | `Get-NexusFleetStatus.ps1` | `Get-NexusFleetStatus` | NexusInfra's view of every node, merged with what the host itself says over ssh |
 | `Export-NexusFleetStatus.ps1` | `Export-NexusFleetStatus` | Writes that status to JSON or CSV |
+| `Get-NexusServer.ps1` | `Get-NexusServer` | Lists NexusInfra's servers (`GET /deployments`, every page), filtered by node, status or name |
+| `Invoke-NexusFleetAction.ps1` | `Invoke-NexusFleetAction` | One action for a group of servers (`POST /deployments/bulk`), in batches of at most 100, with a result per server |
+| `Remove-NexusNode.ps1` | `Remove-NexusNode` | Deregisters nodes and removes the agent from their hosts, in parallel; asks per host, `-WhatIf` shows the plan |
 
 ## How a cmdlet is built
 

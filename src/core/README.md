@@ -18,8 +18,9 @@ The heart of the module. Nothing here is exported: the cmdlets in [`../public/`]
 | `Invoke-NexusHostPreflight.ps1` | Is one host ready? Two ssh calls: a login, then one script that prints every fact as `key=value` |
 | `Invoke-NexusHostInstall.ps1` | Turns one host into a node: the preflight, then the step runner with the full step context |
 | `Get-NexusHostStatus.ps1` | What one host says about itself: uptime, disk, Docker, the agent container. One ssh call, changes nothing |
+| `Invoke-NexusHostRemoval.ps1` | Removes one node: deregisters it first (NexusInfra refuses a node with running servers), then removes the agent container and its env file. Only what is there, so a second run changes nothing |
 | **Failure results and the merge** | |
-| `ConvertTo-NexusPreflightFailure.ps1`, `ConvertTo-NexusInstallFailure.ps1`, `ConvertTo-NexusHostStatusFailure.ps1` | The result of a host whose work failed unexpectedly, so every host still gets a result |
+| `ConvertTo-NexusPreflightFailure.ps1`, `ConvertTo-NexusInstallFailure.ps1`, `ConvertTo-NexusRemoveFailure.ps1`, `ConvertTo-NexusHostStatusFailure.ps1` | The result of a host whose work failed unexpectedly, so every host still gets a result |
 | `ConvertTo-NexusNodeStatus.ps1` | Merges what NexusInfra and the host say into one `NexusFleet.NodeStatus`, with `Ok` and a `Problem` in plain words |
 
 ## How the pieces fit

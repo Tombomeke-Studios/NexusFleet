@@ -25,4 +25,5 @@ Eén bestand per onderwerp. Elk bestand groeit mee wanneer de code van dat onder
 | CI/CD | [ci-cd.md](ci-cd.md) | Testresultaten en dekking in CI, het buildscript, de release-workflow, schaaltests, het demoscript |
 | CI-kwaliteitspoorten | [ci-kwaliteitspoorten.md](ci-kwaliteitspoorten.md) | Commitberichten, lint in code scanning (SARIF), ondergrens voor de dekking, actionlint, macOS |
 | CI-beveiliging | [ci-beveiliging.md](ci-beveiliging.md) | Actions vast op een commit-SHA, gitleaks, OpenSSF Scorecard, rechten per job |
+| Bulkacties en uitschrijven | [bulkacties-en-uitschrijven.md](bulkacties-en-uitschrijven.md) | `Remove-NexusNode`, `Get-NexusServer`, `Invoke-NexusFleetAction`: de volgorde van uitschrijven, pagina's, pakketten van 100 |
 | Gedeelde hulpfuncties | [gedeelde-hulpfuncties.md](gedeelde-hulpfuncties.md) | De gedeelde lus per server (`Invoke-NexusHostLoop`), ssh- en API-parameters, `sleutel=waarde` lezen |

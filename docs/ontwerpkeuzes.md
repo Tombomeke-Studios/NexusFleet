@@ -347,3 +347,33 @@ Format per keuze:
   sleutel van de link, want daarmee kan een node zich voordoen als een andere node.
 - **Nog niet opgelost:** de broker heeft nog zijn eigen poort (5672) nodig. Een netwerk dat alleen 443 doorlaat,
   blokkeert dus nog altijd de heartbeats.
+
+## Keuzes tijdens de extra's (fase 5)
+
+### K12 — Een node uitschrijven: eerst NexusInfra, dan de server (#157)
+
+- **Vraag:** in welke volgorde haalt `Remove-NexusNode` een node weg: eerst de agent van de server, of eerst het
+  record in NexusInfra?
+- **Gevonden:** NexusInfra weigert `DELETE /nodes/<id>` met `409` zolang er een server op de node draait of start.
+  Er is geen andere aanroep die dat vooraf zegt. En NexusInfra maakt een node opnieuw aan uit een heartbeat
+  (`upsertNode`), dus een agent die nog draait, zet een verwijderd record binnen de seconde terug.
+- **Keuze:** eerst `DELETE` (de weigering is dan de beveiliging: een geweigerde node houdt zijn agent en er is niets
+  veranderd), dan de agent en zijn env-bestand weg, dan nog één keer kijken en opnieuw `DELETE` als een laatste
+  heartbeat de node teruggezet heeft. Docker en het backup-volume blijven staan.
+- **Verworpen:** eerst de agent weghalen. Dan staat een node die NexusInfra weigert zonder agent, en zijn de servers
+  erop niet meer te besturen. Ook verworpen: zelf de draaiende servers tellen met `GET /deployments?nodeId=` vóór de
+  `DELETE`. Dat bootst een regel van NexusInfra na op een tweede plaats; verandert de regel daar, dan klopt de
+  controle hier niet meer.
+- **Gevolg:** een droge run (`-WhatIf`) kan niet zeggen of NexusInfra de node zal weigeren.
+
+### K13 — Bulkacties: één verzoek per 100 servers, na elkaar (#158)
+
+- **Vraag:** hoe stuurt `Invoke-NexusFleetAction` een actie naar meer dan 100 servers, en moet dat parallel?
+- **Gevonden:** `POST /deployments/bulk` weigert meer dan 100 ids (`MAX_BULK`) en antwoordt altijd `200` met een
+  resultaat per server. De orchestrator verwerkt de servers van één verzoek bewust na elkaar: bij elke start leest
+  hij de bezetting van de nodes, en tien starts tegelijk zouden allemaal dezelfde stand lezen.
+- **Keuze:** pakketten van `Servers.BulkMaxIds` (config, 100), na elkaar. Een pakket dat helemaal mislukt, geeft
+  zijn servers die fout; het volgende pakket wordt toch verstuurd. `ShouldProcess` één keer voor de hele groep.
+- **Verworpen:** de pakketten parallel versturen: dat doorkruist precies wat de orchestrator met zijn volgorde wil
+  bereiken. Ook verworpen: per server een eigen `POST /deployments/<id>/stop`: honderden verzoeken lopen tegen de
+  limiet van de gateway aan (429), en het bulk-endpoint bestaat al.

@@ -223,6 +223,61 @@ Get-NexusFleetStatus | Export-NexusFleetStatus -Path ./status.json
 
 JSON holds `generatedAt` and every field of every node. CSV has one row per node. Times are ISO-8601 UTC in both.
 
+## Get-NexusServer
+
+The servers NexusInfra runs, one object per server. NexusInfra answers in pages; `Get-NexusServer` reads them all.
+
+```powershell
+Get-NexusServer | Format-Table Name, Status, Node
+Get-NexusServer -Node node-home01 -Status running
+Get-NexusServer -Name minecraft
+```
+
+The filters (`-Node`, `-Status`, `-Name`) are applied by NexusInfra. Nothing is changed.
+
+## Invoke-NexusFleetAction
+
+Starts, stops, restarts or kills a group of servers in one go. The servers come from `Get-NexusServer`:
+
+```powershell
+Get-NexusServer -Node node-home01 -Status running | Invoke-NexusFleetAction -Action stop -WhatIf
+Get-NexusServer -Node node-home01 -Status running | Invoke-NexusFleetAction -Action stop
+```
+
+```text
+Id       Name       Action Success PlanOnly Status Error
+--       ----       ------ ------- -------- ------ -----
+8f2c...  survival   stop      True    False    200
+41aa...  creative   stop     False    False    409 server is not running
+```
+
+- Every server gets its own result; one that fails does not stop the others.
+- NexusInfra takes at most 100 servers per request. A larger group is sent in batches (`Servers.BulkMaxIds`).
+- When a whole request fails, the servers of that batch get that error and the next batch is still sent.
+- `-WhatIf` sends nothing. `Where-Object { -not $_.Success }` lists what failed.
+
+## Remove-NexusNode
+
+The opposite of `Install-NexusNode`: deregisters the node in NexusInfra and removes the agent from the host.
+
+```powershell
+$hosts | Where-Object Name -EQ 'node-home01' | Remove-NexusNode -WhatIf
+$hosts | Where-Object Name -EQ 'node-home01' | Remove-NexusNode
+```
+
+```text
+Host        Success Changed Node    Agent   Error
+----        ------- ------- ----    -----   -----
+node-home01    True    True Removed Removed
+```
+
+- You are asked per host; `-Confirm:$false` removes without asking.
+- NexusInfra refuses a node that still hosts a running server. That host is then not touched, and nothing was
+  changed. Stop its servers first: `Get-NexusServer -Node node-home01 -Status running | Invoke-NexusFleetAction -Action stop`.
+- Only what is there is removed, so a second run changes nothing.
+- The agent container and its env file (with the secrets) are removed. Docker and the backups volume stay.
+- A machine that is gone: `-IgnoreUnreachableHost` deregisters the node without the host.
+
 ## Logs
 
 Every run writes to `logs/<RunId>/` in the current folder, or under `Log.Directory` when you set that in your config

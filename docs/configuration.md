@@ -138,3 +138,10 @@ The two thresholds mirror NexusInfra (v0.4.0) and must match the panel you use.
 |---|---|---|---|
 | `Directory` | `''` | a folder path, or `''` | The folder that holds one folder per run (`<RunId>/`). `''` means `logs/` in the folder you run NexusFleet from. A relative path is relative to that folder too; an absolute path (`C:/NexusFleet/logs`, `~/nexusfleet/logs`) keeps every run in one place. The folder is created when it does not exist. |
 | `KeepRuns` | `50` | 0-10000 | How many run folders to keep, the new run included. Starting a run removes the oldest beyond this number; only folders named like a RunId are touched. `0` keeps every run. A dry run (`-WhatIf`) removes nothing. |
+
+### `Servers`: `Get-NexusServer` and `Invoke-NexusFleetAction`
+
+| Key | Default | Rule | Meaning |
+|---|---|---|---|
+| `PageSize` | `200` | 1-200 | How many servers `Get-NexusServer` asks NexusInfra per request. It reads every page, so this only changes the number of requests. NexusInfra gives at most 200 per page. |
+| `BulkMaxIds` | `100` | 1-100 | How many servers `Invoke-NexusFleetAction` sends per request. NexusInfra refuses more than 100; a larger group is sent in batches of this size. |

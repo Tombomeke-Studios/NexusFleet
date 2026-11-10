@@ -39,6 +39,12 @@ THE WORKFLOW
            $hosts | Get-NexusFleetStatus | Format-Table Name, Ok, Health, Problem
            $hosts | Get-NexusFleetStatus | Export-NexusFleetStatus -Path ./status.csv
 
+    6. Manage the fleet: stop the servers of a node, then remove the node:
+
+           Get-NexusServer -Node node-home01 -Status running |
+               Invoke-NexusFleetAction -Action stop
+           $hosts | Where-Object Name -EQ 'node-home01' | Remove-NexusNode
+
 THE CMDLETS
     Connect-NexusInfra       Connects to a panel and checks the token's rights.
     Import-NexusInventory    Reads and checks the inventory of hosts.
@@ -46,6 +52,9 @@ THE CMDLETS
     Install-NexusNode        Turns hosts into healthy nodes, with rollback.
     Get-NexusFleetStatus     Status per node, from NexusInfra and the host.
     Export-NexusFleetStatus  Writes that status to JSON or CSV.
+    Get-NexusServer          Lists the servers NexusInfra runs.
+    Invoke-NexusFleetAction  Starts, stops or restarts a group of servers.
+    Remove-NexusNode         Deregisters nodes and removes their agents.
 
     Get-Help <cmdlet> -Full shows every parameter, the output and examples.
 
@@ -101,6 +110,9 @@ SEE ALSO
     Install-NexusNode
     Get-NexusFleetStatus
     Export-NexusFleetStatus
+    Get-NexusServer
+    Invoke-NexusFleetAction
+    Remove-NexusNode
     https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/user-guide.md
 
 KEYWORDS
