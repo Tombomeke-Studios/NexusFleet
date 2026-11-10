@@ -8,6 +8,7 @@ Register-NexusStep -Name 'AgentContainer' -Order 30 -Description 'Node agent con
     # The Test never sees the secrets, so a changed RABBITMQ_URL or INTERNAL_API_TOKEN looks "in order".
     # Install-NexusNode -Force recreates the container to apply it.
     if ($Context.Force) {
+        $Context.State.Detail = 'recreating the agent was asked (-Force)'
         return $false
     }
     $agent = $Context.Config.Agent
@@ -68,6 +69,10 @@ sudo -n docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$c"
     if ($missing.Count -gt 0 -and $facts.exists -contains 'yes' -and $Context.RunContext) {
         Write-NexusLog -Context $Context.RunContext -HostName $hostInfo.Name -Step 'AgentContainer' -Level Warning `
             -Message "the existing agent container is not as it should be: $($missing -join '; ')"
+    }
+    if ($missing.Count -gt 0) {
+        # For the plan: what is not in order.
+        $Context.State.Detail = if ($facts.exists -contains 'yes') { "not as it should be: $($missing -join '; ')" } else { 'there is no agent container' }
     }
     $missing.Count -eq 0
 } -Apply {
