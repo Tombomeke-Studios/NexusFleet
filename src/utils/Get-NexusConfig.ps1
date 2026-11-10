@@ -105,6 +105,8 @@ function Get-NexusConfig {
         @{ Key = 'Health.PollIntervalSeconds'; Expect = 'a whole number 1-60'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 60 } }
         @{ Key = 'Log.Directory'; Expect = "a folder path or ''"; Test = { param($v) $v -is [string] } }
         @{ Key = 'Log.KeepRuns'; Expect = 'a whole number 0-10000 (0 keeps every run)'; Test = { param($v) $v -is [int] -and $v -ge 0 -and $v -le 10000 } }
+        @{ Key = 'Servers.PageSize'; Expect = 'a whole number 1-200 (NexusInfra gives at most 200 per page)'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 200 } }
+        @{ Key = 'Servers.BulkMaxIds'; Expect = 'a whole number 1-100 (NexusInfra refuses more than 100)'; Test = { param($v) $v -is [int] -and $v -ge 1 -and $v -le 100 } }
     )
 
     $problems = [System.Collections.Generic.List[string]]::new()

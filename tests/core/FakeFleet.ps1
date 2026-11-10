@@ -15,6 +15,8 @@ function Get-FakeFleet {
         Heartbeating = @{}
         NeverHealthy = $false
         Unreachable  = [System.Collections.Generic.List[string]]::new()
+        # Nodes that host a running server: NexusInfra refuses to delete them (409).
+        Busy         = [System.Collections.Generic.List[string]]::new()
         FailAt       = $null
         Changes      = [System.Collections.Generic.List[string]]::new()
     }
@@ -108,6 +110,7 @@ function Invoke-FakeHostCommand {
         }
         'docker rm -f' {
             $Fake.Changes.Add("$HostName remove agent")
+            if (& $fail 'RemoveAgent') { return Get-FakeCommandResult -HostName $HostName -ExitCode 1 -StdErr 'Error response from daemon: removal in progress' }
             $state.Agent = $false
             if ($state.NodeId) { $Fake.Heartbeating.Remove($state.NodeId) }
             if ($state.NodeId -and $Fake.Nodes[$state.NodeId]) { $Fake.Nodes[$state.NodeId].linked = $false }
@@ -160,7 +163,15 @@ function Invoke-FakeApi {
         'DELETE' {
             $id = $Path -replace '^/nodes/', ''
             $Fake.Changes.Add("DELETE /nodes/$id")
+            if ($Fake.Busy -contains $id) {
+                $refused = [System.InvalidOperationException]::new('NexusInfra says: node still hosts a running deployment')
+                throw [System.Management.Automation.ErrorRecord]::new($refused, 'NexusApi.Conflict', 'ResourceExists', $null)
+            }
             $Fake.Nodes.Remove($id)
+            # Like the real panel: the next heartbeat of an agent that still runs creates the node again, bare.
+            if ($Fake.Heartbeating[$id]) {
+                $Fake.Nodes[$id] = @{ id = $id; name = $id; location = $null; agentUrl = $null; connection = 'direct'; linked = $false }
+            }
             return
         }
     }

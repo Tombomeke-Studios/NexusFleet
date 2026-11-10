@@ -73,9 +73,11 @@ Results go in `docs/ontwerpkeuzes.md`; scripts in `lab/`. These decide choices t
 
 ## Phase 5 — Extras (only after `v1.0.0`, in this order)
 
+The first extra was built before `v1.0.0` at Tom's request (2026-11-10), while the demo on the lab VMs waits.
+
 ### `feature/bulk-actions`
-- [ ] `Invoke-NexusFleetAction` — start/stop/restart groups of servers via `POST /deployments/bulk` (max 100 ids per call, batch above that), result per server, `-WhatIf`
-- [ ] `Remove-NexusNode` — deregister (`DELETE /nodes/:id`, handle `409`) and clean up the host
+- [x] `Invoke-NexusFleetAction` — start/stop/restart groups of servers via `POST /deployments/bulk` (max 100 ids per call, batch above that), result per server, `-WhatIf`; with `Get-NexusServer` to select the servers (#158)
+- [x] `Remove-NexusNode` — deregister (`DELETE /nodes/:id`, handle `409`) and clean up the host (#157)
 
 ### `feature/drift`
 - [ ] `Sync-NexusFleet` — compare a desired state (JSON) with reality; report differences; repair with `-WhatIf` support

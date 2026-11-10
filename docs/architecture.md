@@ -28,7 +28,7 @@ One responsibility per folder in `src/`. All functions below are internal (not e
 | `transports` | `Invoke-NexusHostCommand`, `Invoke-NexusSshClient` | Running a command on a host (native ssh) |
 | `api` | `Invoke-NexusApi` | The only caller of the NexusInfra REST API |
 | `steps` | `Docker` (10), `RegisterNode` (20), `AgentContainer` (30), `VerifyHealthy` (40), `AgentReachable` (50) | One file per installation step, each calling `Register-NexusStep` |
-| `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus`, `Export-NexusFleetStatus` | The exported cmdlets |
+| `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus`, `Export-NexusFleetStatus`, `Get-NexusServer`, `Invoke-NexusFleetAction`, `Remove-NexusNode` | The exported cmdlets |
 
 ## Contracts
 
@@ -103,6 +103,43 @@ Import-NexusInventory ──► Install-NexusNode (process: collect hosts)
 
 `NexusFleet.InstallResult`: `Host`, `Success`, `PlanOnly`, `Changed` (did this run apply anything), `Step`, `Error`,
 `Steps` (as in the step runner) and `Preflight` (the checks).
+
+## Data flow of `Remove-NexusNode`
+
+```
+Import-NexusInventory ──► Remove-NexusNode (process: collect hosts)
+                          end: ShouldProcess per host ──► PlanOnly per host
+                               Invoke-NexusHostLoop ──► Invoke-NexusHostRemoval per host (never throws)
+                                 Host   one ssh call: agent container? env file?   unreachable ──► result (nothing touched)
+                                 Node   GET /nodes: registered?                     PlanOnly stops here
+                                 Node   DELETE /nodes/<name>        409 (running servers) ──► result (nothing touched)
+                                 Agent  remove the container and the env file
+                                 Node   back because of a last heartbeat? DELETE again
+                                 NexusFleet.RemoveResult
+                          one result per host, summary in run.log
+```
+
+The node is deregistered before the agent is removed: only the `DELETE` tells whether NexusInfra refuses the node, and
+a refused node must keep its agent. NexusInfra creates a node again from a heartbeat, so an agent that still runs
+brings the record back; that is why the node is looked up once more after the agent is gone.
+
+`NexusFleet.RemoveResult`: `Host`, `Success`, `PlanOnly`, `Changed`, `Step` (`Host`, `Node` or `Agent`), `Error`,
+`Node` and `Agent` (`Absent`, `Present`, `Removed`, `WouldRemove`, `Unknown`).
+
+## Data flow of `Invoke-NexusFleetAction`
+
+```
+Get-NexusServer ──► GET /deployments?limit=&offset=&nodeId=&status=&q=   page after page until total ──► NexusFleet.Server
+      │
+      ▼
+Invoke-NexusFleetAction (process: collect ids, each once)
+      end: ShouldProcess once for the group ──► PlanOnly
+           per batch of Servers.BulkMaxIds: POST /deployments/bulk { action, ids }
+             answer: one result per server          request failed ──► that error for every server of the batch
+           NexusFleet.ActionResult per server, in the order given
+```
+
+No ssh and no parallel loop here: NexusInfra handles the servers of one request itself, one by one.
 
 ## Data flow of `Get-NexusFleetStatus`
 

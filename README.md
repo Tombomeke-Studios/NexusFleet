@@ -144,6 +144,9 @@ parameters. The [user guide](docs/user-guide.md) walks through every step.
 | [`Install-NexusNode`](docs/user-guide.md#install-nexusnode) | Turns hosts into healthy nodes: idempotent, with rollback and `-WhatIf` |
 | [`Get-NexusFleetStatus`](docs/user-guide.md#get-nexusfleetstatus) | NexusInfra's view of every node, merged with what ssh sees on the host |
 | [`Export-NexusFleetStatus`](docs/user-guide.md#export-nexusfleetstatus) | Writes that status to JSON or CSV |
+| [`Get-NexusServer`](docs/user-guide.md#get-nexusserver) | Lists the servers NexusInfra runs, by node, status or name |
+| [`Invoke-NexusFleetAction`](docs/user-guide.md#invoke-nexusfleetaction) | Starts, stops or restarts a group of servers, with a result per server and `-WhatIf` |
+| [`Remove-NexusNode`](docs/user-guide.md#remove-nexusnode) | Deregisters nodes and removes the agent from their hosts; a second run changes nothing |
 
 In the shell: `Get-Help about_NexusFleet`, and `Get-Help <cmdlet> -Full` for every cmdlet.
 

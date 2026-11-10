@@ -7,6 +7,7 @@
 | `Invoke-NexusStepCommand.Tests.ps1`, `Invoke-NexusStepApi.Tests.ps1` | The helpers steps use, with the settings of the step context |
 | `Invoke-NexusHostPreflight.Tests.ps1` | Every preflight check, passing and failing, from one fact at a time |
 | `Invoke-NexusHostInstall.Tests.ps1` | A whole install against the fake fleet: twice in a row (the second run changes nothing), a failure at each step (with rollback), and the dry run |
+| `Invoke-NexusHostRemoval.Tests.ps1` | A removal against the fake fleet: the order (deregister, agent, deregister again after a last heartbeat), a second run, a node NexusInfra refuses, an unreachable host, the dry run |
 | `Get-NexusHostStatus.Tests.ps1` | The facts one host reports about itself, an unreachable host, and odd answers |
 | `ConvertTo-NexusNodeStatus.Tests.ps1` | Merging NexusInfra's view and the host's view: `Ok` and a `Problem` in plain words |
 | `ConvertTo-Nexus*Failure.Tests.ps1` | The failure results that keep "one result per host" true |

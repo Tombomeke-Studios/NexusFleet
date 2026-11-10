@@ -105,4 +105,11 @@
         # How many run folders to keep; starting a run removes the oldest beyond this number. 0 keeps every run.
         KeepRuns  = 50
     }
+
+    Servers   = @{
+        # How many servers Get-NexusServer asks per request. NexusInfra gives at most 200 per page.
+        PageSize   = 200
+        # How many servers Invoke-NexusFleetAction sends per request. NexusInfra refuses more than 100.
+        BulkMaxIds = 100
+    }
 }
