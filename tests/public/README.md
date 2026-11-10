@@ -18,6 +18,8 @@ Plus:
 | `Get-NexusServer.Tests.ps1` | Every page is read, the filters reach NexusInfra escaped, and nothing but GET is sent |
 | `Invoke-NexusFleetAction.Tests.ps1` | Batches of at most 100, a result per server, a failed batch that does not stop the next, and `-WhatIf` sending nothing |
 | `Remove-NexusNode.Integration.Tests.ps1` | Removal in the node lab: the plan, the nodes gone and staying gone, a second run that changes nothing, one failing host; plus `Get-NexusServer` and `Invoke-NexusFleetAction` against a real NexusInfra |
+| `Sync-NexusFleet.Tests.ps1` | Drift against the fake fleet: a changed label, a missing agent, an unmanaged node, a host that cannot be compared; `-WhatIf` changes nothing and the repair touches only what drifted |
+| `Sync-NexusFleet.Integration.Tests.ps1` | In the node lab: a label changed through the API and an agent removed on the host are reported, repaired, and gone on the next run |
 | `Scale.Tests.ps1` | Generated inventories of 50 and 100 hosts, some unreachable and some failing. Exactly one correct result per host, and no crash |
 
 The integration tests skip themselves without a running lab. In CI a skip fails the job, because there the labs are

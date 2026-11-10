@@ -7,7 +7,11 @@ Register-NexusStep -Name 'VerifyHealthy' -Order 40 -Description 'Node reported h
         return $false
     }
     $node = @(Invoke-NexusStepApi -Context $Context -Method GET -Path '/nodes') | Where-Object id -EQ $Context.HostInfo.Name
-    [bool]$node -and $node.health -eq 'healthy'
+    $healthy = [bool]$node -and $node.health -eq 'healthy'
+    if (-not $healthy) {
+        $Context.State.Detail = if ($node) { "NexusInfra reports the node $($node.health)" } else { 'the node is not registered' }
+    }
+    $healthy
 } -Apply {
     param($Context)
     # Nothing to change here: wait until the heartbeats arrive. A count of attempts instead of a clock, so the

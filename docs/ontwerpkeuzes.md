@@ -377,3 +377,20 @@ Format per keuze:
 - **Verworpen:** de pakketten parallel versturen: dat doorkruist precies wat de orchestrator met zijn volgorde wil
   bereiken. Ook verworpen: per server een eigen `POST /deployments/<id>/stop`: honderden verzoeken lopen tegen de
   limiet van de gateway aan (429), en het bulk-endpoint bestaat al.
+
+### K14 — Drift detection: de inventaris is de gewenste staat (#160)
+
+- **Vraag:** het voorstel zegt dat `Sync-NexusFleet` "een gewenste staat (JSON)" vergelijkt met de werkelijkheid. Is
+  dat een nieuw bestand, en hoe wordt er vergeleken en hersteld?
+- **Gevonden:** de gewenste staat bestaat al. De inventaris (JSON) zegt welke servers nodes zijn, met naam, locatie,
+  `agentUrl` en `reach`; de config zegt hoe de agent-container moet draaien. En elke installatiestap heeft al een
+  `Test` die nagaat of de server daarvoor in orde is: dat is een vergelijking van gewenst met werkelijk.
+- **Keuze:** geen tweede bestand. `Sync-NexusFleet` draait per server de droge run van de installatie. Elke stap die
+  niet in orde is, is één verschil; de stap zegt zelf in woorden wat er afwijkt (`State.Detail`). Herstellen is
+  `Install-NexusNode` op de servers met verschillen, die alleen de stappen toepast die niet in orde zijn. Nodes die
+  NexusInfra kent maar de inventaris niet, worden gemeld (`Unmanaged`) en nooit verwijderd.
+- **Verworpen:** een apart "desired state"-bestand met een eigen vergelijker. Dan staat dezelfde kennis (wat is een
+  goede node?) op twee plaatsen, en moet elke nieuwe stap ook daar bijgeschreven worden. Ook verworpen: onbekende
+  nodes automatisch verwijderen. Een vergeten regel in de inventaris zou dan een draaiende node kosten.
+- **Gevolg:** een nieuwe installatiestap wordt vanzelf ook op drift gecontroleerd. Wat de stappen niet kunnen zien,
+  ziet `Sync-NexusFleet` ook niet: een gewijzigd geheim van de agent wordt nooit teruggelezen van de server.

@@ -8,14 +8,26 @@ Register-NexusStep -Name 'RegisterNode' -Order 20 -Description 'Node registered 
     $node = @(Invoke-NexusStepApi -Context $Context -Method GET -Path '/nodes') | Where-Object id -EQ $hostInfo.Name
     # Remembered for Rollback: only a record this run created may be deleted.
     $Context.State.NodeExisted = [bool]$node
-    $sameLabels = [bool]$node -and $node.name -eq $hostInfo.Name -and $node.location -eq $hostInfo.Location
-    if ($hostInfo.Reach -eq 'outbound') {
-        $sameLabels -and $node.connection -eq 'outbound'
+    # What differs between the inventory and the record in NexusInfra, in words (also the plan's Detail).
+    $differs = @(
+        if (-not $node) { 'the node is not registered' }
+        else {
+            if ($node.name -ne $hostInfo.Name) { "name is '$($node.name)'" }
+            if ($node.location -ne $hostInfo.Location) { "location is '$($node.location)', not '$($hostInfo.Location)'" }
+            if ($hostInfo.Reach -eq 'outbound') {
+                if ($node.connection -ne 'outbound') { 'connection is direct, not outbound' }
+            }
+            else {
+                # NexusInfra 0.4.0 reports no connection at all: that is direct.
+                if ($node.connection -eq 'outbound') { 'connection is outbound, not direct' }
+                if ($node.agentUrl -ne $hostInfo.AgentUrl) { "agentUrl is '$($node.agentUrl)', not '$($hostInfo.AgentUrl)'" }
+            }
+        }
+    )
+    if ($differs.Count -gt 0) {
+        $Context.State.Detail = $differs -join '; '
     }
-    else {
-        # NexusInfra 0.4.0 reports no connection at all: that is direct.
-        $sameLabels -and $node.agentUrl -eq $hostInfo.AgentUrl -and $node.connection -ne 'outbound'
-    }
+    $differs.Count -eq 0
 } -Apply {
     param($Context)
     $hostInfo = $Context.HostInfo

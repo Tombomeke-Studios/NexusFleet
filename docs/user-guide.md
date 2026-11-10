@@ -278,6 +278,36 @@ node-home01    True    True Removed Removed
 - The agent container and its env file (with the secrets) are removed. Docker and the backups volume stay.
 - A machine that is gone: `-IgnoreUnreachableHost` deregisters the node without the host.
 
+## Sync-NexusFleet
+
+Nodes drift: someone edits a label in the panel, an agent container is recreated by hand, a node disappears.
+`Sync-NexusFleet` compares every host with the inventory and the config, reports the differences, and repairs them.
+
+```powershell
+$hosts | Sync-NexusFleet -WhatIf | Format-Table Host, InSync, Differences
+```
+
+```text
+Host        InSync Differences
+----        ------ -----------
+node-home01   True {}
+node-home02  False {RegisterNode: location is 'attic', not 'home'}
+node-home03  False {AgentContainer: there is no agent container, VerifyHealthy: NexusInfra reports the node offline}
+node-old     False {Unmanaged: NexusInfra knows this node, the inventory does not}
+```
+
+```powershell
+$hosts | Sync-NexusFleet                  # asks per host, showing its differences
+$hosts | Sync-NexusFleet -Confirm:$false  # repairs without asking
+```
+
+- The comparison is the dry run of the installation: the same checks, nothing changed, no secrets needed.
+- The repair is `Install-NexusNode` on the hosts that drifted. It applies only the steps that are not in order.
+- A node NexusInfra knows but the inventory does not is reported as `Unmanaged` and never removed. Use
+  `Remove-NexusNode` when it should go.
+- A host that cannot be compared (unreachable, no sudo) is reported with an `Error`; the others still run.
+- A changed agent secret is not visible as drift. Use `Install-NexusNode -Force` after changing one.
+
 ## Logs
 
 Every run writes to `logs/<RunId>/` in the current folder, or under `Log.Directory` when you set that in your config

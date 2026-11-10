@@ -68,7 +68,7 @@ function Invoke-NexusStepSequence {
 
     $ordered = @($Step | Sort-Object -Property Order)
     $outcomes = foreach ($item in $ordered) {
-        [pscustomobject]@{ Step = $item.Name; Outcome = 'NotRun'; Rollback = $null; Error = $null }
+        [pscustomobject]@{ Step = $item.Name; Outcome = 'NotRun'; Detail = $null; Rollback = $null; Error = $null }
     }
     $failedIndex = -1
     $failedPhase = $null
@@ -86,6 +86,11 @@ function Invoke-NexusStepSequence {
                 $outcomes[$i].Outcome = 'AlreadyDone'
                 & $log $RunContext $current.Name 'already in order, nothing to do'
                 continue
+            }
+            # A Test may say what is not in order (State.Detail), for the plan and for Sync-NexusFleet.
+            if ($Context.State -and $Context.State.Detail) {
+                $outcomes[$i].Detail = $Context.State.Detail
+                $Context.State.Remove('Detail')
             }
             if ($PlanOnly) {
                 $outcomes[$i].Outcome = 'WouldApply'

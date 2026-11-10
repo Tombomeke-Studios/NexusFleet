@@ -150,6 +150,20 @@ Describe 'Invoke-NexusStepSequence' {
         }
     }
 
+    Context 'what a Test found (Detail)' {
+        It 'puts the detail a Test left in State on that step only, in a plan and in a real run' {
+            $explains = Get-FakeStep -Name 'a' -Order 10
+            $explains.Test = { param($Context) $Context.State.Detail = 'the label differs'; $false }
+            $silent = Get-FakeStep -Name 'b' -Order 20
+
+            $plan = Invoke-NexusStepSequence -HostName 'web01' -Step $explains, $silent -Context @{ State = @{} } -PlanOnly
+            $real = Invoke-NexusStepSequence -HostName 'web01' -Step $explains, $silent -Context @{ State = @{} }
+
+            $plan.Steps.Detail | Should -Be @('the label differs', $null)
+            $real.Steps.Detail | Should -Be @('the label differs', $null)
+        }
+    }
+
     Context 'logging' {
         It 'writes one line per step to the host''s log when a run context is given' {
             $runContext = Initialize-NexusRunContext -LogRoot $TestDrive

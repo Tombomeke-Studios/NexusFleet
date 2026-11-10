@@ -146,6 +146,7 @@ parameters. The [user guide](docs/user-guide.md) walks through every step.
 | [`Export-NexusFleetStatus`](docs/user-guide.md#export-nexusfleetstatus) | Writes that status to JSON or CSV |
 | [`Get-NexusServer`](docs/user-guide.md#get-nexusserver) | Lists the servers NexusInfra runs, by node, status or name |
 | [`Invoke-NexusFleetAction`](docs/user-guide.md#invoke-nexusfleetaction) | Starts, stops or restarts a group of servers, with a result per server and `-WhatIf` |
+| [`Sync-NexusFleet`](docs/user-guide.md#sync-nexusfleet) | Finds nodes that drifted from the inventory, says what differs, and repairs them |
 | [`Remove-NexusNode`](docs/user-guide.md#remove-nexusnode) | Deregisters nodes and removes the agent from their hosts; a second run changes nothing |
 
 In the shell: `Get-Help about_NexusFleet`, and `Get-Help <cmdlet> -Full` for every cmdlet.

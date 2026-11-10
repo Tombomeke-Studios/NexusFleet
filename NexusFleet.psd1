@@ -25,6 +25,7 @@
         'Remove-NexusNode'
         'Get-NexusServer'
         'Invoke-NexusFleetAction'
+        'Sync-NexusFleet'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
