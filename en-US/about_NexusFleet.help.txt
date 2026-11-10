@@ -45,6 +45,12 @@ THE WORKFLOW
                Invoke-NexusFleetAction -Action stop
            $hosts | Where-Object Name -EQ 'node-home01' | Remove-NexusNode
 
+    7. Later, check whether the nodes are still as the inventory wants them,
+       and repair what drifted:
+
+           $hosts | Sync-NexusFleet -WhatIf
+           $hosts | Sync-NexusFleet
+
 THE CMDLETS
     Connect-NexusInfra       Connects to a panel and checks the token's rights.
     Import-NexusInventory    Reads and checks the inventory of hosts.
@@ -55,6 +61,7 @@ THE CMDLETS
     Get-NexusServer          Lists the servers NexusInfra runs.
     Invoke-NexusFleetAction  Starts, stops or restarts a group of servers.
     Remove-NexusNode         Deregisters nodes and removes their agents.
+    Sync-NexusFleet          Finds drift from the inventory and repairs it.
 
     Get-Help <cmdlet> -Full shows every parameter, the output and examples.
 
@@ -113,6 +120,7 @@ SEE ALSO
     Get-NexusServer
     Invoke-NexusFleetAction
     Remove-NexusNode
+    Sync-NexusFleet
     https://github.com/Tombomeke-Studios/NexusFleet/blob/dev/docs/user-guide.md
 
 KEYWORDS

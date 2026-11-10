@@ -28,7 +28,7 @@ One responsibility per folder in `src/`. All functions below are internal (not e
 | `transports` | `Invoke-NexusHostCommand`, `Invoke-NexusSshClient` | Running a command on a host (native ssh) |
 | `api` | `Invoke-NexusApi` | The only caller of the NexusInfra REST API |
 | `steps` | `Docker` (10), `RegisterNode` (20), `AgentContainer` (30), `VerifyHealthy` (40), `AgentReachable` (50) | One file per installation step, each calling `Register-NexusStep` |
-| `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus`, `Export-NexusFleetStatus`, `Get-NexusServer`, `Invoke-NexusFleetAction`, `Remove-NexusNode` | The exported cmdlets |
+| `public` | `Connect-NexusInfra`, `Import-NexusInventory`, `Test-NexusHost`, `Install-NexusNode`, `Get-NexusFleetStatus`, `Export-NexusFleetStatus`, `Get-NexusServer`, `Invoke-NexusFleetAction`, `Remove-NexusNode`, `Sync-NexusFleet` | The exported cmdlets |
 
 ## Contracts
 
@@ -140,6 +140,25 @@ Invoke-NexusFleetAction (process: collect ids, each once)
 ```
 
 No ssh and no parallel loop here: NexusInfra handles the servers of one request itself, one by one.
+
+## Data flow of `Sync-NexusFleet`
+
+```
+Import-NexusInventory ──► Sync-NexusFleet (process: collect hosts)
+                          end: Invoke-NexusHostLoop ──► Invoke-NexusHostInstall -PlanOnly per host
+                                 each step's Test; a Test that is not in order leaves State.Detail (what differs)
+                               ConvertTo-NexusSyncResult: WouldApply steps ──► Differences; failed preflight ──► Error
+                               GET /nodes ──► nodes not in the inventory ──► Unmanaged results
+                               ShouldProcess per host with differences      -WhatIf stops here
+                               approved hosts ──► Install-NexusNode -Confirm:$false ──► Repaired / Error
+                          one NexusFleet.SyncResult per host, then per unmanaged node
+```
+
+The desired state is the inventory plus the config: there is no second file. Drift detection and repair reuse the
+steps: a step's `Test` is the comparison and its `Apply` is the repair, so a new step is checked for drift at once.
+
+`NexusFleet.SyncResult`: `Host`, `InSync`, `Differences` (one line per difference), `Repairable`, `Repaired`,
+`Success`, `Error`.
 
 ## Data flow of `Get-NexusFleetStatus`
 
