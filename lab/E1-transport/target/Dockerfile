@@ -1,7 +1,7 @@
 # A stand-in for a fresh Ubuntu VM, for experiment E1: an OpenSSH server and a user "fleet" that logs in
 # with an SSH key only and may use sudo without a password (the target-host requirement of NexusFleet).
 # Build with WITH_PWSH=true to also install PowerShell and the sshd subsystem PowerShell remoting needs.
-FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+FROM ubuntu:25.10@sha256:7cc5e35f6567ee8c66d2abb4aab0fd866669e6207c237c3a8f0947a5c7f17092
 
 ARG PUBKEY
 ARG WITH_PWSH=false
