@@ -1,7 +1,7 @@
 # A stand-in for a fresh Ubuntu VM that becomes a NexusInfra node: an OpenSSH server and a user "fleet" that logs in
 # with an SSH key only and may use sudo without a password. No Docker: Install-NexusNode installs it (Docker step).
 # The container runs privileged (see docker-compose.yml) so the Docker daemon installed later can run inside it.
-FROM ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+FROM ubuntu:25.10@sha256:7cc5e35f6567ee8c66d2abb4aab0fd866669e6207c237c3a8f0947a5c7f17092
 
 ARG PUBKEY
 
